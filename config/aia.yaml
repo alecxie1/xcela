@@ -1,0 +1,25 @@
+# AIA harness config — the ONLY per-brand knob.
+# Everything the harness knows about this brand comes from here + answer_keys/aia.json.
+
+brand_id: aia
+pdf: "/mnt/c/Users/Alecx/Downloads/AIA Brand Standards - V2.0.pdf"
+logo: "/mnt/c/Users/Alecx/Downloads/AIA-logo.png"
+answer_key: "answer_keys/aia.json"
+asset_type: "wide horizontal poster"
+size: "1536x1024"
+quality: "high"
+
+# Reference selection is STUBBED for v1 (hard-coded logo path above).
+# Tagged honestly in the manifest as reference_selection: stubbed/manual.
+
+# Variant modifiers: brand-AGNOSTIC composition axes. Same list must work for
+# any brand by JSON swap. No brand-specific adjectives allowed here.
+variants:
+  - id: hero
+    modifier: "hero composition, one dominant focal element, generous negative space."
+  - id: dense
+    modifier: "information-dense layout, multiple product/service elements arranged in a grid."
+  - id: minimal
+    modifier: "minimalist, single focal element, maximum breathing room, restrained decoration."
+  - id: lifestyle
+    modifier: "warm lifestyle scene as the hero image, people-centered, candid feel."

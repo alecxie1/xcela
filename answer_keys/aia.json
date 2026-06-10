@@ -1,0 +1,70 @@
+{
+  "brand": "友邦保险",
+  "brand_en": "AIA",
+  "source_pdf": "AIA Brand Standards - V2.0.pdf",
+  "verified_by": "text-layer extraction (deterministic); pending Alec page-verify",
+  "verified_date": "2026-06-06",
+  "_note": "118-page VI, 91% text layer. Color spec printed cleanly on p24/p25/p91. Logo: mountain-in-circle geometric badge (reproduces faithfully as reference image).",
+  "fields": {
+    "brand_name_cn": { "type": "objective_printed", "scoring": "exact", "value": "友邦保险" },
+    "brand_name_en": { "type": "objective_printed", "scoring": "fuzzy", "value": "AIA" },
+
+    "colors": {
+      "type": "objective_printed",
+      "scoring": "delta_e",
+      "items": [
+        { "name_cn": "友邦红", "name_en": "AIA Red", "role": "primary",
+          "rgb": [211, 17, 69], "cmyk": [0, 100, 63, 12], "pantone": "200C",
+          "printed_html": "D31145" },
+        { "name_cn": "友邦炭灰", "name_en": "AIA Charcoal", "role": "secondary",
+          "rgb": [51, 61, 71], "cmyk": [78, 62, 49, 51], "pantone": "432C",
+          "printed_html": "333D47" },
+        { "name_cn": "白色", "name_en": "White", "role": "background",
+          "rgb": [255, 255, 255], "cmyk": [0, 0, 0, 0], "pantone": null,
+          "printed_html": "FFFFFF" }
+      ]
+    },
+
+    "fonts": {
+      "type": "objective_printed",
+      "scoring": "string",
+      "chinese_display": null,
+      "english": null,
+      "_note": "Not yet extracted from this VI; not required for harness v1."
+    },
+
+    "slogan":   { "type": "objective_printed", "scoring": "string", "value": "健康长久好生活" },
+    "category": { "type": "objective_printed", "scoring": "string", "value": "保险" },
+
+    "motifs": {
+      "type": "objective_printed",
+      "scoring": "set",
+      "items": ["山峦层叠 (layered mountain peaks)"]
+    },
+
+    "logo_appearance": {
+      "type": "subjective",
+      "scoring": "rubric",
+      "_status": "candidate_unverified",
+      "elements": {
+        "container_shape": "circle (thick stroke, not filled)",
+        "fill_color": "AIA Red (#D31145)",
+        "inner_mark": "two geometric mountain peaks above bold AIA letters",
+        "variants": ["red on white", "white reverse on red"]
+      }
+    },
+    "imagery_style": {
+      "type": "subjective",
+      "scoring": "rubric",
+      "_status": "candidate_unverified",
+      "description": "modern, sophisticated, aspirational; geometric layered translucent mountain planes in red/pink/white; clean generous white space; warm aspirational lifestyle photography (health, family, longevity); contemporary corporate polish",
+      "tags": ["modern", "aspirational", "geometric-mountains", "clean", "premium-corporate", "optimistic"]
+    },
+    "tone": {
+      "type": "subjective",
+      "scoring": "rubric",
+      "_status": "candidate_unverified",
+      "descriptors": ["trustworthy", "aspirational", "optimistic", "health-focused", "premium"]
+    }
+  }
+}

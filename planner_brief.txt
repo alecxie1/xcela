@@ -1,0 +1,23 @@
+ROLE: You are a planning assistant. PRODUCE A PLAN ONLY. Do NOT modify any code or data files except writing the single plan file named below. Read-only investigation of the repo is encouraged.
+
+PROJECT: Brand-asset analysis pipeline at /home/alecx/workspace/handyprint-design-tool/
+Goal: extract a structured "Brand DNA" spec from brand-guideline PDFs (Chinese VI manuals), to feed a downstream image-GENERATION layer (GPT Image 2). Two layers: (1) ANALYSIS layer = read PDF → structured JSON spec; (2) GENERATION layer = JSON spec → branded images via GPT Image 2.
+
+CURRENT STATE (verified facts, do not re-derive):
+- Deterministic-first extraction with provenance tags {value, source, confidence, needs_review}.
+- COLORS: solved deterministically. OCR the printed caption (rapidocr-onnxruntime) → exact spec hex; derive from RGB when no hex printed; PIL pixel-cluster cross-check flags OCR garbles. Achieves ΔE=0.00 on all colors, both test brands. Files: extract_colors.py.
+- FONTS + MOTIFS: parsed from PDF text layer (PyMuPDF/fitz) when a text layer exists; route to VLM when image-only. Files: extract_text_layer.py. Lesson learned: text layer is NOT 100% trustworthy even when present (one font sample on 太极堡 p22 has a corrupt ToUnicode map: renders fine, extracts garbled → need majority-vote across repeated samples).
+- SCORER: unified score_v4.py driven by per-brand human-verified answer keys in answer_keys/<brand>.json. Scoring dispatched by FIELD TYPE: objective_printed (ΔE/string/set, mechanical), objective_visual (string, absence-tolerant), subjective (logo/tone — NOT scored mechanically, deferred to model bake-off).
+- TEST SET: only 2 PDFs so far — 太极堡 (TAICHI BURGER, has text layer) and 秀才弄 (image-only, no text layer). They fail in OPPOSITE ways, which is a decent stress contrast but only n=2.
+- Models in play: NuExtract3 (4B self-hostable doc→JSON VLM), Gemini, Claude (for analysis/VLM fields); GPT Image 2 (generation layer, considered locked-in).
+- Docling was evaluated and REJECTED for text parsing (it reads the same broken embedded fonts; can't fix pixel/CMap problems). It may still fit later for logo image/caption extraction.
+
+THREE QUESTIONS TO PLAN AROUND (the user wants to go slow and think carefully):
+
+1. FIELD COVERAGE COMPLETENESS. Colors are locked. But the current answer keys only cover: names, colors, fonts, slogan, category, motifs, (subjective) logo+tone. The original Brand-DNA schema also implies fields NOT yet built or verified: clear-space / spacing specs (太极堡 prints clear-space 16/25/50mm and min-size rules), color usage rules, textures, imagery style, brand discourse systems (太极堡's 三才文化 / 五道工序). Plan: which additional objective fields should be added, how to extract each (text-layer vs OCR vs VLM), how to verify, and which are worth it vs scope-creep. Be opinionated about what to SKIP.
+
+2. REPRODUCIBILITY. n=2 is not enough to claim the method generalizes. Distinguish two senses and plan for BOTH: (a) run-to-run variance — deterministic extraction is reproducible by construction, but VLM fields vary (prior benchmark showed ~2pp spread); how to measure and bound this. (b) generalization to UNSEEN brand PDFs — what should the golden set of ~10 PDFs span (layout types, text-layer vs image-only, with/without Pantone, EN+CN vs CN-only, different VI house styles) to be a credible test? Plan the selection criteria and the metric that would tell us "the method is reproducible / generalizes."
+
+3. MODEL-MIXING / COHERENCY ARCHITECTURE. The user worries: if the GENERATION layer is GPT Image 2, does using a NON-GPT model (Gemini or NuExtract3) in the ANALYSIS layer make generation weaker / less coherent? Analyze this rigorously. Key fact: the two layers communicate via a STRUCTURED SPEC (JSON: hex, font names, tone tags, a logo description string), not shared embeddings/latents. Address: where (if anywhere) does analysis-model choice actually affect generation quality? Distinguish objective fields (model-agnostic ground truth) from subjective fields (natural-language descriptions where phrasing/flavor could interact with GPT Image 2's interpretation). Recommend an architecture and what to empirically test in the upcoming NuExtract3-vs-Gemini-vs-Claude bake-off.
+
+OUTPUT: Write your plan to /home/alecx/workspace/handyprint-design-tool/PLAN_step5_thinking.md as structured markdown. For each of the 3 questions: a short analysis, a concrete recommendation, and a "what to do next" list. Flag any place you think the user is over-engineering or under-specifying. End with a single recommended next action. Keep it tight and decision-oriented, not a wall of text.

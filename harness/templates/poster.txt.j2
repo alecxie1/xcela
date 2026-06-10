@@ -1,0 +1,23 @@
+A promotional {{ asset_type }} for {{ brand_name_cn }}{% if brand_name_en %} ({{ brand_name_en }}){% endif %}, a {{ category }} brand. Advertising quality, professional, polished.
+
+USE THE SUPPLIED BRAND LOGO faithfully — place it cleanly as the brand mark. Do not redraw, restyle, or distort it.
+
+EXACT BRAND COLORS (match precisely):
+{% for c in colors -%}
+- {{ c.role | capitalize }}: {{ c.name_cn }}{% if c.name_en %} / {{ c.name_en }}{% endif %}, hex #{{ c.hex }}{% if c.pantone %} (PANTONE {{ c.pantone }}){% endif %}.
+{% endfor %}
+Do not drift the primary color toward neighboring hues.
+
+TEXT (render these exact characters crisply and correctly):
+- Brand name: {{ brand_name_cn }}
+{% if slogan %}- Slogan: {{ slogan }}
+{% endif %}{% if brand_name_en %}- English: {{ brand_name_en }}
+{% endif %}
+
+{% if motifs %}BRAND MOTIFS: {{ motifs | join('; ') }}.
+{% endif %}
+{% if imagery_description %}VISUAL STYLE: {{ imagery_description }}.
+{% endif %}
+{% if tone_descriptors %}MOOD: {{ tone_descriptors | join(', ') }}.
+{% endif %}
+COMPOSITION: {{ variant_modifier }}

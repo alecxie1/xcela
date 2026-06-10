@@ -1,0 +1,9 @@
+Plan written to `PLAN_step5_thinking.md`. Here's the short version of what it recommends:
+
+**Q1 — Field coverage:** Add exactly 3 things (`color_usage_roles` enum upgrade, `imagery_style` as a VLM/subjective field, formalized `logo_description` checklist). Skip `brand_discourse`, `forbidden_color_combos`, `textures`, and `spacing_specs` — they are either generation-irrelevant or un-generalizable.
+
+**Q2 — Reproducibility:** Two separate problems. Run-to-run: do a 5× VLM benchmark at temp=0 on the current 2 brands to get an actual variance number (the ~2pp is currently anecdotal). Generalization: source ~10 PDFs spanning 7 axes (text-layer quality, color spec format, language, brand category, palette size, motif presence, VI house style), with a pass threshold of avg ≥ 75% / min ≥ 60% / stddev ≤ 10pp on objective fields.
+
+**Q3 — Model-mixing:** Not a coherency problem for objective fields (hex is hex regardless of who extracted it). For NL fields (tone, imagery_style), model choice matters only through description accuracy and specificity, not through some GPT-internal alignment. The real gap is that "generation quality" has no rubric yet — the bake-off needs a 5-point image-rating rubric before Round 2 (generation quality) can be meaningful.
+
+**Single next action:** Write the 5-point generation quality rubric and expand the two existing answer keys to include `color_usage_roles` + `imagery_style`. That unblocks the bake-off, the scoring update, and the PDF sourcing.

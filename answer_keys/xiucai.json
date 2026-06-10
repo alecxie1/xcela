@@ -1,0 +1,91 @@
+{
+  "brand": "秀才弄",
+  "brand_en": null,
+  "source_pdf": "秀才弄品牌设计方案.pdf",
+  "verified_by": "human (Alec)",
+  "verified_date": "2026-06-05",
+  "_note": "Image-only PDF (no text layer). All fields route to OCR/VLM extraction. Ground truth human-verified against printed page.",
+  "fields": {
+    "brand_name_cn": { "type": "objective_printed", "scoring": "exact", "value": "秀才弄" },
+    "brand_name_en": { "type": "objective_printed", "scoring": "fuzzy", "value": null },
+
+    "colors": {
+      "type": "objective_printed",
+      "scoring": "delta_e",
+      "items": [
+        { "name_cn": "山野绿", "name_en": "MOUNTAIN GREEN", "role": "primary",
+          "rgb": [94, 98, 52], "cmyk": [68, 56, 93, 17], "pantone": null,
+          "printed_html": "5E6234" },
+        { "name_cn": "金盏黄", "name_en": "MARIGOLD", "role": "secondary",
+          "rgb": [217, 159, 70], "cmyk": [20, 44, 78, 0], "pantone": null,
+          "printed_html": "D99F46" },
+        { "name_cn": "稻米白", "name_en": "RICE WHITE", "role": "secondary",
+          "rgb": [244, 233, 219], "cmyk": [6, 10, 15, 0], "pantone": null,
+          "printed_html": "F4E9DB" },
+        { "name_cn": null, "name_en": null, "role": "secondary",
+          "rgb": null, "cmyk": null, "pantone": null,
+          "printed_html": "3F2910",
+          "_note": "Dark brown, hex printed without name/RGB/CMYK." }
+      ]
+    },
+
+    "fonts": {
+      "type": "objective_visual",
+      "scoring": "string",
+      "chinese_display": "隶书",
+      "_note": "Custom 隶书-style logotype, NOT a library font. Correct answer is the style descriptor, not a font name. Do not penalize absence of a library name."
+    },
+
+    "slogan":   { "type": "objective_printed", "scoring": "string", "value": "砂锅烧香鸡首创品牌" },
+    "category": { "type": "objective_printed", "scoring": "string", "value": "砂锅烧香鸡" },
+
+    "motifs": {
+      "type": "objective_printed",
+      "scoring": "set",
+      "items": ["土鸡", "秀才", "砂锅", "元宝", "烧香", "财神", "竹林"]
+    },
+
+    "logo_appearance": {
+      "type": "subjective",
+      "scoring": "rubric",
+      "_status": "candidate_unverified",
+      "_status_note": "AI-derived from inventory (p09/p10/p12/p19/p20). Verify against pages.",
+      "elements": {
+        "container_shape": "distressed clay-pot / rounded cloud-outline badge enclosing wordmark",
+        "fill_color": "gold (#D99F46) mark / cloud-outline badge",
+        "inner_mark": "custom 才 / 秀才弄 clerical-script wordmark; gold-ingot + clay-pot fusion",
+        "variants": ["gold mark on dark/green", "embossed champagne-gold metal badge"]
+      }
+    },
+    "imagery_style": {
+      "type": "subjective",
+      "scoring": "rubric",
+      "_status": "candidate_unverified",
+      "_status_note": "AI-derived from p16/p22/p23/p37 — STRONGEST signal in this deck. Verify against pages.",
+      "description": "woodcut / linocut folk block-print: flat single-color (dark brown or olive) on cream, distressed/aged texture, traditional Chinese folk illustration of rural subjects",
+      "tags": ["woodcut", "linocut", "folk-print", "flat-single-color", "dark-brown-on-cream", "distressed", "rustic-heritage"]
+    },
+    "photography_style": {
+      "type": "subjective",
+      "scoring": "rubric",
+      "_status": "candidate_unverified",
+      "_status_note": "AI-derived from poster pages p24/p25/p28. Verify against pages.",
+      "description": "rustic farm-to-table: warm natural daylight, clay-pot-over-fire, free-range chickens, ingredient provenance (rice/oil/raw meat), bamboo/courtyard/brick settings, shallow depth of field",
+      "tags": ["rustic", "farm-to-table", "warm-natural-light", "documentary", "appetizing", "heritage"]
+    },
+    "subject_iconography": {
+      "type": "subjective",
+      "scoring": "set",
+      "_status": "candidate_unverified",
+      "_status_note": "Renderable subject vocabulary from p08/p13/p15/p16/p22. Supersedes/expands the flat motifs list.",
+      "items": ["砂锅 (clay pot)", "元宝 (gold ingot)", "土鸡 (free-range rooster/chicken)", "秀才 (scholar)", "财神 (god of wealth)", "烧香 (incense)", "flaming wok", "竹林 (bamboo)"]
+    },
+    "tone": {
+      "type": "subjective",
+      "scoring": "rubric",
+      "_status": "candidate_unverified",
+      "_note": "Rustic/folk-heritage. Human or calibrated-judge graded.",
+      "descriptors": ["rustic", "folk-heritage", "warm", "earthy", "auspicious", "handcrafted", "nostalgic"]
+    }
+  }
+}
