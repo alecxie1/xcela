@@ -1,47 +1,371 @@
 {
   "brand": "友邦保险",
   "brand_en": "AIA",
+  "logo_path": "/home/alecx/workspace/handyprint-design-tool/brands/aia/assets/AIA-logo.png",
   "source_pdf": "AIA Brand Standards - V2.0.pdf",
   "verified_by": "text-layer extraction (deterministic); pending Alec page-verify",
   "verified_date": "2026-06-06",
   "_note": "118-page VI, 91% text layer. Color spec printed cleanly on p24/p25/p91. Logo: mountain-in-circle geometric badge (reproduces faithfully as reference image).",
   "fields": {
-    "brand_name_cn": { "type": "objective_printed", "scoring": "exact", "value": "友邦保险" },
-    "brand_name_en": { "type": "objective_printed", "scoring": "fuzzy", "value": "AIA" },
-
+    "brand_name_cn": {
+      "type": "objective_printed",
+      "scoring": "exact",
+      "value": "友邦保险"
+    },
+    "brand_name_en": {
+      "type": "objective_printed",
+      "scoring": "fuzzy",
+      "value": "AIA"
+    },
     "colors": {
       "type": "objective_printed",
       "scoring": "delta_e",
       "items": [
-        { "name_cn": "友邦红", "name_en": "AIA Red", "role": "primary",
-          "rgb": [211, 17, 69], "cmyk": [0, 100, 63, 12], "pantone": "200C",
-          "printed_html": "D31145" },
-        { "name_cn": "友邦炭灰", "name_en": "AIA Charcoal", "role": "secondary",
-          "rgb": [51, 61, 71], "cmyk": [78, 62, 49, 51], "pantone": "432C",
-          "printed_html": "333D47" },
-        { "name_cn": "白色", "name_en": "White", "role": "background",
-          "rgb": [255, 255, 255], "cmyk": [0, 0, 0, 0], "pantone": null,
-          "printed_html": "FFFFFF" }
+        {
+          "name_cn": "友邦红",
+          "name_en": "AIA Red",
+          "role": "primary",
+          "rgb": [
+            211,
+            17,
+            69
+          ],
+          "cmyk": [
+            0,
+            100,
+            63,
+            12
+          ],
+          "pantone": "200C",
+          "printed_html": "D31145"
+        },
+        {
+          "name_cn": "友邦炭灰",
+          "name_en": "AIA Charcoal",
+          "role": "secondary",
+          "rgb": [
+            51,
+            61,
+            71
+          ],
+          "cmyk": [
+            78,
+            62,
+            49,
+            51
+          ],
+          "pantone": "432C",
+          "printed_html": "333D47"
+        },
+        {
+          "name_cn": "白色",
+          "name_en": "White",
+          "role": "background",
+          "rgb": [
+            255,
+            255,
+            255
+          ],
+          "cmyk": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "pantone": null,
+          "printed_html": "FFFFFF"
+        }
       ]
     },
-
-    "fonts": {
+    "typography": {
       "type": "objective_printed",
       "scoring": "string",
-      "chinese_display": null,
-      "english": null,
-      "_note": "Not yet extracted from this VI; not required for harness v1."
+      "english_primary": {
+        "name": "AIA Everest",
+        "source_page": 45,
+        "license_note": "您的创意合作伙伴签署的字体许可协议。",
+        "file": null,
+        "file_fallback": "/mnt/c/Windows/Fonts/arial.ttf"
+      },
+      "english_fallback": {
+        "name": "Arial",
+        "source_page": 46,
+        "file": null
+      },
+      "digital": {
+        "name": "Open Sans / Noto Sans",
+        "source_page": 52,
+        "file": null
+      },
+      "chinese_primary": {
+        "name": "汉仪甄选37款字体",
+        "source_page": 47,
+        "license_note": "字库1许可使用的期限为: 2027年7月31日。",
+        "library_index": "brands/aia/fonts/index.json",
+        "file": null,
+        "file_fallback": "/mnt/c/Windows/Fonts/simhei.ttf"
+      },
+      "rules": [
+        "[p15] 不建议使用手写字体或草写字体。",
+        "[p46] 只有在无法使用AIA Everest时才能使用Arial字体。",
+        "[p51] 在友邦红背景上使用白色标题副标题使用友邦炭灰友邦红背景上的正文应选择白色字体。"
+      ],
+      "styles": {
+        "_doc": "register->font selection map (REGISTER_ENGINE_SPEC Part 1). Keys are font_role_hint values a register_profile emits; each resolves to a licensed library family in library_index. style tags: rounded (playful registers) vs sharp/neutral (corporate registers).",
+        "rounded display": {
+          "style": "rounded",
+          "family": "汉仪元隆黑",
+          "preferred_member": "汉仪元隆黑-75简",
+          "index_weight_key": "75W",
+          "alternates": ["汉仪舒圆黑简"],
+          "note": "rounded gothic (HYYuanLongHei) — bubbly, friendly; the compliant-but-playful pick for event_prop register"
+        },
+        "sharp display": {
+          "style": "sharp/neutral",
+          "family": "汉仪雅酷黑",
+          "preferred_member": "汉仪雅酷黑-85简",
+          "index_weight_key": "85W",
+          "alternates": ["汉仪旗黑经典版"],
+          "note": "sharp gothic (HYYakuHei) — crisp, corporate; default for formal/marketing registers"
+        }
+      },
+      "_provenance": "text_layer",
+      "_confidence": {
+        "english_primary": "high",
+        "english_fallback": "high",
+        "digital": "high",
+        "chinese_primary": "high"
+      },
+      "_candidates_rejected": [
+        {
+          "candidate": "Everest",
+          "page": 15,
+          "reason": "Latin font with no role header to attribute"
+        },
+        {
+          "candidate": "汉仪甄选37",
+          "page": 2,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪字库",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪新人文宋-55简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪元隆黑-75简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪赤云隶95简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪玄宋55简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪玄宋75简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪雅酷黑-55简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪雅酷黑-65简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪雅酷黑-75简",
+          "page": 47,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪铸字木头人简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪迪升英雄体简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪宋韵朗黑简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪黑方简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪江南楷宋简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪晓波暖宋简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪心海行楷简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪碑刻黑简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪雅酷黑-85简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪尚巍旋风体简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪天宇风行体简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪晓波画报黑简",
+          "page": 48,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪霸蛮体简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪力量黑简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪舒圆黑简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪滇黑简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪将军简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪汉黑简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪菱心体简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪典雅体简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪雪君体简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪松阳体简",
+          "page": 49,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-40S",
+          "page": 50,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-50S",
+          "page": 50,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-60S",
+          "page": 50,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-105简",
+          "page": 50,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪正圆-65简",
+          "page": 50,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪润圆-55简",
+          "page": 50,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪文黑-65简",
+          "page": 50,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "使用范围:全球授权范围：在被许可人正常经营范围内，被许可人可将许可字库中的字体使用于被许可人的宣传资料、广告、包装、使用说明以及被许可人经营网站的网页及其他电子…",
+          "page": 47,
+          "reason": "rule-like sentence over length cap (license boilerplate + glued specimen text?) — human review"
+        },
+        {
+          "candidate": "授权范围：在被许可人正常经营范围内，被许可人可将许可字库中的字体使用于被许可人的宣传资料、广告、包装、使用说明以及被许可人经营网站的网页及其他电子媒介中等非内嵌…",
+          "page": 50,
+          "reason": "rule-like sentence over length cap (license boilerplate + glued specimen text?) — human review"
+        }
+      ]
     },
-
-    "slogan":   { "type": "objective_printed", "scoring": "string", "value": "健康长久好生活" },
-    "category": { "type": "objective_printed", "scoring": "string", "value": "保险" },
-
+    "slogan": {
+      "type": "objective_printed",
+      "scoring": "string",
+      "value": "健康长久好生活"
+    },
+    "category": {
+      "type": "objective_printed",
+      "scoring": "string",
+      "value": "保险"
+    },
     "motifs": {
       "type": "objective_printed",
       "scoring": "set",
-      "items": ["山峦层叠 (layered mountain peaks)"]
+      "items": [
+        "山峦层叠 (layered mountain peaks)"
+      ]
     },
-
     "logo_appearance": {
       "type": "subjective",
       "scoring": "rubric",
@@ -50,7 +374,10 @@
         "container_shape": "circle (thick stroke, not filled)",
         "fill_color": "AIA Red (#D31145)",
         "inner_mark": "two geometric mountain peaks above bold AIA letters",
-        "variants": ["red on white", "white reverse on red"]
+        "variants": [
+          "red on white",
+          "white reverse on red"
+        ]
       }
     },
     "imagery_style": {
@@ -58,13 +385,26 @@
       "scoring": "rubric",
       "_status": "candidate_unverified",
       "description": "modern, sophisticated, aspirational; geometric layered translucent mountain planes in red/pink/white; clean generous white space; warm aspirational lifestyle photography (health, family, longevity); contemporary corporate polish",
-      "tags": ["modern", "aspirational", "geometric-mountains", "clean", "premium-corporate", "optimistic"]
+      "tags": [
+        "modern",
+        "aspirational",
+        "geometric-mountains",
+        "clean",
+        "premium-corporate",
+        "optimistic"
+      ]
     },
     "tone": {
       "type": "subjective",
       "scoring": "rubric",
       "_status": "candidate_unverified",
-      "descriptors": ["trustworthy", "aspirational", "optimistic", "health-focused", "premium"]
+      "descriptors": [
+        "trustworthy",
+        "aspirational",
+        "optimistic",
+        "health-focused",
+        "premium"
+      ]
     }
   }
 }

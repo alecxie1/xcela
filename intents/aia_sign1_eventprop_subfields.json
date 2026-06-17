@@ -1,0 +1,10 @@
+{
+  "_doc": "Guided subfields (brief_schema_v3 buckets A/B/D) a human WOULD have entered for the AIA 手举牌 job — the cheap facts from which the system derives the register. Hand-written per REGISTER_ENGINE_SPEC Part 3 step 1.",
+  "asset_type": "手举牌 hand-held event sign",
+  "usage_context": "held for photos / posed with",
+  "audience": "general public",
+  "setting": "event / festival",
+  "vibe": {"formality": 2, "playfulness": 8, "warmth": 7},
+  "logo_treatment": "omit",
+  "brand_strictness": "expressive departure"
+}

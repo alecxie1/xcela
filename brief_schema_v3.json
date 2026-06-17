@@ -1,0 +1,74 @@
+{
+  "_doc": "Brief Intake Schema v3 — guided subfields. Organizing principle: a design job is fully determined by FOUR buckets (artifact / use-context / content / tone+brand). The SCHEMA (buckets+fields) is STABLE; the VOCABULARY (enum options) is OPEN ('other' absorbs novelty). This stops the 'miss-and-add-every-test' churn: every brief-fact has exactly one home. Derived from Step-0 falsification (2026-06-11): VLM discriminates register on PLAYFULNESS+FORMALITY (energy is a decoy, dropped; grab is the TARGET not an input).",
+
+  "_form_behavior": "ADAPTIVE (decided 2026-06-11): the full schema is always complete, but the rendered form shows only fields relevant to the chosen asset_type. asset_type is the FIRST question; it gates which bucket-B/D fields appear (手举牌 surfaces usage_context+logo_treatment+vibe; business_card hides them). Resolves the encompassing-vs-friction tension: completeness without the 16-field wall. Each field also carries a smart default so a fast user can accept-all.",
+
+
+  "_provenance_types": {
+    "human_set": "user populates in the form (cheap facts, no design vocab needed)",
+    "inferred": "system derives from human facts (e.g. register from use-context+vibe+logo)",
+    "brand_derived": "from answer_key (actual hex, licensed font files)",
+    "reference_derived": "flex/hold map from (reference - brand DNA), when a reference exists"
+  },
+
+  "bucket_A_artifact": {
+    "_desc": "What is physically/digitally being made. Drives size, orientation, register DEFAULTS.",
+    "asset_type":   {"type": "enum+other", "required": true,
+                     "options": ["poster", "手举牌 hand-held event sign", "banner/横幅", "social post", "flyer/单页", "business card", "packaging", "billboard", "standee/易拉宝", "table tent", "sticker", "certificate"],
+                     "_note": "asset_type carries a DEFAULT use-context + register, overridable by bucket B"},
+    "format_size":  {"type": "text", "required": true, "example": "60x40cm"},
+    "orientation":  {"type": "enum", "provenance": "inferred", "options": ["landscape", "portrait", "square"]},
+    "medium":       {"type": "enum", "options": ["print", "digital", "both"], "default": "print"}
+  },
+
+  "bucket_B_use_context": {
+    "_desc": "⭐ THE BUCKET WE STRUCTURALLY MISSED. How/where/by-whom the asset is encountered. THIS is the register-bearing bucket — it carries 灵动/亮眼/grabbable that 'asset_type=手举牌' alone never conveyed.",
+    "usage_context": {"type": "enum+other", "required": true,
+                      "options": ["held for photos / posed with", "wall-posted (read at distance)", "handed out", "scrolled on phone", "worn / carried", "table-placed", "outdoor display"],
+                      "_note": "the single highest-leverage register signal. 'held for photos' => event_prop"},
+    "viewing_distance": {"type": "enum", "options": ["arm's length", "across a room", "across a street"], "_note": "drives text size + detail density"},
+    "audience":      {"type": "enum+other", "required": true,
+                      "options": ["general public", "existing clients", "youth / Gen-Z", "professionals", "children", "elderly", "internal staff"],
+                      "_note": "drives playfulness ceiling"},
+    "setting":       {"type": "enum+other", "options": ["event / festival", "office / corporate", "street / public", "retail", "online", "direct mail"]}
+  },
+
+  "bucket_C_content": {
+    "_desc": "What the asset must contain or say.",
+    "headline":            {"type": "text", "required": true},
+    "body_text":           {"type": "text", "required": false},
+    "mandatory_elements":  {"type": "list", "_note": "dates, legal text, 分别画叉, QR, specific icons/objects (e.g. 'wood pedestal'). The must-INCLUDE slot."},
+    "forbidden_elements":  {"type": "list", "_note": "the must-AVOID slot"},
+    "subject":             {"type": "text", "required": false, "_note": "for product/photo work: what it shows"}
+  },
+
+  "bucket_D_tone_and_brand": {
+    "_desc": "How it should FEEL + how tightly on-brand. Where register is DECLARED (vs inferred from B).",
+    "vibe": {"_desc": "Multi-axis, NOT single. Step-0 kept the discriminating axes only.",
+             "formality":   {"type": "slider 0-10", "required": true, "0": "casual/playful", "10": "official/corporate"},
+             "playfulness": {"type": "slider 0-10", "required": true, "0": "serious", "10": "fun/whimsical"},
+             "warmth":      {"type": "slider 0-10", "required": false, "0": "cool/clinical", "10": "warm/friendly"},
+             "_dropped":    "ENERGY — Step-0 showed it doesn't discriminate (our corporate signs scored energetic too)"},
+    "logo_treatment":  {"type": "enum", "required": true, "options": ["required/prominent", "subtle", "omit"],
+                        "_note": "WE MISSED THIS — the lively refs had NO logo. Must be an explicit ask."},
+    "brand_strictness":{"type": "enum", "options": ["strict VI", "brand + accents", "expressive departure"], "default": "brand + accents",
+                        "_note": "the register dial; reconciles with reference-diff when a ref exists"},
+    "color_direction": {"type": "enum", "provenance": "inferred|human_set", "options": ["strict brand palette", "brand + playful accents", "off-brand campaign palette"]}
+  },
+
+  "derivation": {
+    "_desc": "The form collects human-answerable FACTS; the system makes the designer's LEAP. register = f(usage_context, audience, vibe, logo_treatment, brand_strictness), refined by reference-diff if present.",
+    "register_profile_out": ["inferred_register", "formality", "playfulness", "brand_anchors_held[]", "brand_locks_flexed[]", "font_role_hint", "shape_language_hint", "icon_style_hint"],
+    "calibration_gate": "register profile shown to human in plain language for eyeball/correct BEFORE generation (same pattern as approval loop)"
+  },
+
+  "reference_input": {
+    "_desc": "FIRST-CLASS input, top-level (feeds BOTH channels, not any single bucket). DECISION 2026-06-13 (docs/REFERENCE_AS_VISUAL_CHANNEL_design_note.md): the 定稿 proved a ref ~90% governs the final. Apply the describe->FEED law to STYLE refs, not just logos.",
+    "reference_image": {"type": "image_upload", "optional": true, "ask": "Got an image whose look you like (a past piece, the actual product, a mood)? Drop it in. Crop it to ONE panel/example first.", "_note": "Human crops to 1 panel (2-sec job, do NOT auto-crop). FED DIRECTLY to gpt-image-2 as a visual style exemplar (the VISUAL channel) AND parsed for register (the SEMANTIC channel). KEEP BOTH — feeding alone failed (太标识类) when the prompt fought the ref; prompt must AGREE with ref."},
+    "reference_relationship": {"type": "enum", "optional": true, "options": ["template — extend this series (clone look, change message)", "style — match this look/vibe (not layout/content)", "inspiration — vague mood for a NEW campaign (loose direction)"], "ask": "Is this reference a template to extend, a style to match, or loose inspiration?", "_note": "Governs HOW MUCH the fed ref controls output — replaces an ungovernable dial. template->high; inspiration->low. ALWAYS bounded by the lock table (ref never overrides hard brand identity: hex/licensed font/compliance) + the crop (layout can't bleed). AIA 定稿 = template type -> ~90% clone was CORRECT."},
+    "channels": {
+      "visual_FED": "cropped ref image -> gpt-image-2: carries font, icon style, color, protruding-icon device (what text cannot name)",
+      "semantic_PARSED": "ref -> register calibration + scene-author: which icon per message, copy, hierarchy, and aligning the PROMPT with the ref"
+    }
+  }
+}

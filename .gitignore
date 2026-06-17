@@ -1,3 +1,33 @@
-output/
-.venv/
+# ── Python ──
 __pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.ipynb_checkpoints/
+
+# ── Generated outputs (regenerable, large: ~141M) ──
+output/
+
+# ── Brand assets: LICENSED fonts + client IP + VI PDFs ──
+# Confidential AND large (188M fonts, 20M assets). NEVER commit. Stay local.
+# A fresh clone will not have these; re-add brand assets locally to run.
+brands/
+
+# ── Large / binary belt-and-suspenders ──
+*.psd
+*.ai
+*.zip
+*.7z
+
+# ── Secrets ──
+.env
+*.env
+.env.*
+*token*.json
+*credential*
+
+# ── OS cruft ──
+.DS_Store
+Thumbs.db

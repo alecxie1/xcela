@@ -1,0 +1,63 @@
+{
+  "_doc": "BRIEF SCHEMA + reconciliation rules. 'Lock more, ask more' posture (target user: marketing manager, not pro designer). Brand governs IDENTITY; brief governs OCCASION. Reconciliation = lock-level lookup, not judgment.",
+
+  "lock_levels": {
+    "hard_lock": "Brand value is final. Brief CANNOT override. If brief tries, refuse + keep brand value.",
+    "default_strong": "Brand value is the default. Brief may NUDGE within range (bounded), not replace. Tension resolved by scoping brief adjective to the brand medium.",
+    "default_weak": "Brand value is a default. Brief freely overrides."
+  },
+
+  "brand_field_locks": {
+    "_note": "Per-brand tagging of how locked each spec field is. This IS the reconciliation engine — brief input is checked against the field's lock level.",
+    "logo": "hard_lock",
+    "colors_hex": "hard_lock",
+    "typography": "hard_lock",
+    "color_role": "default_strong",
+    "imagery_style": "default_strong",
+    "tone": "default_strong",
+    "motifs_iconography": "default_strong",
+    "composition": "default_weak",
+    "subject": "brief_owned",
+    "occasion": "brief_owned",
+    "asset_type": "brief_owned",
+    "headline_message": "brief_owned",
+    "scene_setting": "brief_owned"
+  },
+
+  "brief_schema": {
+    "_note": "Minimum viable brief. 4 hard-required slots + bounded optional. Tool ONLY asks a follow-up when a hard_required slot is missing (completeness guardrail). Resist adding more fields.",
+    "hard_required": {
+      "subject":        { "type": "free_text", "prompt_if_missing": "What is the material for / what should it show? (e.g. 'new spicy chicken burger')" },
+      "asset_type":     { "type": "enum", "options": ["wide horizontal poster", "square social post", "vertical poster", "banner"], "prompt_if_missing": "What format? (poster / social square / vertical / banner)" },
+      "occasion":       { "type": "enum", "options": ["new product launch", "seasonal/holiday", "limited-time promo", "event", "general brand"], "prompt_if_missing": "What's the occasion? (new launch / seasonal / promo / event)" },
+      "headline_message": { "type": "free_text", "prompt_if_missing": "What's the main message or headline text?" }
+    },
+    "optional_bounded": {
+      "mood_shift":   { "type": "slider", "axis": "restrained <-> energetic", "default": "inherit brand tone", "_note": "bounded nudge WITHIN brand tone, never a replacement" },
+      "scene_setting": { "type": "free_text", "default": "inherit imagery_style", "_note": "studio / outdoor / lifestyle, if relevant" },
+      "must_include": { "type": "list", "default": [] },
+      "must_avoid":   { "type": "list", "default": [] }
+    }
+  },
+
+  "guardrails": {
+    "completeness": "If any hard_required slot is empty -> ASK (single targeted question per missing slot). Never guess a hard slot.",
+    "identity": "If brief attempts to set a hard_lock field (e.g. 'make the logo blue', 'use a serif font', 'change the red') -> REFUSE, keep brand value, tell the user that field is brand-locked.",
+    "coherence": "If brief mood conflicts with a default_strong field (e.g. 'fresh & light' vs ornamental red-gold) -> do NOT override; SCOPE the brief adjective to the brand medium ('a fresh, light INTERPRETATION of the ornamental red-gold brand')."
+  },
+
+  "reconciliation_example_aia": {
+    "_scenario": "Designer brief: 'new senior health checkup plan, reassuring, for a vertical poster, headline 守护长辈健康'",
+    "merged_prompt_fields": {
+      "logo": "AIA mountain-in-circle (hard_lock, from brand)",
+      "colors": "#D31145 / #333D47 / #FFFFFF (hard_lock, from brand)",
+      "imagery_style": "modern geometric mountain planes, clean white space (default_strong, brand default kept)",
+      "tone": "trustworthy/aspirational (brand) + 'reassuring' (brief nudge, within range)",
+      "subject": "senior health checkup, older adults (brief_owned)",
+      "occasion": "new product launch (brief_owned)",
+      "asset_type": "vertical poster (brief_owned)",
+      "headline": "守护长辈健康 (brief_owned)"
+    },
+    "_result": "Brand identity fully preserved; campaign-specific subject/occasion/message supplied by brief; mood nudged not replaced. No field is governed by both."
+  }
+}

@@ -6,47 +6,197 @@
   "verified_date": "2026-06-05",
   "_note": "Ground truth = human-verified against the printed page. Independent of the VLM under test. Color scoring uses RGB-derived hex (unambiguous); printed_html stored separately and consistency-checked.",
   "fields": {
-    "brand_name_cn": { "type": "objective_printed", "scoring": "exact", "value": "太极堡" },
-    "brand_name_en": { "type": "objective_printed", "scoring": "fuzzy", "value": "TAICHI BURGER" },
-
+    "brand_name_cn": {
+      "type": "objective_printed",
+      "scoring": "exact",
+      "value": "太极堡"
+    },
+    "brand_name_en": {
+      "type": "objective_printed",
+      "scoring": "fuzzy",
+      "value": "TAICHI BURGER"
+    },
     "colors": {
       "type": "objective_printed",
       "scoring": "delta_e",
       "items": [
-        { "name_cn": "银朱红", "name_en": "VERMILION", "role": "primary",
-          "rgb": [215, 3, 33], "cmyk": [0, 97, 100, 3], "pantone": "2035C",
+        {
+          "name_cn": "银朱红",
+          "name_en": "VERMILION",
+          "role": "primary",
+          "rgb": [
+            215,
+            3,
+            33
+          ],
+          "cmyk": [
+            0,
+            97,
+            100,
+            3
+          ],
+          "pantone": "2035C",
           "printed_html": "D70321",
-          "_note": "RGB 215/3/33 = D70321, consistent. CMYK is a Pantone spec approximation, not a math conversion of RGB (normal, not a contradiction)." },
-        { "name_cn": "大地金", "name_en": "EARTH GOLD", "role": "secondary",
-          "rgb": [215, 165, 105], "cmyk": [5, 31, 63, 5], "pantone": "7509C",
-          "printed_html": "D7A569" },
-        { "name_cn": "墨澜黑", "name_en": "INK BLACK / RICH BLACK", "role": "secondary",
-          "rgb": [0, 0, 0], "cmyk": [60, 40, 40, 100], "pantone": null,
-          "printed_html": null },
-        { "name_cn": "珍珠白", "name_en": "PEARL WHITE", "role": "secondary",
-          "rgb": [236, 220, 200], "cmyk": [10, 17, 21, 0], "pantone": "9182C",
-          "printed_html": "ECDCC8" }
+          "_note": "RGB 215/3/33 = D70321, consistent. CMYK is a Pantone spec approximation, not a math conversion of RGB (normal, not a contradiction)."
+        },
+        {
+          "name_cn": "大地金",
+          "name_en": "EARTH GOLD",
+          "role": "secondary",
+          "rgb": [
+            215,
+            165,
+            105
+          ],
+          "cmyk": [
+            5,
+            31,
+            63,
+            5
+          ],
+          "pantone": "7509C",
+          "printed_html": "D7A569"
+        },
+        {
+          "name_cn": "墨澜黑",
+          "name_en": "INK BLACK / RICH BLACK",
+          "role": "secondary",
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "cmyk": [
+            60,
+            40,
+            40,
+            100
+          ],
+          "pantone": null,
+          "printed_html": null
+        },
+        {
+          "name_cn": "珍珠白",
+          "name_en": "PEARL WHITE",
+          "role": "secondary",
+          "rgb": [
+            236,
+            220,
+            200
+          ],
+          "cmyk": [
+            10,
+            17,
+            21,
+            0
+          ],
+          "pantone": "9182C",
+          "printed_html": "ECDCC8"
+        }
       ]
     },
-
-    "fonts": {
+    "typography": {
       "type": "objective_printed",
       "scoring": "string",
-      "chinese_display": "锦华明朝体",
-      "chinese_body": "汉仪旗黑",
-      "english": "Helvetica",
-      "english_weights": ["Thin", "Light", "Regular", "Medium", "Bold"]
+      "english_primary": {
+        "name": "Helvetica",
+        "source_page": 22,
+        "license_note": null,
+        "file": null,
+        "_note": "no 主要字体/primary header found; sole Latin family on typography pages"
+      },
+      "english_fallback": {
+        "name": null,
+        "source_page": null,
+        "file": null
+      },
+      "digital": {
+        "name": null,
+        "source_page": null,
+        "file": null
+      },
+      "chinese_primary": {
+        "name": "锦华明朝体",
+        "source_page": 22,
+        "license_note": null,
+        "file": null
+      },
+      "rules": [],
+      "_provenance": "text_layer",
+      "_confidence": {
+        "english_primary": "medium",
+        "english_fallback": "none",
+        "digital": "none",
+        "chinese_primary": "medium"
+      },
+      "_candidates_rejected": [
+        {
+          "candidate": "汉仪旗黑",
+          "page": 22,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-55s",
+          "page": 22,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-65s",
+          "page": 22,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-75s",
+          "page": 22,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-85s",
+          "page": 22,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        },
+        {
+          "candidate": "汉仪旗黑-95s",
+          "page": 22,
+          "reason": "vendor-prefixed CJK font (library member / not assigned a role)"
+        }
+      ],
+      "_prior_fonts_human_verified": {
+        "type": "objective_printed",
+        "scoring": "string",
+        "chinese_display": "锦华明朝体",
+        "chinese_body": "汉仪旗黑",
+        "english": "Helvetica",
+        "english_weights": [
+          "Thin",
+          "Light",
+          "Regular",
+          "Medium",
+          "Bold"
+        ]
+      }
     },
-
-    "slogan":   { "type": "objective_printed", "scoring": "string", "value": "手作多汁，东方汉堡" },
-    "category": { "type": "objective_printed", "scoring": "string", "value": "东方汉堡" },
-
+    "slogan": {
+      "type": "objective_printed",
+      "scoring": "string",
+      "value": "手作多汁，东方汉堡"
+    },
+    "category": {
+      "type": "objective_printed",
+      "scoring": "string",
+      "value": "东方汉堡"
+    },
     "motifs": {
       "type": "objective_printed",
       "scoring": "set",
-      "items": ["八角", "花椒", "桂皮", "胡椒", "香叶"]
+      "items": [
+        "八角",
+        "花椒",
+        "桂皮",
+        "胡椒",
+        "香叶"
+      ]
     },
-
     "logo_appearance": {
       "type": "subjective",
       "scoring": "rubric",
@@ -56,7 +206,10 @@
         "container_shape": "circular badge",
         "fill_color": "vermilion red (#D70321)",
         "inner_mark": "white negative-space silhouette (animal/swirl), yin-yang / rotational feel",
-        "variants": ["standard: red mark + black text on white", "reverse: white mark on red/dark"]
+        "variants": [
+          "standard: red mark + black text on white",
+          "reverse: white mark on red/dark"
+        ]
       }
     },
     "imagery_style": {
@@ -65,21 +218,41 @@
       "_status": "candidate_unverified",
       "_status_note": "AI-derived from p14/p31 applied mockups. Verify against pages.",
       "description": "luxury Chinese ornamental: red + gold palette, glossy/lacquer and embossed metal-relief finishes, colored glaze, dragon/cloud/flower ornamental motifs; East-meets-West fusion (Oriental Burger)",
-      "tags": ["ornamental", "red-and-gold", "lacquer/gloss", "embossed-metal", "premium", "chinese-fusion"]
+      "tags": [
+        "ornamental",
+        "red-and-gold",
+        "lacquer/gloss",
+        "embossed-metal",
+        "premium",
+        "chinese-fusion"
+      ]
     },
     "subject_iconography": {
       "type": "subjective",
       "scoring": "set",
       "_status": "candidate_unverified",
       "_status_note": "Five-spice motif set (p27) is verified objective; iconography framing AI-derived.",
-      "items": ["八角 (star anise)", "花椒 (Sichuan pepper)", "桂皮 (cinnamon)", "胡椒 (pepper)", "香叶 (bay leaf)", "yin-yang / animal silhouette (logo)"]
+      "items": [
+        "八角 (star anise)",
+        "花椒 (Sichuan pepper)",
+        "桂皮 (cinnamon)",
+        "胡椒 (pepper)",
+        "香叶 (bay leaf)",
+        "yin-yang / animal silhouette (logo)"
+      ]
     },
     "tone": {
       "type": "subjective",
       "scoring": "rubric",
       "_status": "candidate_unverified",
       "_note": "No single right answer. Graded by human spot-check or calibrated judge, not exact match. Bake-off territory.",
-      "descriptors": ["premium", "ornamental", "east-meets-west", "bold", "appetizing"]
+      "descriptors": [
+        "premium",
+        "ornamental",
+        "east-meets-west",
+        "bold",
+        "appetizing"
+      ]
     }
   }
 }

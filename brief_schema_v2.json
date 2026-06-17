@@ -1,0 +1,70 @@
+{
+  "_doc": "BRIEF SCHEMA v2 — three-tier model. The v1 schema captured WHAT a campaign is about (subject/occasion/headline) but NOT how the scene is constructed (staging/props/composition/text-layout). The 9-vs-7 quality gap lives entirely in that missing 'how' layer. v2 adds it as a tier the SYSTEM fills for the human, because a non-designer cannot author it. Target user: marketing manager, not pro designer. Core principle unchanged: no field governed by two owners.",
+
+  "_quality_finding": "Proven on Taichi garden-tomato poster (June 2026): a hand-authored brief with full scene-construction detail (gradient hex stops, hero staging, 4 prop placements, 6 text layers, camera angle) produced a 9/10 vs target. The same pipeline with only the v1 4-slot brief produces ~7. The variance is the scene layer. Also proven: a reference image carries product-silhouette + type quality that text cannot name — so the reference is a first-class slot, not optional decoration.",
+
+  "lock_levels": {
+    "hard_lock": "Brand value is final. Brief CANNOT override. If brief tries, refuse + keep brand value.",
+    "default_strong": "Brand value is the default. Brief may NUDGE within range (bounded), not replace.",
+    "default_weak": "Brand value is a default. Brief freely overrides.",
+    "system_authored": "NEW. Neither brand nor human authors this directly. The system constructs it from (intent + reference + occasion), then shows it to the human for approval. This is the scene-construction layer — the thing a non-designer cannot write but can react to."
+  },
+
+  "tiers": {
+    "tier_1_identity": {
+      "_owner": "BRAND (hard_lock / default_strong)",
+      "_desc": "Who the brand is. Locked or nudge-only. Comes from the VI analysis layer.",
+      "fields": {
+        "logo": "hard_lock",
+        "colors_hex": "hard_lock",
+        "typography": "hard_lock",
+        "color_role": "default_strong",
+        "imagery_style": "default_strong",
+        "tone": "default_strong",
+        "motifs_iconography": "default_strong"
+      }
+    },
+
+    "tier_2_intent": {
+      "_owner": "HUMAN (brief_owned) — the ONLY tier the manager authors directly",
+      "_desc": "What the campaign is about. The manager CAN answer these in one sentence each. This is the v1 brief, kept as-is.",
+      "fields": {
+        "subject":          { "type": "free_text", "ask": "What is the material for / what should it show? (e.g. 'new spicy chicken burger')" },
+        "asset_type":       { "type": "enum", "options": ["wide horizontal poster", "square social post", "vertical poster", "banner"], "ask": "What format?" },
+        "occasion":         { "type": "enum", "options": ["new product launch", "seasonal/holiday", "limited-time promo", "event", "general brand"], "ask": "What's the occasion?" },
+        "headline_message": { "type": "free_text", "ask": "What's the main message or headline text?" },
+        "feeling":          { "type": "free_text", "ask": "In a few words, what feeling should it give? (e.g. 'fresh, garden, premium')", "_note": "drives the system's tier-3 palette/staging choices when off-VI" },
+        "reference_image":  { "type": "image_upload", "optional": true, "ask": "Got an image whose look you like, or a photo of the actual product? Drop it in.", "_note": "FIRST-CLASS slot. Carries product silhouette + type quality text cannot name. Tagged by role: identity / style_exemplar / product_form." }
+      }
+    },
+
+    "tier_3_scene_construction": {
+      "_owner": "SYSTEM (system_authored) — the bottleneck layer, built FOR the human",
+      "_desc": "How the scene is physically built. This is what separated the 9 from the 7. The manager cannot author these; the system proposes them from (tier_2 intent + reference + occasion), renders them as a plain-language preview, and the human approves or nudges. THIS is the elicitation layer's real job.",
+      "fields": {
+        "palette_resolved":  { "type": "color_list_with_stops", "_desc": "If on-VI: brand colors. If off-VI campaign (occasion+feeling imply it): system proposes a campaign palette WITH gradient stops, flags it as a departure, asks human to confirm. Taichi teal #7BA89F->#6B9B92->cream came from here." },
+        "background":        { "type": "structured", "_desc": "Backdrop + gradient direction + surface. e.g. 'muted teal top fading to cream beige staged surface bottom 20%'." },
+        "hero_staging":      { "type": "structured", "_desc": "How the subject is presented: elevation, surface/prop it sits on, angle, lighting, depth of field. e.g. 'elevated on light-oak pedestal w/ draped linen, 3/4 angle ~15deg, soft diffused, shallow DoF'. When a product-form reference exists, this defers to it for silhouette." },
+        "props":             { "type": "list", "_desc": "Supporting scene elements w/ rough placement. e.g. 'woven tomato basket lower-left, scattered basil, white salsa bowl lower-right'. Derived from subject+feeling." },
+        "text_layout":       { "type": "structured_list", "_desc": "Each text element: content + position + color + rough scale. The 9 had 6 of these. System maps headline_message + brand_name + occasion copy into positioned layers." },
+        "composition":       { "type": "free_text", "_desc": "Negative space, focal hierarchy, balance. default_weak from brand, refined by system." }
+      },
+      "_human_loop": "System fills all tier-3 fields, then renders ONE plain-language summary ('A wide poster: fresh teal background fading to cream, your burger raised on a light-wood stand with a cream cloth, tomatoes in a basket to the left, basil scattered, your headline big in white down both sides...'). Human reads it like a sentence, says 'yes' or 'make the background warmer' / 'no basket'. Nudges re-run only the touched field. The human never writes the slot — they react to it."
+    }
+  },
+
+  "elicitation_flow": {
+    "_desc": "How a non-designer reaches a 9-quality brief. Three steps, escalating system involvement.",
+    "step_1_intent": "Ask only the tier-2 questions (4 hard + feeling + optional reference). One sentence each. This is all the human authors.",
+    "step_2_construct": "System reads tier-1 (brand) + tier-2 (intent) + reference, decides on-VI vs off-VI, and AUTHORS all of tier-3. This is the model doing what a designer's brain does — decomposing intent into a buildable scene.",
+    "step_3_approve": "Show the tier-3 plan as plain language (not JSON). Human approves or nudges in plain language. Loop until 'yes'. Then assemble the final prompt + reference and generate.",
+    "_win_condition": "FALSIFIABLE TEST: a naive user runs steps 1-3 and lands a >=8 against a known target, WITHOUT a designer in the loop. If the system's tier-3 authoring reproduces the hand-built scene quality, the prompt specificity is no longer 'out of the human's hands'. That is the proof the whole project hinges on."
+  },
+
+  "guardrails": {
+    "completeness": "If any tier-2 hard slot empty -> ASK (one targeted question). Never guess intent.",
+    "identity": "If brief attempts to set a tier-1 hard_lock field -> REFUSE, keep brand value, tell the user it's brand-locked.",
+    "off_vi_consent": "If system proposes an off-VI palette (tier-3 palette_resolved departs from brand colors), it MUST flag the departure and get explicit human confirmation. Never silently abandon brand colors.",
+    "scene_not_authored_by_human": "Tier-3 is system_authored. Do NOT ask the human to write staging/props/text-layout. Ask intent; construct scene; show for approval. Asking a non-designer to author tier-3 recreates the exact bottleneck this schema exists to remove."
+  }
+}
