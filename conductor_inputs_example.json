@@ -1,0 +1,21 @@
+{
+  "_doc": "Example conductor inputs (the --inputs file). Schema = CONDUCTOR_INPUTS_RECONCILIATION.md. context uses brief_schema_v3 bucket B/D field names verbatim so the conductor writes it straight out as subfields for derive_register. signs[] is per-sign content.",
+  "asset_type": "手举牌 hand-held event sign",
+  "reference_image": "/mnt/c/Users/Alecx/Downloads/aia real task.png",
+  "reference_relationship": "template — extend this series (clone look, change message)",
+  "context": {
+    "usage_context": "held for photos / posed with",
+    "audience": "general public",
+    "setting": "event / festival",
+    "vibe": { "formality": 2, "playfulness": 8, "warmth": 7 },
+    "logo_treatment": "omit",
+    "brand_strictness": "expressive departure",
+    "occasion": "anti-fraud public-awareness campaign (防范非法金融宣传)"
+  },
+  "signs": [
+    { "id": "s1", "messages": ["守住钱袋子", "护好幸福家"],
+      "hero_icon": "a cartoon golden money bag with a white ¥ symbol, protruding past the sign edge" },
+    { "id": "s2", "messages": ["远离非法金融", "抵制高息诱惑"],
+      "hero_icon": null }
+  ]
+}

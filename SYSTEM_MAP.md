@@ -9,12 +9,34 @@ _Single source of truth for "what is this whole thing." Updated 2026-06-17._
 >   • CLEAN SPINE = `harness/run_harness.py aia` — the only true one-command, agent-free path.
 >     It does template-fill (assemble_prompt) + generate + manifest. It does NOT call the smart
 >     layers (scene_author / register / composite), reference-selection is STUBBED, and only
->     `config/aia.yaml` exists so it only runs for AIA. NO run_<brand>_<ts> output folder exists
->     → the saved impressive results did NOT come from this path.
+>     `config/aia.yaml` exists so it only runs for AIA. `run_harness` HAS been run once
+>     (output/run_aia_20260610_102753 exists) — but the SHOWCASE signs came from the scene_author
+>     eventprop_*/chroma_* folders, NOT from this thin path.
 >   • REAL PIPELINE = the ~15 individually-proven scripts (extract*, register/*, scene_author,
 >     generate, measure_canvas, closed_loop_composite, approve) that produced the good AIA signs.
 >     These are chained BY HERMES, by hand, with Hermes's eye at 4 judgment points. This is the
 >     Hermes-in-loop dependency Alec has worried about from day one. It is real, and now located.
+>
+> **▶ UPDATE 2026-06-17 (post-verification, supersedes the OCR-blocker framing below):**
+> Read the actual code. TWO corrections to my earlier claims this session:
+>   1. The OCR text-locator I called "the one true blocker, unbuilt" is ALREADY BUILT + PROVEN.
+>      `measure_canvas.py` OCRs the painted image (rapidocr+scipy installed), recovers the
+>      container, and emits free_space_bbox + optical_center — real values across ~12 saved sign
+>      runs. `closed_loop_composite.py` already chains measure->patch->re-anchor->composite
+>      licensed font->strip chroma. Nothing to build there.
+>   2. `scene_author.py` is ALREADY a complete single-sign conductor for flat_graphic: its main()
+>      runs load_brand -> author scene -> assemble prompt -> generate(logo+ref) -> closed_loop
+>      composite -> cutout deliverable. Brand-parameterized (--brand), NOT aia-specific. The clean
+>      chroma_sign1_v2 deliverable came from `scene_author --chroma-contain`.
+>   => The real Hermes-in-loop gap is NARROW: (a) turning a non-designer's answers into the
+>      intent/message/reference files scene_author consumes; (b) running register-prep
+>      (calibrate_from_reference -> derive_register) to make the register_profile scene_author
+>      needs; (c) chaining approve.py after. The hardcoded-per-job anti-pattern is
+>      coverredraw_signs2to5.py (base="output/aia_signN..." x4). The conductor = the GENERAL
+>      version of that, keeping the human at the input + approve gates.
+>   => SPEC WRITTEN: CONDUCTOR_SPEC.md (build harness/conductor.py + test_conductor.py). Falsifiable
+>      dry-run self-test (brand-generality, input-drives-output, correct primitive sequence, N-sign
+>      loop, gates present) — NO image gen in the build. Ready to hand to Claude Code.
 >
 > **CRUCIAL DISTINCTION (Alec, 6/17): AGENT-FREE ≠ HUMAN-FREE.** The dependency we are killing is
 >   HERMES-in-the-loop (an AI silently gluing steps + judging invisibly = unshippable, unreproducible).
