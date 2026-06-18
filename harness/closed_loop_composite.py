@@ -36,7 +36,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, str(Path(__file__).parent))
 from composite_text import composite, _materialize_font, resolve_font
-from measure_canvas import (CHROMA_DEFRINGE_PX, CHROMA_DIST, _hex_rgb,
+from cover_redraw import size_for_height
+from measure_canvas import (CHROMA_DEFRINGE_PX, CHROMA_DIST, _fuzzy_match, _hex_rgb,
                             contrast_ratio, measure)
 
 MIN_CONTRAST = 1.8
@@ -490,6 +491,194 @@ def strip_chroma(final_png: str | Path, out_dir: Path,
     return record
 
 
+# =========================================================================== #
+# AXIS A: RENDER-AND-SCRUB placement (place_measured).
+# gpt renders the COMPLETE sign incl. headline; we MEASURE where/how-big/what-color
+# it landed, SCRUB it, and overlay the licensed font at the MEASURED geometry.
+# Brand-general, OCR-driven, tier3-INDEPENDENT (lines from the caller, font from the
+# answer key/register). Reuses measure + patch_ghosts + size_for_height + composite +
+# ocr_readback + strip_chroma. It does NOT call reanchor() (that centers PLANNED-size
+# text on FREE SPACE — the opposite of placement-match).
+# =========================================================================== #
+
+def _bbox_frac_to_px(bbox_frac, w, h):
+    x0, y0, x1, y1 = bbox_frac
+    return (int(x0 * w), int(y0 * h), int(x1 * w), int(y1 * h))
+
+
+def _sample_ink_color(arr: np.ndarray, bbox_px, ring_px: int = 10) -> tuple[int, int, int]:
+    """gpt's rendered ink color inside bbox: bg = median of a ring around the box;
+    ink = box pixels far (> INK_DIST) from bg; color = median of those ink pixels.
+    Brand-general (no hardcoded palette); mirrors cover_redraw.sample_colors' idea
+    but uses the generic local-bg distance split, not AIA red/charcoal thresholds."""
+    x0, y0, x1, y1 = bbox_px
+    h, w = arr.shape[:2]
+    rx0, ry0, rx1, ry1 = (max(x0 - ring_px, 0), max(y0 - ring_px, 0),
+                          min(x1 + ring_px, w), min(y1 + ring_px, h))
+    ring = np.zeros((h, w), bool)
+    ring[ry0:ry1, rx0:rx1] = True
+    ring[y0:y1, x0:x1] = False
+    ring_px_vals = arr[ring]
+    bg = (np.median(ring_px_vals, axis=0) if len(ring_px_vals)
+          else np.array([255, 255, 255]))
+    region = arr[y0:y1, x0:x1].reshape(-1, 3).astype(np.int16)
+    if not len(region):
+        return tuple(int(v) for v in bg)
+    dist = np.linalg.norm(region - bg.astype(np.int16), axis=1)
+    ink = region[dist > INK_DIST]
+    color = np.median(ink, axis=0) if len(ink) else bg
+    return tuple(int(v) for v in color)
+
+
+def _union_box(boxes: list[dict], text: str) -> dict:
+    """Synthetic box covering the union of several OCR boxes (handles OCR SPLITTING
+    one rendered line into multiple fragments — we place once over their union)."""
+    x0 = min(b["bbox_frac"][0] for b in boxes)
+    y0 = min(b["bbox_frac"][1] for b in boxes)
+    x1 = max(b["bbox_frac"][2] for b in boxes)
+    y1 = max(b["bbox_frac"][3] for b in boxes)
+    return {"text": text, "matched_expected": text,
+            "bbox_frac": [x0, y0, x1, y1],
+            "quad_frac": [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]}
+
+
+def map_lines_to_boxes(lines: list[str], ghost_boxes: list[dict],
+                       min_score: float = 0.6):
+    """Map each expected line to exactly ONE box (union of all OCR boxes that
+    best-match that line, score >= min_score). Returns (mapping, notes) where
+    mapping is [(line, box), ...] in line order, or (None, notes) if any line
+    has no matching box (e.g. OCR merged two lines into one box, or missed it).
+    Honest: never guesses geometry."""
+    notes = []
+    if not lines:
+        return None, ["no headline lines to place"]
+    if not ghost_boxes:
+        return None, ["OCR found no headline-matching text box (gpt may not have "
+                      "rendered the text, or OCR failed) — cannot capture geometry"]
+    groups = {ln: [] for ln in lines}
+    for b in ghost_boxes:
+        best_score, best_line = max((_fuzzy_match(b.get("text", ""), ln), ln) for ln in lines)
+        if best_score >= min_score:
+            groups[best_line].append(b)
+    mapping = []
+    for ln in lines:
+        bs = groups[ln]
+        if not bs:
+            notes.append(f"no OCR box matched line {ln!r} — capture failed")
+            return None, notes
+        mapping.append((ln, _union_box(bs, ln) if len(bs) > 1 else bs[0]))
+        if len(bs) > 1:
+            notes.append(f"line {ln!r} matched {len(bs)} OCR fragments — merged their bboxes")
+    return mapping, notes
+
+
+def place_measured(image_path: str, lines: list[str], brand: str,
+                   font_role: str, weight_hint: str, out_path: str,
+                   chroma_key_hex: str | None = None,
+                   is_reference_job: bool = False,
+                   letter_spacing_frac: float = 0.0) -> dict:
+    """Render-and-scrub: measure gpt's rendered headline, scrub it, overlay the
+    licensed font at the captured position/size/color. Returns a record dict:
+      status='placed'         -> out_path written with the licensed overlay.
+      status='capture_failed' -> image NOT modified; caller does the path-specific
+                                  honest-null fallback (ref: leave gpt text +
+                                  needs_review; no-ref: free-space closed_loop).
+    Never calls reanchor; never reads tier3 / write_composite_spec."""
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img = Image.open(image_path).convert("RGB")
+    W, H = img.size
+    arr = np.asarray(img)
+    record = {"mode": "render_and_scrub", "is_reference_job": is_reference_job,
+              "lines": lines, "status": None, "captured": [], "capture_notes": []}
+
+    # 1. SENSOR (reuse measure): gpt's rendered headline OCRs and fuzzy-matches the
+    #    expected lines, so it comes back as 'ghost_text_boxes' (naming clash: here it
+    #    is the INTENDED text, and those boxes carry the geometry we want).
+    rep, masks = measure(image_path, lines, want_masks=True, chroma_key_hex=chroma_key_hex)
+    ghosts = rep.get("ghost_text_boxes", [])
+    record["ghost_box_count"] = len(ghosts)
+    if rep.get("ocr_error"):
+        record["capture_notes"].append(f"OCR error: {rep['ocr_error']}")
+
+    # 2. map each line -> one box (union of fragments); honest-null if it can't.
+    mapping, notes = map_lines_to_boxes(lines, ghosts)
+    record["capture_notes"] += notes
+    if mapping is None:
+        record["status"] = "capture_failed"
+        (out.parent / "render_scrub_report.json").write_text(
+            json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+        return record
+
+    # 3. CAPTURE geometry + color per line (UNKNOWN 1: position + pixel size + fill).
+    captured = []
+    for line, box in mapping:
+        bx = _bbox_frac_to_px(box["bbox_frac"], W, H)
+        captured.append({
+            "content": line, "bbox_px": list(bx),
+            "anchor_frac": [round((bx[0] + bx[2]) / 2 / W, 4),
+                            round((bx[1] + bx[3]) / 2 / H, 4)],
+            "target_h_px": max(bx[3] - bx[1], 1),
+            "ink_rgb": list(_sample_ink_color(arr, bx)),
+        })
+    record["captured"] = captured
+
+    # 4. SCRUB gpt's rendered text (reuse patch_ghosts unchanged). interior_mask keeps
+    #    the patch off the container border when a footprint exists (None for a
+    #    full-bleed reference sign — then the scrub is constrained to the OCR quad).
+    interior = _interior_mask_fullres(masks, img.size)
+    scrubbed, patch_records = patch_ghosts(img, [b for _, b in mapping],
+                                           rep.get("container_color"), interior_mask=interior)
+    record["patch_records"] = patch_records
+
+    # 5. BUILD SPEC from captured geometry. Font from the answer key/register
+    #    (font_role + weight_hint), NEVER from tier3.
+    try:
+        font_path, fmani = resolve_font({"font_role": font_role, "brand": brand,
+                                         "weight_hint": weight_hint})
+    except Exception as exc:  # noqa: BLE001 — surface a clear font-resolution failure
+        record["status"] = "capture_failed"
+        record["capture_notes"].append(f"font resolution failed: {exc}")
+        return record
+    materialized = _materialize_font(font_path)
+    spec = []
+    for cap in captured:
+        size_px = size_for_height(materialized, cap["content"], cap["target_h_px"])
+        entry = {"content": cap["content"], "font_role": font_role, "brand": brand,
+                 "weight_hint": weight_hint, "size_px": size_px,
+                 "color": "#%02X%02X%02X" % tuple(cap["ink_rgb"]),
+                 "anchor_frac": cap["anchor_frac"], "anchor": "mm"}
+        if letter_spacing_frac:
+            entry["letter_spacing_px"] = round(size_px * letter_spacing_frac, 1)
+        spec.append(entry)
+    record["font_resolution"] = fmani["resolution"]
+    record["spec"] = spec
+
+    # 6. COMPOSITE the licensed glyphs (reuse) + the occlusion readback gate (reuse).
+    scrubbed_path = out.parent / "_render_scrub_base.png"
+    scrubbed.save(scrubbed_path)
+    spec_path = out.parent / "render_scrub_spec.json"
+    spec_path.write_text(json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8")
+    final = composite(str(scrubbed_path), str(spec_path), str(out))
+    scrubbed_path.unlink()
+    record["final"] = str(final)
+    print("=== render-and-scrub: OCR-readback occlusion gate ===")
+    record["occlusion_readback"] = ocr_readback(final, spec, out.parent)
+    for ln in record["occlusion_readback"]["lines"]:
+        print(f"  {ln['content']!r}: read back {ln['ocr_text']!r} conf={ln['confidence']} "
+              f"match={ln['match']} -> {'PASS' if ln['pass'] else 'FAIL'}")
+
+    # 7. strip chroma for no-ref die-cut jobs (ref jobs pass chroma_key_hex=None).
+    if chroma_key_hex:
+        record["chroma_strip"] = strip_chroma(final, out.parent, chroma_key_hex)
+
+    record["status"] = "placed"
+    (out.parent / "render_scrub_report.json").write_text(
+        json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"  render-and-scrub placed {len(spec)} line(s) at MEASURED geometry -> {final}")
+    return record
+
+
 def closed_loop(image_path: str, spec_path: str, out_path: str,
                 brand: str | None = None,
                 chroma_key_hex: str | None = None,
@@ -647,17 +836,51 @@ def closed_loop(image_path: str, spec_path: str, out_path: str,
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Closed-loop composite: measure, patch ghosts, "
-                                 "re-anchor to detected geometry, composite.")
+    ap = argparse.ArgumentParser(description="Composite licensed-font text onto a generated "
+                                 "sign. Default: closed-loop (measure, patch ghosts, re-anchor "
+                                 "to free space). --render-scrub: place at gpt's MEASURED "
+                                 "headline geometry (Axis A).")
     ap.add_argument("--image", required=True, help="generated image (painted canvas)")
-    ap.add_argument("--spec", required=True, help="composite_spec.json from the plan")
-    ap.add_argument("--brand", default=None, help="brand fallback for layers without one")
     ap.add_argument("--out", required=True, help="final png path")
+    ap.add_argument("--brand", default=None, help="brand (font resolution / layer fallback)")
     ap.add_argument("--chroma-key", default="",
                     help="chroma key hex (e.g. '#00B140') for chroma-contained generations: "
                     "deterministic container recovery + green-strip deliverables "
                     "(cutout.png, preview_white.png)")
+    # Old reserve-box / free-space path:
+    ap.add_argument("--spec", default="", help="composite_spec.json (reserve-box/free-space path)")
+    # Axis A render-and-scrub path:
+    ap.add_argument("--render-scrub", action="store_true",
+                    help="place the licensed font at gpt's MEASURED headline geometry "
+                    "(requires --lines + --brand)")
+    ap.add_argument("--lines", default="",
+                    help="semicolon-separated headline lines (render-scrub mode)")
+    ap.add_argument("--font-role", default="chinese_primary")
+    ap.add_argument("--weight-hint", default="",
+                    help="font weight/family request (e.g. from the register profile)")
+    ap.add_argument("--reference-job", action="store_true",
+                    help="reference job: on capture failure, LEAVE gpt text + needs_review "
+                    "(no free-space fallback)")
+    ap.add_argument("--letter-spacing-frac", type=float, default=0.0)
     args = ap.parse_args()
+
+    if args.render_scrub:
+        if not args.brand:
+            ap.error("--render-scrub requires --brand")
+        lines = [s.strip() for s in args.lines.split(";") if s.strip()]
+        if not lines:
+            ap.error("--render-scrub requires --lines")
+        rec = place_measured(args.image, lines, args.brand, args.font_role, args.weight_hint,
+                             args.out, chroma_key_hex=args.chroma_key or None,
+                             is_reference_job=args.reference_job,
+                             letter_spacing_frac=args.letter_spacing_frac)
+        print(f"status: {rec['status']}")
+        if rec["status"] != "placed":
+            for n in rec["capture_notes"]:
+                print(f"  [capture] {n}", file=sys.stderr)
+        return
+    if not args.spec:
+        ap.error("either --render-scrub (with --lines) or --spec is required")
     closed_loop(args.image, args.spec, args.out, brand=args.brand,
                 chroma_key_hex=args.chroma_key or None)
 

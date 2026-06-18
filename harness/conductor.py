@@ -65,6 +65,31 @@ WARMTH_DEFAULT = 5
 DEFAULT_AUDIENCE = "general public"
 DEFAULT_SETTING = "event / festival"
 
+# Reference-relationship DIAL (Axis B). The human's reference_relationship (free text,
+# or one of the long brief_schema_v3 labels) maps to the clean enum the analyzer takes.
+# A no-reference job has no dial (None).
+DIAL_VALUES = ("extend", "match_style", "mood")
+DEFAULT_DIAL = "extend"
+
+
+def normalize_dial(value):
+    """Map a free-text reference_relationship to {extend, match_style, mood}, or None
+    when none is given (no-ref jobs have no dial). 'template...'->extend,
+    'style...'->match_style, 'inspiration...'->mood; already-clean values pass through;
+    anything unrecognized defaults to extend (max similarity, the proven gold)."""
+    if not value:
+        return None
+    v = str(value).strip().lower()
+    if v in DIAL_VALUES:
+        return v
+    if v.startswith("template") or "extend" in v or "series" in v:
+        return "extend"
+    if v.startswith("style") or "match" in v:
+        return "match_style"
+    if v.startswith("inspiration") or "mood" in v or "loose" in v:
+        return "mood"
+    return DEFAULT_DIAL
+
 
 # --------------------------------------------------------------------------- #
 # Pure builders (no I/O, no network): the testable core. dry-run and real mode
@@ -132,26 +157,34 @@ def _derive_argv(brand: str, out: str, subfields_path: str, calibration_path) ->
     return argv
 
 
-def _analyzer_argv(ref: str, messages: list, hero_icon, sign_dir: str) -> list:
+def _analyzer_argv(ref: str, messages: list, hero_icon, sign_dir: str,
+                   relationship: str = DEFAULT_DIAL) -> list:
     argv = [ANALYZER, "--image", ref]
     for m in messages:
         argv += ["--message", m]
     if hero_icon:
         argv += ["--hero-icon", hero_icon]
-    argv += ["--out", sign_dir]
+    argv += ["--relationship", relationship, "--out", sign_dir]
     return argv
 
 
 def _scene_author_argv(brand: str, out: str, sign_id: str, messages: list,
-                       ref, register_profile) -> list:
-    argv = [SCENE_AUTHOR, "--brand", brand, "--asset-profile", ASSET_PROFILE, "--chroma-contain"]
+                       ref, register_profile, aligned_prompt=None) -> list:
+    """Reference job (aligned_prompt set): pass --aligned-prompt, DROP --chroma-contain
+    (chroma is disabled for ref jobs) and --intent-file (tier-3 is skipped). No-ref job:
+    keep --chroma-contain + --intent-file. --register-profile is kept on BOTH (place_measured
+    reads the licensed font weight_hint from it)."""
+    is_ref = bool(aligned_prompt)
+    argv = [SCENE_AUTHOR, "--brand", brand, "--asset-profile", ASSET_PROFILE]
+    if not is_ref:
+        argv += ["--chroma-contain"]
     if register_profile:
         argv += ["--register-profile", register_profile]
-    argv += [
-        "--must-include", ";".join(messages),
-        "--intent-file", f"{out}/intent_{sign_id}.json",
-        "--out", f"{out}/sign_{sign_id}",
-    ]
+    argv += ["--must-include", ";".join(messages), "--out", f"{out}/sign_{sign_id}"]
+    if is_ref:
+        argv += ["--aligned-prompt", aligned_prompt]
+    else:
+        argv += ["--intent-file", f"{out}/intent_{sign_id}.json"]
     if ref:
         argv += ["--ref-image", ref]
     return argv
@@ -169,6 +202,7 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
     out = str(out_dir)
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
+    dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
     subfields_path = f"{out}/subfields.json"
     profile_path = f"{out}/register_profile.json"
     calibration_path = f"{out}/calibration.json"
@@ -183,18 +217,22 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         steps.append(_cmd("register", "derive_register",
                           _derive_argv(brand, out, subfields_path, None)))
 
-    # 5. per-sign loop
+    # 5. per-sign loop. Reference job: analyzer (dial-selected wording) -> aligned_prompt.txt,
+    # which is INJECTED as scene_author's --aligned-prompt (no longer discarded).
     for sign in inputs["signs"]:
         sid = sign["id"]
         sign_dir = f"{out}/sign_{sid}"
         messages = sign.get("messages", [])
+        aligned_prompt = None
         if has_ref:
             steps.append(_cmd(f"sign:{sid}", "analyzer",
-                              _analyzer_argv(ref, messages, sign.get("hero_icon"), sign_dir),
+                              _analyzer_argv(ref, messages, sign.get("hero_icon"), sign_dir,
+                                             relationship=dial or DEFAULT_DIAL),
                               sign_id=sid, optional=True))
+            aligned_prompt = f"{sign_dir}/aligned_prompt.txt"
         steps.append(_cmd(f"sign:{sid}", "scene_author",
                           _scene_author_argv(brand, out, sid, messages, ref if has_ref else None,
-                                             profile_path),
+                                             profile_path, aligned_prompt=aligned_prompt),
                           sign_id=sid))
 
     # 6. approve gate (a gate step, not a command — present unless --no-approve)
@@ -210,6 +248,8 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         "asset_profile_v1": ASSET_PROFILE,
         "asset_type_note": "v1: asset_type is intent-framing only; output is ALWAYS flat_graphic",
         "has_reference": has_ref,
+        "reference_relationship_raw": inputs.get("reference_relationship"),
+        "dial": dial,
         "subfields": subfields_path,
         "register_profile": profile_path,
         "sign_count": len(inputs["signs"]),
@@ -239,6 +279,13 @@ def ask_questions(ask=input) -> dict:
     print("=== Guided questions (press Enter to accept the default) ===")
     asset_type = q("Asset type", ASSET_TYPE_DEFAULT)
     reference = (ask("Reference image path (Enter to skip): ") or "").strip()
+    # The reference-relationship dial is asked ONLY when a reference is supplied (a no-ref
+    # job has no dial). 3 choices; defaults to extend (max similarity, the proven gold).
+    reference_relationship = None
+    if reference:
+        reference_relationship = normalize_dial(
+            q("Reference relationship? extend (clone look, change message) | match_style "
+              "(same style, fresh layout) | mood (tone cue only)", DEFAULT_DIAL))
     formality = _to_int(q("How formal? 0 casual to 10 official", 5), 5)
     playfulness = _to_int(q("How playful? 0 serious to 10 fun", 5), 5)
     logo_treatment = q("Logo? required/prominent | subtle | omit", "required/prominent")
@@ -262,7 +309,7 @@ def ask_questions(ask=input) -> dict:
     return {
         "asset_type": asset_type,
         "reference_image": reference or None,
-        "reference_relationship": None,  # recorded, not wired in v1
+        "reference_relationship": reference_relationship,  # dial (Axis B); None for no-ref jobs
         "context": context,
         "signs": signs,
     }
@@ -477,6 +524,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                      "scene_author will run WITHOUT --register-profile (a supported path)")
 
     register_profile_arg = str(profile_path) if have_profile else None
+    dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
 
     # --- 5. per-sign loop ---
     sign_results, state = [], []
@@ -486,23 +534,39 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         messages = sign.get("messages", [])
 
         analyzer_record = {"ran": False, "injected_into_generation": False,
-                           "aligned_prompt": None, "error": None}
+                           "aligned_prompt": None, "dial": dial, "error": None}
+        aligned_prompt_arg = None
         if has_ref and Path(ref).exists():
             ar = run_step(_cmd(f"sign:{sid}", "analyzer",
-                               _analyzer_argv(ref, messages, sign.get("hero_icon"), str(sign_dir)),
+                               _analyzer_argv(ref, messages, sign.get("hero_icon"), str(sign_dir),
+                                              relationship=dial or DEFAULT_DIAL),
                                sign_id=sid, optional=True))
             aligned_path = sign_dir / "aligned_prompt.txt"
             if ar["ok"] and aligned_path.exists():
-                analyzer_record.update(ran=True, aligned_prompt=str(aligned_path))
-                print(f"  analyzer wrote {aligned_path} (recorded, NOT injected into generation)")
+                aligned_prompt_arg = str(aligned_path)
+                analyzer_record.update(ran=True, injected_into_generation=True,
+                                       aligned_prompt=str(aligned_path))
+                print(f"  analyzer wrote {aligned_path} (dial={dial}) — INJECTED as --aligned-prompt")
             else:
                 analyzer_record["error"] = ar.get("error", "analyzer failed")
-                notes.append(f"sign {sid}: analyzer failed; proceeding on the fed-image channel only")
+                notes.append(f"sign {sid}: analyzer failed; aligned prompt NOT injected — "
+                             "scene_author falls back to the register prompt + the fed ref image")
 
         sa_argv = _scene_author_argv(brand, out, sid, messages, ref if has_ref else None,
-                                     register_profile_arg)
+                                     register_profile_arg, aligned_prompt=aligned_prompt_arg)
         sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
         outputs = _collect_sign_outputs(sign_dir)
+        # scene_author records needs_review (ref capture-failure: gpt text left in place).
+        sign_needs_review = None
+        srm_path = sign_dir / "run_manifest.json"
+        if srm_path.exists():
+            try:
+                sign_needs_review = json.loads(srm_path.read_text(encoding="utf-8")).get("needs_review")
+            except Exception:  # noqa: BLE001
+                pass
+        if sign_needs_review:
+            notes.append(f"sign {sid}: needs_review=true (render-and-scrub capture failed; "
+                         "gpt's rendered text left in place)")
         sign_results.append({
             "sign_id": sid,
             "ok": sr["ok"],
@@ -510,6 +574,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
             "scene_author_cmd": [PY] + sa_argv,
             "outputs": outputs,
             "analyzer": analyzer_record,
+            "needs_review": sign_needs_review,
             "compliance": _compliance_summary(sign_dir),
         })
         state.append({"sign_id": sid, "messages": messages,
@@ -535,8 +600,14 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         "asset_type_note": "asset_type is intent-framing only in v1; output is ALWAYS flat_graphic",
         "reference_image": ref,
         "reference_relationship": inputs.get("reference_relationship"),
-        "reference_relationship_status": "recorded, not wired (no code consumes "
-                                         "template/style/inspiration yet)",
+        "dial": dial,
+        "reference_relationship_status": (
+            "WIRED: the dial selects the analyzer aligned-prompt rung, injected as "
+            "scene_author --aligned-prompt" if has_ref else "no reference supplied (no dial)"),
+        "cutout_status": (
+            "deferred for reference jobs (chroma disabled, no green backdrop) — final.png is "
+            "the deliverable" if has_ref
+            else "chroma cutout produced for no-reference die-cut jobs"),
         "inert_provenance_recorded_not_wired": {
             "audience": context.get("audience"),
             "setting": context.get("setting"),

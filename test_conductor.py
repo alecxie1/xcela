@@ -104,25 +104,32 @@ def check2_inputs_drive_output():
 
 
 def check3_primitive_sequence():
-    # reference present (path need not exist for a dry run) -> calibrate + analyzer appear
+    # reference present (path need not exist for a dry run) -> calibrate + analyzer appear.
+    # REFERENCE job argv (post render-and-scrub change): scene_author carries --aligned-prompt
+    # + --ref-image and DROPS --chroma-contain (chroma is disabled for ref jobs); the analyzer
+    # carries the --relationship dial.
     plan = dry_run("aia", make_inputs([["守住钱袋子", "护好幸福家"]], reference="/tmp/style_ref.png"))
     labels = [s["label"] for s in plan["steps"]]
     sa = scene_author_steps(plan)[0]["argv"]
+    analyzer = [s for s in plan["steps"] if s["label"] == "analyzer"][0]["argv"]
     plan_text = json.dumps(plan, ensure_ascii=False)
 
     first_sa = labels.index("scene_author")
     register_before = labels.index("calibrate") < first_sa and labels.index("derive_register") < first_sa
     analyzer_before_sa = labels.index("analyzer") == first_sa - 1
-    sa_flags_ok = all(tok in sa for tok in
-                      ("flat_graphic", "--chroma-contain", "--register-profile",
-                       "--must-include", "--ref-image"))
+    sa_flags_ok = (all(tok in sa for tok in ("flat_graphic", "--register-profile",
+                                             "--must-include", "--ref-image", "--aligned-prompt"))
+                   and "--chroma-contain" not in sa)   # ref job: chroma disabled
+    analyzer_has_dial = "--relationship" in analyzer
     delegates = ("harness/scene_author.py" in plan_text
                  and "register/derive_register.py" in plan_text)
     no_reimpl = not any(tok in CONDUCTOR_SRC for tok in ("images.edit", "gpt-image-2", "b64decode"))
-    passed = register_before and analyzer_before_sa and sa_flags_ok and delegates and no_reimpl
+    passed = (register_before and analyzer_before_sa and sa_flags_ok and analyzer_has_dial
+              and delegates and no_reimpl)
     detail = (f"order={labels}; register-before-sign={register_before}; "
               f"analyzer-immediately-before-scene_author={analyzer_before_sa}; "
-              f"scene_author flags present={sa_flags_ok}; delegates by name={delegates}; "
+              f"ref scene_author flags ok (aligned-prompt yes, chroma-contain no)={sa_flags_ok}; "
+              f"analyzer carries --relationship={analyzer_has_dial}; delegates by name={delegates}; "
               f"no generation reimplemented in conductor.py={no_reimpl}")
     return passed, detail
 

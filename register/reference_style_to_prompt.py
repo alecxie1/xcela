@@ -160,11 +160,61 @@ def _has(text: str, *keys: str) -> bool:
     return any(k in t for k in keys)
 
 
+# The reference-relationship DIAL (Axis B). Three rungs select the generation-prompt
+# WORDING for a reference job; they change only what the prompt SAYS, never the
+# render-and-scrub composite (Axis A). ALL THREE instruct gpt to RENDER the headline
+# text (Axis A needs painted text to detect, scrub and replace) and NONE reserve a
+# blank area. Edit the wording here — this is the ONE place the human tunes it.
+#   extend      = make the next one in this campaign, MAX similarity (the PROVEN gold
+#                 wording, verbatim shape from test_reffeed.py lines 16-29)
+#   match_style = adopt the visual language, compose a FRESH layout, MID similarity
+#   mood        = color/energy cue only, design independently, MIN similarity
+RELATIONSHIPS = ("extend", "match_style", "mood")
+DEFAULT_RELATIONSHIP = "extend"
+
+RUNG_TEMPLATES = {
+    "extend": (
+        "Use the ATTACHED reference image as the EXACT visual-style template. Create ONE new "
+        "hand-held event sign (手举牌) in the IDENTICAL design language: "
+        "{style_commitments}.{neg_sentence}\n\n"
+        "CHANGE ONLY THE MESSAGE to {num_words} large centered lines: {lines_join}. "
+        "Render these characters big, bold, {font_color}, in the same {font_feel} font as the "
+        "reference.\n\n"
+        "HERO ICON: {hero_clause}.\n\n"
+        "ONE single die-cut sign. NO logo, NO brand mark anywhere. Crisp, saturated."
+    ),
+    "match_style": (
+        "Use the ATTACHED reference image as a STYLE reference. Adopt its visual language "
+        "(palette, typography style, icon treatment, shape language, overall energy) — "
+        "{style_commitments} — but compose a FRESH layout suited to this message: {lines_join}. "
+        "Do not copy its exact composition; design a new arrangement in the same style. "
+        "Render the message text big, bold, {font_color}, in the same {font_feel} font as the "
+        "reference.{neg_sentence}\n\n"
+        "HERO ICON: {hero_clause}.\n\n"
+        "ONE single die-cut sign. NO logo, NO brand mark anywhere. Crisp, saturated."
+    ),
+    "mood": (
+        "Use the ATTACHED reference image as LOOSE inspiration for mood and energy only "
+        "({energy}). Design an original sign for this message: {lines_join}. Do not replicate "
+        "its layout, icons, or composition; let it inform tone only. Render the message text "
+        "big, bold, {font_color}.{neg_sentence}\n\n"
+        "HERO ICON: {hero_clause}.\n\n"
+        "ONE single die-cut sign. NO logo, NO brand mark anywhere. Crisp, saturated."
+    ),
+}
+
+
 def assemble_aligned_prompt(
-    descriptor: dict, message_lines: list[str], hero_icon: str | None
+    descriptor: dict, message_lines: list[str], hero_icon: str | None,
+    relationship: str = DEFAULT_RELATIONSHIP,
 ) -> str:
     """PURE, DETERMINISTIC. Fixed skeleton mirroring the gold prompt's shape; only the
-    descriptor values + message + hero icon get spliced in. Same input -> same output."""
+    descriptor values + message + hero icon get spliced in. Same input -> same output.
+
+    relationship: which dial rung (RUNG_TEMPLATES) selects the wording — 'extend'
+    (max similarity, the proven gold), 'match_style' (fresh layout, same style), or
+    'mood' (tone cue only). Unknown values fall back to 'extend'. The rung changes
+    ONLY the wording; it never reserves a blank area and always renders the text."""
     colors = descriptor.get("colors", [])
     field_hex = _color_by_role(colors, "field/background")
     primary_hex = _color_by_role(colors, "primary_accent")
@@ -252,17 +302,12 @@ def assemble_aligned_prompt(
         else:
             hero_clause = f"a single {icon_style} hero icon relevant to the message"
 
-    prompt = (
-        "Use the ATTACHED reference image as the EXACT visual-style template. Create ONE new "
-        "hand-held event sign (手举牌) in the IDENTICAL design language: "
-        f"{style_commitments}.{neg_sentence}\n\n"
-        f"CHANGE ONLY THE MESSAGE to {num_words} large centered lines: {lines_join}. "
-        f"Render these characters big, bold, {font_color}, in the same {font_feel} font as the "
-        "reference.\n\n"
-        f"HERO ICON: {hero_clause}.\n\n"
-        "ONE single die-cut sign. NO logo, NO brand mark anywhere. Crisp, saturated."
+    template = RUNG_TEMPLATES.get(relationship, RUNG_TEMPLATES[DEFAULT_RELATIONSHIP])
+    return template.format(
+        style_commitments=style_commitments, neg_sentence=neg_sentence,
+        num_words=num_words, lines_join=lines_join, font_color=font_color,
+        font_feel=font_feel, hero_clause=hero_clause, energy=energy,
     )
-    return prompt
 
 
 def main() -> None:
@@ -274,6 +319,10 @@ def main() -> None:
                     help="repeatable; one headline line per flag")
     ap.add_argument("--hero-icon", default=None,
                     help="optional explicit hero-icon description")
+    ap.add_argument("--relationship", choices=RELATIONSHIPS, default=DEFAULT_RELATIONSHIP,
+                    help="reference-relationship dial: selects the prompt wording rung "
+                    "(extend=max similarity/proven gold, match_style=fresh layout same style, "
+                    "mood=tone cue only)")
     ap.add_argument("--out", required=True, help="output directory")
     args = ap.parse_args()
 
@@ -284,8 +333,9 @@ def main() -> None:
     descriptor = extract_style_descriptor(args.image)
     print(json.dumps(descriptor, ensure_ascii=False, indent=2))
 
-    print("\n=== Assembling aligned prompt ===")
-    prompt = assemble_aligned_prompt(descriptor, args.message, args.hero_icon)
+    print(f"\n=== Assembling aligned prompt (relationship: {args.relationship}) ===")
+    prompt = assemble_aligned_prompt(descriptor, args.message, args.hero_icon,
+                                     relationship=args.relationship)
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)

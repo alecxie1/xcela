@@ -611,7 +611,8 @@ def _call_author(messages: list[dict]) -> tuple[dict, str]:
 
 def assemble_final_prompt(brand_key: dict, tier3: dict, asset_profile: str = "photo",
                           register_profile: dict | None = None,
-                          chroma_key_hex: str | None = None) -> str:
+                          chroma_key_hex: str | None = None,
+                          render_headline: bool = False) -> str:
     """Deterministic Python renderer: tier-3 scene + tier-1 lock lines -> flat text prompt.
 
     register_profile (optional): flexes the lock lines it names — logo:omit drops the
@@ -619,7 +620,12 @@ def assemble_final_prompt(brand_key: dict, tier3: dict, asset_profile: str = "ph
     Absent => output identical to before this feature existed.
     chroma_key_hex (optional, flat_graphic die-cut props only): prepends the
     chroma-key containment directive and reframes the backdrop as removable
-    key green. Absent => output identical to before this feature existed."""
+    key green. Absent => output identical to before this feature existed.
+    render_headline (Axis A render-and-scrub): when True, gpt is asked to RENDER the
+    headline — the composited text layers are INCLUDED in the text-layout block and the
+    RESERVED HEADLINE AREA block is OMITTED. When False (legacy reserve-box mode), the
+    composited layers are excluded and a blank reservation is requested. Placement of the
+    licensed font then happens by MEASURING gpt's painted headline (place_measured)."""
     f = brand_key["fields"]
     brand_cn = f["brand_name_cn"]["value"]
     brand_en = f.get("brand_name_en", {}).get("value", "")
@@ -651,8 +657,8 @@ def assemble_final_prompt(brand_key: dict, tier3: dict, asset_profile: str = "ph
     texts = tier3.get("text_layout", [])
     text_lines = []
     for t in texts:
-        if reservation and t.get("composited"):
-            continue  # drawn in post with the real licensed font — never in the image prompt
+        if reservation and t.get("composited") and not render_headline:
+            continue  # reserve-box mode: drawn in post with the real font, never in the image prompt
         size_or_scale = t.get("scale") or (f"{t['size_px']}px" if t.get("size_px") else "")
         style = t.get("font_style") or t.get("weight_hint", "")
         text_lines.append(
@@ -661,7 +667,7 @@ def assemble_final_prompt(brand_key: dict, tier3: dict, asset_profile: str = "ph
         )
 
     reservation_lines = []
-    if isinstance(reservation, dict):
+    if isinstance(reservation, dict) and not render_headline:
         try:
             x0, y0 = float(reservation["x_frac"]), float(reservation["y_frac"])
             x1 = x0 + float(reservation["w_frac"])
@@ -832,6 +838,20 @@ def write_composite_spec(tier3: dict, brand: str, out_dir: Path) -> Path | None:
     return path
 
 
+def _lines_fallback_spec(lines: list[str], brand: str, weight_hint: str,
+                         base_size_px: int = 140, font_role: str = "chinese_primary") -> list[dict]:
+    """Minimal stacked-center composite spec built from headline LINES (NOT tier3),
+    used ONLY as the no-reference render-and-scrub capture-failure fallback: the
+    closed_loop/reanchor pass then re-fits anchors + size to the detected free space,
+    so base_size_px is just a seed. tier3 is not consulted."""
+    n = max(len(lines), 1)
+    return [{
+        "content": line, "font_role": font_role, "brand": brand, "weight_hint": weight_hint,
+        "size_px": base_size_px, "color": "#000000",
+        "anchor_frac": [0.5, round((i + 0.5) / n, 4)], "anchor": "mm",
+    } for i, line in enumerate(lines)]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--brand", default="taichi")
@@ -863,10 +883,21 @@ def main():
                         "and the container is recovered deterministically downstream. "
                         "Auto-enabled for event_prop registers.")
     parser.add_argument("--no-closed-loop", action="store_true",
-                        help="Escape hatch: composite blindly at the PLANNED anchors "
-                        "(old open-loop behavior) instead of measuring the painted "
-                        "canvas, patching ghost headlines and re-anchoring to the "
-                        "detected optical center. For A/B comparison.")
+                        help="Escape hatch (reserve-box mode only): composite blindly at the "
+                        "PLANNED anchors instead of measuring + re-anchoring. For A/B.")
+    parser.add_argument("--aligned-prompt", default="",
+                        help="REFERENCE JOB: path to a dial-selected aligned prompt "
+                        "(register/reference_style_to_prompt.py). Its contents become the "
+                        "generation prompt; tier-3 authoring + assemble_final_prompt are "
+                        "SKIPPED and chroma is DISABLED (ref-feed wins over chroma).")
+    parser.add_argument("--reserve-headline-box", action="store_true",
+                        help="Legacy reserve-and-fill path: reserve a blank headline box and "
+                        "composite at the detected FREE-SPACE center. DEFAULT (flag absent) is "
+                        "render-and-scrub: gpt renders the headline and the licensed font is "
+                        "placed at gpt's MEASURED geometry. For A/B + rollback.")
+    parser.add_argument("--explain", action="store_true",
+                        help="Print the resolved generation-prompt SOURCE + mode + chroma as "
+                        "JSON and EXIT before any model call (free structural test surface).")
     args = parser.parse_args()
 
     must_include = [s.strip() for s in args.must_include.split(";") if s.strip()] or None
@@ -878,12 +909,46 @@ def main():
     if args.register_profile:
         register_profile = json.loads(Path(args.register_profile).read_text(encoding="utf-8"))
 
+    # --- Mode resolution (Axis A render-and-scrub default + Axis B reference jobs) ---
+    is_reference_job = bool(args.aligned_prompt)
+    reserve_box_mode = bool(args.reserve_headline_box) and not is_reference_job
+    render_and_scrub = not reserve_box_mode
+    if args.reserve_headline_box and is_reference_job:
+        print("  [note] --reserve-headline-box ignored on a reference job (a full-bleed ref has "
+              "no green field / free-space box) — using render-and-scrub", file=sys.stderr)
+    # Reference + chroma cannot coexist: the ref sign is rendered on the reference's OWN
+    # background, so there is no key-green field to recover. ref-feed wins; chroma OFF.
+    if is_reference_job:
+        chroma_key = None
+    else:
+        chroma_key = (CHROMA_KEY_HEX if chroma_contain_active(
+            args.asset_profile, register_profile, args.chroma_contain) else None)
+
+    if args.explain:
+        is_graphic = args.asset_profile == "flat_graphic"
+        print(json.dumps({
+            "is_reference_job": is_reference_job,
+            "generation_prompt_source": "aligned_prompt_file" if is_reference_job else "assemble_final_prompt",
+            "aligned_prompt_path": args.aligned_prompt or None,
+            "uses_tier3": not is_reference_job,
+            "mode": "render_and_scrub" if render_and_scrub else "reserve_headline_box",
+            "headline_rendered_in_image": render_and_scrub,
+            "chroma_key_hex": chroma_key,
+            "chroma_disabled_for_reference": is_reference_job,
+            "asset_profile": args.asset_profile,
+            "composite": ("place_measured" if (is_graphic and render_and_scrub)
+                          else "closed_loop_reserve_box" if is_graphic else "none"),
+        }, ensure_ascii=False, indent=2))
+        return
+
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print("=== Step 1: Load brand identity ===")
     brand_key = load_brand(args.brand)
     print(f"  {brand_key.get('brand')} / {brand_key.get('brand_en')}")
+    print(f"  mode: {'render-and-scrub' if render_and_scrub else 'reserve-headline-box'}"
+          + (" | REFERENCE JOB (aligned prompt, chroma OFF)" if is_reference_job else ""))
     if must_include:
         print(f"  must_include (human Tier-2 input): {must_include}")
     if register_profile:
@@ -891,31 +956,40 @@ def main():
               f"(held: {register_profile.get('brand_anchors_held')}, "
               f"flexed: {register_profile.get('brand_locks_flexed')})")
 
-    print("\n=== Step 2: Author tier-3 via Anthropic ===")
-    tier3 = author_tier3(brand_key, must_include=must_include,
-                         intent_override=intent_override,
-                         asset_profile=args.asset_profile,
-                         style_notes=style_notes,
-                         register_profile=register_profile)
-    tier3_path = out_dir / "tier3_scene.json"
-    tier3_path.write_text(json.dumps(tier3, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  Saved {tier3_path}  ({tier3_path.stat().st_size} bytes)")
-
-    chroma_key = (CHROMA_KEY_HEX if chroma_contain_active(
-        args.asset_profile, register_profile, args.chroma_contain) else None)
-    if chroma_key:
-        print(f"  chroma-key containment ACTIVE (key {chroma_key})")
-
-    print("\n=== Step 3: Assemble final prompt ===")
-    final_prompt = assemble_final_prompt(brand_key, tier3, asset_profile=args.asset_profile,
-                                         register_profile=register_profile,
-                                         chroma_key_hex=chroma_key)
+    tier3 = None
+    tier3_path = None
+    if is_reference_job:
+        print("\n=== Step 2+3: REFERENCE JOB — generation prompt = aligned prompt (tier-3 SKIPPED) ===")
+        final_prompt = Path(args.aligned_prompt).read_text(encoding="utf-8")
+        print(f"  aligned prompt: {args.aligned_prompt}  ({len(final_prompt)} chars)")
+    else:
+        print("\n=== Step 2: Author tier-3 via Anthropic ===")
+        tier3 = author_tier3(brand_key, must_include=must_include,
+                             intent_override=intent_override,
+                             asset_profile=args.asset_profile,
+                             style_notes=style_notes,
+                             register_profile=register_profile)
+        tier3_path = out_dir / "tier3_scene.json"
+        tier3_path.write_text(json.dumps(tier3, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"  Saved {tier3_path}  ({tier3_path.stat().st_size} bytes)")
+        if chroma_key:
+            print(f"  chroma-key containment ACTIVE (key {chroma_key})")
+        print("\n=== Step 3: Assemble final prompt "
+              f"({'render-full-text' if render_and_scrub else 'reserve-box'}) ===")
+        final_prompt = assemble_final_prompt(brand_key, tier3, asset_profile=args.asset_profile,
+                                             register_profile=register_profile,
+                                             chroma_key_hex=chroma_key,
+                                             render_headline=render_and_scrub)
     prompt_path = out_dir / "final_prompt.txt"
     prompt_path.write_text(final_prompt, encoding="utf-8")
     print(f"  Saved {prompt_path}  ({prompt_path.stat().st_size} bytes)")
 
+    # Legacy reserve-box mode derives a composite spec from tier3; render-and-scrub does NOT
+    # (place_measured builds its spec from the MEASURED geometry + must_include lines, so tier3
+    # is never a dependency of the composite). write_composite_spec(tier3) is never reached on a
+    # reference job (tier3 is None there).
     spec_path = None
-    if args.asset_profile == "flat_graphic":
+    if args.asset_profile == "flat_graphic" and reserve_box_mode and tier3 is not None:
         spec_path = write_composite_spec(tier3, args.brand, out_dir)
         if spec_path:
             print(f"  Saved {spec_path}  ({spec_path.stat().st_size} bytes)")
@@ -931,77 +1005,120 @@ def main():
             refs = [args.ref_image]
             print("  register flexes logo:omit — logo NOT passed as reference (ref image only)")
         else:
-            # images.edit needs >=1 reference; keep the logo file but the prompt forbids
-            # rendering it — note this loudly since it can leak the mark back in.
             print("  [warn] logo:omit flexed but no --ref-image — logo file still passed as "
                   "the required reference; prompt forbids rendering it", file=sys.stderr)
     gen_meta = generate_variant(final_prompt, refs, out_png, size="1536x1024", quality="high")
     png_size = Path(out_png).stat().st_size
     print(f"  Saved {out_png}  ({png_size:,} bytes)")
-    # Run manifest: downstream (measurement, green-strip, graders) must know the
-    # backdrop key without re-deriving the gating.
     manifest_run = {
         "brand": args.brand,
         "asset_profile": args.asset_profile,
         "register": (register_profile or {}).get("inferred_register"),
+        "mode": "render_and_scrub" if render_and_scrub else "reserve_headline_box",
+        "is_reference_job": is_reference_job,
+        "aligned_prompt": args.aligned_prompt or None,
         "chroma_contain": bool(chroma_key),
         "chroma_key_hex": chroma_key,
+        "chroma_disabled_for_reference": is_reference_job,
         "generation": gen_meta,
     }
     manifest_run_path = out_dir / "run_manifest.json"
     manifest_run_path.write_text(json.dumps(manifest_run, ensure_ascii=False, indent=2),
                                  encoding="utf-8")
-    print(f"  Saved {manifest_run_path}  ({manifest_run_path.stat().st_size} bytes)")
     if png_size < 100_000:
         print("  WARNING: PNG is suspiciously small (<100 KB)", file=sys.stderr)
 
-    if args.asset_profile == "flat_graphic":
-        legibility = check_reservation_legibility(out_png, tier3)
-        for warning in legibility:
+    if args.asset_profile == "flat_graphic" and reserve_box_mode and tier3 is not None:
+        for warning in check_reservation_legibility(out_png, tier3):
             print("  " + "=" * 64, file=sys.stderr)
             print(f"  LEGIBILITY WARNING: {warning}", file=sys.stderr)
             print("  " + "=" * 64, file=sys.stderr)
 
+    # --- Step 5: composite the licensed font ---
     final_png = None
-    if spec_path:
-        if args.no_closed_loop:
-            print("\n=== Step 5: Composite real-font text (composite_text.py, OPEN-LOOP) ===")
-            from composite_text import composite
-            final_png = composite(out_png, str(spec_path), str(out_dir / "final.png"))
+    needs_review, review_reason = False, None
+    if args.asset_profile == "flat_graphic":
+        lines = must_include or []
+        weight_hint = (((register_profile or {}).get("font_resolved") or {})
+                       .get("preferred_member") or "")
+        if reserve_box_mode and spec_path:
+            if args.no_closed_loop:
+                print("\n=== Step 5: Composite (OPEN-LOOP, planned anchors) ===")
+                from composite_text import composite as _composite
+                final_png = _composite(out_png, str(spec_path), str(out_dir / "final.png"))
+            else:
+                print("\n=== Step 5: Closed-loop composite (reserve-box / free-space) ===")
+                from closed_loop_composite import closed_loop
+                hr = (tier3 or {}).get("headline_reservation") or {}
+                reserved = ([hr["x_frac"], hr["y_frac"], hr["x_frac"] + hr["w_frac"],
+                             hr["y_frac"] + hr["h_frac"]]
+                            if all(k in hr for k in ("x_frac", "y_frac", "w_frac", "h_frac"))
+                            else None)
+                final_png = closed_loop(out_png, str(spec_path), str(out_dir / "final.png"),
+                                        brand=args.brand, chroma_key_hex=chroma_key,
+                                        reserved_zone_frac=reserved)
+        elif render_and_scrub and lines:
+            print("\n=== Step 5: Render-and-scrub composite (licensed font at MEASURED geometry) ===")
+            from closed_loop_composite import place_measured
+            rec = place_measured(out_png, lines, args.brand, "chinese_primary", weight_hint,
+                                 str(out_dir / "final.png"), chroma_key_hex=chroma_key,
+                                 is_reference_job=is_reference_job)
+            if rec["status"] == "placed":
+                final_png = Path(rec["final"])
+            elif is_reference_job:
+                # Path-specific honest-null (guardrail): reanchor is UNDEFINED on a full-bleed
+                # ref. LEAVE gpt's rendered text in place; flag for human review. Never guess.
+                import shutil
+                final_png = out_dir / "final.png"
+                shutil.copyfile(out_png, final_png)
+                needs_review = True
+                review_reason = ("reference job: OCR could not map one box per headline line; "
+                                 "gpt's rendered text LEFT IN PLACE (not scrubbed/overlaid)")
+                print(f"  [needs_review] {review_reason}", file=sys.stderr)
+            else:
+                # No-ref capture failure: free-space fallback is valid (the container has free
+                # space; reanchor is defined). Seed a lines spec, let closed_loop re-anchor.
+                print("  [note] capture ambiguous on a no-ref job — free-space closed-loop fallback",
+                      file=sys.stderr)
+                from closed_loop_composite import closed_loop
+                fb_path = out_dir / "fallback_spec.json"
+                fb_path.write_text(json.dumps(_lines_fallback_spec(lines, args.brand, weight_hint),
+                                              ensure_ascii=False, indent=2), encoding="utf-8")
+                final_png = closed_loop(out_png, str(fb_path), str(out_dir / "final.png"),
+                                        brand=args.brand, chroma_key_hex=chroma_key)
         else:
-            # Closed loop: measure the painted canvas, patch ghost headlines the
-            # model rendered despite the reservation, re-anchor to the DETECTED
-            # free-space optical center (plan frame ≠ painted frame).
-            print("\n=== Step 5: Closed-loop composite (closed_loop_composite.py) ===")
-            from closed_loop_composite import closed_loop
-            final_png = closed_loop(out_png, str(spec_path), str(out_dir / "final.png"),
-                                    brand=args.brand, chroma_key_hex=chroma_key)
-        print(f"  Saved {final_png}  ({final_png.stat().st_size:,} bytes)")
-        manifest_path = Path(str(final_png) + ".compliance.json")
-        if manifest_path.exists():
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            non_licensed = [m for m in manifest
-                            if not str(m["resolution"]).startswith("licensed")]
-            print(f"  COMPLIANCE SUMMARY: {len(manifest)} layer(s), "
-                  f"{len(manifest) - len(non_licensed)} licensed, "
-                  f"{len(non_licensed)} NON-COMPLIANT")
-            if non_licensed:
-                for m in non_licensed:
-                    print(f"    !! {m['content']!r}: {m['resolution']} -> {m['resolved_file']}")
+            print("\n=== Step 5: no --must-include headline lines — leaving the generated image as-is ===")
+
+    manifest_run["needs_review"] = needs_review
+    manifest_run["needs_review_reason"] = review_reason
+    if is_reference_job:
+        manifest_run["cutout"] = "deferred (reference job, no chroma backdrop — final.png is the deliverable)"
+    manifest_run_path.write_text(json.dumps(manifest_run, ensure_ascii=False, indent=2),
+                                 encoding="utf-8")
+    print(f"  Saved {manifest_run_path}  ({manifest_run_path.stat().st_size} bytes)")
+
+    if final_png and Path(final_png).exists():
+        print(f"  Saved {final_png}  ({Path(final_png).stat().st_size:,} bytes)")
+        comp_path = Path(str(final_png) + ".compliance.json")
+        if comp_path.exists():
+            mani = json.loads(comp_path.read_text(encoding="utf-8"))
+            non_licensed = [m for m in mani if not str(m["resolution"]).startswith("licensed")]
+            print(f"  COMPLIANCE SUMMARY: {len(mani)} layer(s), "
+                  f"{len(mani) - len(non_licensed)} licensed, {len(non_licensed)} NON-COMPLIANT")
+            for m in non_licensed:
+                print(f"    !! {m['content']!r}: {m['resolution']} -> {m['resolved_file']}")
 
     print("\n=== OUTPUTS ===")
-    print(f"\n--- tier3_scene.json ({tier3_path.stat().st_size} bytes) ---")
-    print(tier3_path.read_text(encoding="utf-8"))
-    print(f"\n--- final_prompt.txt ({prompt_path.stat().st_size} bytes) ---")
-    print(prompt_path.read_text(encoding="utf-8"))
-    print(f"\n--- File sizes ---")
-    print(f"  tier3_scene.json : {tier3_path.stat().st_size:>8,} bytes")
     print(f"  final_prompt.txt : {prompt_path.stat().st_size:>8,} bytes")
     print(f"  generated.png    : {Path(out_png).stat().st_size:>8,} bytes")
+    if tier3_path:
+        print(f"  tier3_scene.json : {tier3_path.stat().st_size:>8,} bytes")
     if spec_path:
         print(f"  composite_spec.json : {spec_path.stat().st_size:>5,} bytes")
-    if final_png:
-        print(f"  final.png        : {final_png.stat().st_size:>8,} bytes")
+    if final_png and Path(final_png).exists():
+        print(f"  final.png        : {Path(final_png).stat().st_size:>8,} bytes")
+    if needs_review:
+        print(f"  needs_review     : TRUE — {review_reason}")
 
 
 if __name__ == "__main__":
