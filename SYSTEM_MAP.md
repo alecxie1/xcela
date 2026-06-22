@@ -1,7 +1,47 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-17._
+_Single source of truth for "what is this whole thing." Updated 2026-06-18._
 
-> **▶ REGROUP — 2026-06-17 (start here; supersedes the 2026-06-15 block):**
+> **▶ REGROUP — 2026-06-18 (start here; supersedes 2026-06-17 below):**
+> Two things settled this session; one big rethink opened.
+>
+> **SETTLED — BUILT SINCE THE 6/17 BLOCK (commit 32420f0):**
+>   • `harness/conductor.py` (729 lines) — the brand-general human-gate orchestrator — is BUILT and
+>     passes its falsifiable self-test 5/5, AGENT-FREE (ran with plain python, no Hermes). It chains
+>     calibrate→derive_register→[analyzer]→scene_author and STOPS at the input + approve gates.
+>   • Axis A render-and-scrub (`closed_loop_composite.place_measured`) + Axis B reference dial
+>     (`reference_style_to_prompt.RUNG_TEMPLATES`) BUILT; self-test 5/5. The reference STYLE analyzer
+>     is now WIRED (conductor injects `aligned_prompt` as `scene_author --aligned-prompt`).
+>   • The conductor RAN end-to-end and produced 2 AIA reference-job signs (run_aia_20260618_121133),
+>     2/2 licensed-compliant.
+>
+> **SETTLED — EYEBALL VERDICT (Alec, 6/18): those 2 signs FAIL human review on 3 counts, ONE root cause:**
+>   (a) headline text far oversized — overflows the die-cut; s2's text runs off the canvas.
+>   (b) scrub damages/covers graphics (text-on-icon collision, s1); measure geometry suspect.
+>   (c) the 2 signs are the SAME sign behind different text — not a varied family.
+>   ROOT CAUSE (one frame): render-and-scrub + dial=extend is structurally a "ONE TEMPLATE, N TEXTS"
+>   machine. (a) text is MEASURED from gpt (which paints it oversized) then reproduced → inherits the
+>   overflow; no fit-to-margin constraint exists. (b) scrubbing gpt's text region damages whatever it
+>   overlapped. (c) feeding ONE reference panel + "extend" tells gpt to CLONE it → every sign identical.
+>   Fixing measure/scrub does NOT bridge this — it is the WRONG FRAME.
+>
+> **BIG RETHINK OPENED (NO code until aligned):** reverse-engineer how a HUMAN goes brief→final and
+>   rebuild the unit of work around it. Working hypothesis (under discussion, NOT yet the plan): a human
+>   designs each sign as a BESPOKE COMPOSITION — icon chosen to MEAN the message + a per-sign layout
+>   that reserves zones + text FITTED into its zone with margin — unified by a shared KIT OF PARTS, NOT
+>   one template cloned. The reference is a STYLE SYSTEM to internalize, not a panel to clone. (Ground
+>   truth confirms it: the AIA 定稿 panels DIFFER from each other.) Full human-process model to be
+>   captured to docs/ once aligned with Alec.
+>
+> **WORKFLOW SHIFT (Alec's 6/18 meta-realization — the real headline):** the project is now a real
+>   codebase and chat-driven development is the bottleneck (context limits, hallucination risk). Move to
+>   SPEC-DRIVEN dev: the REPO is the durable context (specs + this map + tests + CLAUDE.md); Hermes is
+>   the architect/PM; Claude Code (in-repo, fresh context per task) is the engineer; commit often (the
+>   the 1-commit risk below was STALE — there are 4 real commits; the true gaps are coarse
+>   cadence + NO off-machine backup, no remote); modularize so no task needs the whole tree in context.
+>
+> **CONFIG:** Hermes context auto-compress threshold moved 50% → 80% this session.
+
+> **▶ REGROUP — 2026-06-17 (superseded by 2026-06-18 above; kept for lineage):**
 > Alec asked "what works vs what doesn't, and where does the tool end and Hermes begin?"
 > Answer, verified against the code this session (not the status table):
 >
@@ -172,13 +212,16 @@ INPUTS (per brand, supplied once)          INPUTS (per job)
 | F | Font compliance (licensed_exact + manifest) | composite_text | ✅ proven |
 | G | Approval / nudge loop | approve.py | ✅ built (recolor/removal/restore verified) |
 | SPINE | One-command harness (agent-free) | harness/run_harness.py, config/aia.yaml | 🟡 runs, but template-fill ONLY (no D/F), AIA-only, ref stubbed, no saved run folder |
+| CONDUCTOR | Brand-general human-gate orchestrator | harness/conductor.py, test_conductor.py | ✅ built 6/18 + self-test 5/5 (AGENT-FREE); ⚠️ output fails eyeball — see 6/18 regroup |
+| AXIS A | Render-and-scrub placement | closed_loop_composite.place_measured | 🟡 built + self-test 5/5; ❌ FAILS eyeball: text overflow + scrub damages icon (template-swap frame is wrong) |
+| AXIS B | Reference-relationship dial (extend/match_style/mood) | reference_style_to_prompt.RUNG_TEMPLATES | 🟡 built; "extend" CLONES one panel → signs too similar (6/18). Job needed "vary within a system," not clone |
 | — | X-mark handling (分别画叉, signs #4/#5) | cover_redraw X-redraw | 🟡 worked pre-chroma; re-testing in chroma batch |
 | — | Brief-intake LLM (messy text→subfields) | — | 🔴 unbuilt (judgment glue — point 1) |
 | — | Text-localization OCR (place text in PNG) | — | 🔴 unbuilt — the one true blocker to agent-free flat path (point 3) |
-| — | Reference STYLE analyzer (auto, in-pipeline) | reference_style_to_prompt.py | 🟡 BUILT 6/15, NOT WIRED (verified 6/17 grep: island). Image overrides imperfect text read (point 2) |
+| — | Reference STYLE analyzer (auto, in-pipeline) | reference_style_to_prompt.py | ✅ WIRED 6/18 (conductor injects aligned_prompt as scene_author --aligned-prompt). ⚠️ vision-extract non-determinism remains; "extend" rung clones one panel (point c) |
 | A | IP cutout from client source (PSD/PDF/img on white) | psd_to_cutout.py | ✅ BUILT 6/16 — edge-connected bg removal; falsifiable self-test (137 interior comps preserved). ⚠️ leaves ENCLOSED bg pockets; see deferred optimization |
 | — | Server (Vercel frontend + long backend) | — | 🔴 unbuilt (decided: not pure serverless) |
-| — | Version control hygiene | .git | 🔴 RISK: 31 scripts, 1 commit — almost all work uncommitted |
+| — | Version control hygiene | .git | 🟡 4 commits (freeze/backup/conductor/render-scrub) — work IS committed, but cadence coarse + NO remote/off-machine backup (gh not installed) |
 
 ---
 
