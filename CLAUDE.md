@@ -96,3 +96,11 @@ code until the spec is written and aligned.** Details: `docs/ARCHITECTURE.md` §
 - Don't reuse `reanchor()` for render-and-scrub (it centers planned text on free space —
   the opposite of matching gpt's painted geometry).
 - VLM vision extraction is non-deterministic (figure/ground inversion, topic↔register).
+
+<!-- SPECKIT START -->
+## Spec Kit (active workflow)
+Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/speckit-plan`
+(technical plan), `/speckit-tasks` (break into testable tasks), `/speckit-implement` (build
+one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
+`.specify/memory/constitution.md` holds project principles that bind every spec.
+<!-- SPECKIT END -->
