@@ -1,7 +1,7 @@
 {
   "_doc": "Example conductor inputs (the --inputs file). Schema = CONDUCTOR_INPUTS_RECONCILIATION.md. context uses brief_schema_v3 bucket B/D field names verbatim so the conductor writes it straight out as subfields for derive_register. signs[] is per-sign content.",
   "asset_type": "手举牌 hand-held event sign",
-  "reference_image": "/mnt/c/Users/Alecx/Downloads/aia real task.png",
+  "reference_image": "/mnt/c/Users/Alecx/Downloads/cropped ref 2.png",
   "reference_relationship": "template — extend this series (clone look, change message)",
   "context": {
     "usage_context": "held for photos / posed with",
