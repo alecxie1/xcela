@@ -99,14 +99,14 @@ Single project. Pipeline code in `harness/`, reused reconciliation in `register/
 
 ### Tests for User Story 3
 
-- [ ] T014 [P] [US3] Write `test_kit_reserve_box.py` (falsifiable, no paid calls; use `--explain` and a fixture composition.json): assert scene_author kit mode keeps `icon_zone` and `text_zone` disjoint, places the composited headline anchor inside `text_zone`, and takes NO render-and-scrub path (no OCR-erase). MUST FAIL before T015/T016.
+- [X] T014 [P] [US3] Write `test_kit_reserve_box.py` (falsifiable, no paid calls; use `--explain` and a fixture composition.json): assert scene_author kit mode keeps `icon_zone` and `text_zone` disjoint, places the composited headline anchor inside `text_zone`, and takes NO render-and-scrub path (no OCR-erase). MUST FAIL before T015/T016.
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Add kit reserve-box mode to `harness/scene_author.py` (`--kit-profile` + `--composition`): build a generation prompt that paints `panel_treatment` + the chosen icon's `icon_description` INSIDE `icon_zone` and keeps `text_zone` clear; `--explain` prints the resolved source + mode and exits before any model call. Do not use the render-and-scrub or aligned-prompt-clone paths for kit jobs.
-- [ ] T016 [US3] Wire the composite step in `harness/scene_author.py`: after generation, composite the licensed headline into `text_zone` at `fitted_type.final_size_px` (reuse `composite_text.composite` + the T013 fit clamp), emit the compliance manifest, and set per-sign `needs_review` from the composition. `test_kit_reserve_box.py` passes.
-- [ ] T016a [US3] Add a compliance-manifest assertion to `test_kit_reserve_box.py` (FR-006 / SC-005, non-negotiable): composite the headline onto a LOCAL fixture PNG (no paid generation) on the kit path and assert `final.png.compliance.json` is emitted with every headline layer resolved to a licensed font (`resolution` != `MISSING`/`fallback_system`). This proves the licensed-font guarantee survives the kit reroute.
-- [ ] T017 [US3] Route `harness/conductor.py` execute (non-dry-run) for kit jobs to scene_author kit mode (bypass the aligned-prompt clone for kit jobs); record per-sign generation + needs_review in `conductor_manifest.json`.
+- [X] T015 [US3] Add kit reserve-box mode to `harness/scene_author.py` (`--kit-profile` + `--composition`): build a generation prompt that paints `panel_treatment` + the chosen icon's `icon_description` INSIDE `icon_zone` and keeps `text_zone` clear; `--explain` prints the resolved source + mode and exits before any model call. Do not use the render-and-scrub or aligned-prompt-clone paths for kit jobs.
+- [X] T016 [US3] Wire the composite step in `harness/scene_author.py`: after generation, composite the licensed headline into `text_zone` at `fitted_type.final_size_px` (reuse `composite_text.composite` + the T013 fit clamp), emit the compliance manifest, and set per-sign `needs_review` from the composition. `test_kit_reserve_box.py` passes.
+- [X] T016a [US3] Add a compliance-manifest assertion to `test_kit_reserve_box.py` (FR-006 / SC-005, non-negotiable): composite the headline onto a LOCAL fixture PNG (no paid generation) on the kit path and assert `final.png.compliance.json` is emitted with every headline layer resolved to a licensed font (`resolution` != `MISSING`/`fallback_system`). This proves the licensed-font guarantee survives the kit reroute.
+- [X] T017 [US3] Route `harness/conductor.py` execute (non-dry-run) for kit jobs to scene_author kit mode (bypass the aligned-prompt clone for kit jobs); record per-sign generation + needs_review in `conductor_manifest.json`.
 
 **Checkpoint**: All three failures are addressed structurally (a: fit clamp; b: disjoint zones, no scrub; c: distinct per-message selection). Ready for the paid eye gate.
 

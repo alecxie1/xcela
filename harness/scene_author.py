@@ -13,6 +13,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path.home() / ".hermes" / ".env", override=True)
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import kit as kitlib  # noqa: E402  (stdlib-only kit loader; used by the kit reserve-box mode)
+
 TIER2_INTENT = {
     "subject": "new limited-edition garden fresh tomato cheeseburger",
     "asset_type": "wide horizontal poster",
@@ -852,6 +855,191 @@ def _lines_fallback_spec(lines: list[str], brand: str, weight_hint: str,
     } for i, line in enumerate(lines)]
 
 
+# --------------------------------------------------------------------------- #
+# Kit reserve-box mode (feature 001, US3). Paint panel + chosen icon in the icon
+# zone, keep the text zone CLEAR, then composite the fitted licensed headline into
+# it. Zones are disjoint by construction (kit schema rule 6), so no scrub is needed
+# and the icon is never overpainted. Composition OWNS the zone (US2 fit clamp sizes
+# type to it). No render-and-scrub, no clone (D4/D5).
+# --------------------------------------------------------------------------- #
+
+def _find(seq, key, val):
+    return next((x for x in (seq or []) if x.get(key) == val), None)
+
+
+def _zone_words(zone: dict) -> str:
+    if not zone:
+        return "center"
+    cx = zone["x_frac"] + zone["w_frac"] / 2
+    cy = zone["y_frac"] + zone["h_frac"] / 2
+    vert = "upper" if cy < 0.38 else ("lower" if cy > 0.62 else "middle")
+    horiz = "left" if cx < 0.38 else ("right" if cx > 0.62 else "center")
+    return f"{vert}-{horiz}"
+
+
+def _kit_headline_color(kit_profile: dict, archetype: dict) -> str:
+    """White headline on a solid/crimson field; brand-primary headline on a white panel."""
+    pal = {c.get("role"): c.get("hex") for c in (kit_profile.get("palette") or [])}
+    treat = (archetype or {}).get("panel_treatment", "").lower()
+    if "white panel" in treat:
+        return pal.get("primary") or "#D31145"
+    return pal.get("background") or "#FFFFFF"
+
+
+def assemble_kit_prompt(kit: dict, kit_profile: dict, composition: dict) -> str:
+    """Deterministic generation prompt for the kit route: paint the archetype panel + the chosen
+    icon in the icon zone, and keep the reserved text zone CLEAR (the headline is composited
+    later with the licensed font). No headline characters are requested in the image."""
+    arch = _find(kit.get("layout_vocabulary"), "id", composition.get("chosen_archetype")) or {}
+    icon = _find(kit.get("icon_vocabulary"), "id", composition.get("chosen_icon"))
+    icon_desc = ((icon or {}).get("icon_description")
+                 or composition.get("human_hero_icon")
+                 or "a simple kit-consistent emblem")
+    iz = arch.get("icon_zone") or {}
+    tz = composition.get("text_zone") or arch.get("text_zone") or {}
+    pal = ", ".join(f"{c.get('role')} {c.get('hex')}" for c in (kit_profile.get("palette") or []))
+    accents = ", ".join(kit_profile.get("accent_vocabulary") or [])
+    frame = kit_profile.get("frame_treatment") or ""
+    lines = [
+        "Create ONE die-cut hand-held event sign as a FLAT VECTOR GRAPHIC (not a photo, not 3D, "
+        "no camera/lens/depth-of-field language): a single discrete object centered on a plain, "
+        "uniform neutral background.",
+        f"PANEL / LAYOUT: {arch.get('panel_treatment', '')}.",
+        f"BRAND PALETTE (use these exact colors): {pal}.",
+    ]
+    if frame:
+        lines.append(f"FRAME / EDGE TREATMENT: {frame}.")
+    if accents:
+        lines.append(f"ACCENT VOCABULARY (use sparingly, on-brand): {accents}.")
+    lines.append(
+        f"HERO ICON: {icon_desc}. Place it in the {_zone_words(iz)} region "
+        f"(about x {iz.get('x_frac')} to {round(iz.get('x_frac', 0) + iz.get('w_frac', 0), 2)}, "
+        f"y {iz.get('y_frac')} to {round(iz.get('y_frac', 0) + iz.get('h_frac', 0), 2)} of the canvas).")
+    lines.append(
+        f"RESERVED TEXT ZONE: keep the {_zone_words(tz)} region COMPLETELY CLEAR. Render NO text, "
+        "NO characters, NO lettering anywhere on the sign; the headline is added afterward by "
+        "compositing the licensed font. Leave that band empty.")
+    if "logo:omit" in (kit_profile.get("locks_flexed") or []):
+        lines.append("Do NOT render any logo or wordmark.")
+    lines.append("NEGATIVES: no photographic shading, no 3D realism, no gibberish text, no "
+                 "watermark, no characters of any language anywhere on the sign.")
+    return "\n".join(lines)
+
+
+def compose_kit_headline(kit: dict, kit_profile: dict, composition: dict, brand: str,
+                         generated_png: str, out_png: str, canvas_wh=CANVAS) -> dict:
+    """Fit the headline to the reserved zone (US2 clamp) and composite the licensed font into it.
+    Returns {status, fit, final}. status 'unfit' is an honest null (no clipped render)."""
+    from composite_text import resolve_font, fit_text_in_zone_frac, composite as _composite
+    lines = [s for s in (composition.get("message") or []) if s]
+    zone = composition.get("text_zone")
+    if not zone or not lines:
+        return {"status": "no_text", "fit": None, "final": None}
+    arch = _find(kit.get("layout_vocabulary"), "id", composition.get("chosen_archetype")) or {}
+    base = {"font_role": "chinese_primary", "brand": brand,
+            "weight_hint": f"{kit_profile.get('font_family', '')} "
+                           f"{kit_profile.get('font_index_key') or ''}".strip()}
+    font_path, _m = resolve_font(base)
+    fit = fit_text_in_zone_frac(lines, zone, canvas_wh, font_path)
+    if not fit["fits"]:
+        return {"status": "unfit", "fit": fit, "final": None}
+    box = fit["rendered_box_frac"]
+    n = len(lines)
+    line_h = box["h_frac"] / n
+    cx = zone["x_frac"] + zone["w_frac"] / 2
+    color = _kit_headline_color(kit_profile, arch)
+    spec = []
+    for i, line in enumerate(lines):
+        cy = box["y_frac"] + (i + 0.5) * line_h
+        spec.append({**base, "content": line, "size_px": fit["final_size_px"],
+                     "anchor_frac": [cx, cy], "anchor": "mm", "color": color})
+    spec_path = Path(out_png).parent / "composite_spec.json"
+    spec_path.parent.mkdir(parents=True, exist_ok=True)
+    spec_path.write_text(json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8")
+    final = _composite(generated_png, str(spec_path), out_png)
+    return {"status": "placed", "fit": fit, "final": str(final), "spec": spec, "color": color}
+
+
+def run_kit_mode(args) -> None:
+    out_dir = Path(args.out)
+    kit = kitlib.load_kit(args.brand)
+    kit_profile = (json.loads(Path(args.kit_profile).read_text(encoding="utf-8"))
+                   if args.kit_profile and Path(args.kit_profile).exists() else {})
+    composition = json.loads(Path(args.composition).read_text(encoding="utf-8"))
+    arch = _find(kit.get("layout_vocabulary"), "id", composition.get("chosen_archetype")) or {}
+    iz = arch.get("icon_zone")
+    tz = composition.get("text_zone") or arch.get("text_zone")
+
+    if args.explain:
+        disjoint = bool(iz and tz and not kitlib._zones_overlap(iz, tz))
+        print(json.dumps({
+            "mode": "kit_reserve_box",
+            "generation_prompt_source": "assemble_kit_prompt",
+            "uses_tier3": False,
+            "headline_rendered_in_image": False,
+            "composite": "kit_reserve_box",
+            "chosen_icon": composition.get("chosen_icon"),
+            "chosen_archetype": composition.get("chosen_archetype"),
+            "icon_zone": iz, "text_zone": tz,
+            "icon_text_zones_disjoint": disjoint,
+            "needs_review": composition.get("needs_review"),
+            "asset_profile": args.asset_profile,
+        }, ensure_ascii=False, indent=2))
+        return
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    brand_key = load_brand(args.brand)
+    print("=== KIT MODE: bespoke per-message composition ===")
+    print(f"  icon={composition.get('chosen_icon')} archetype={composition.get('chosen_archetype')} "
+          f"needs_review={composition.get('needs_review')}")
+    prompt = assemble_kit_prompt(kit, kit_profile, composition)
+    (out_dir / "final_prompt.txt").write_text(prompt, encoding="utf-8")
+
+    print("\n=== Step 4: Generate panel + icon via gpt-image-2 (text zone left clear) ===")
+    sys.path.insert(0, str(Path(__file__).parent))
+    from generate import generate_variant
+    out_png = str(out_dir / "generated.png")
+    logo_path = brand_key.get("logo_path", LOGO_PATH)
+    gen_meta = generate_variant(prompt, [logo_path], out_png, size="1536x1024", quality="high")
+
+    print("\n=== Step 5: Composite the fitted licensed headline into the reserved zone ===")
+    rec = compose_kit_headline(kit, kit_profile, composition, args.brand, out_png,
+                               str(out_dir / "final.png"))
+    needs_review = bool(composition.get("needs_review"))
+    review_reason = composition.get("needs_review_reason")
+    if rec["status"] == "unfit":
+        needs_review = True
+        review_reason = ((review_reason + "; " if review_reason else "")
+                         + "headline does not fit the reserved text zone at min size (honest null)")
+        print(f"  [needs_review] {review_reason}", file=sys.stderr)
+
+    manifest_run = {
+        "brand": args.brand,
+        "asset_profile": args.asset_profile,
+        "mode": "kit_reserve_box",
+        "kit_profile": args.kit_profile or None,
+        "composition": {"chosen_icon": composition.get("chosen_icon"),
+                        "chosen_archetype": composition.get("chosen_archetype"),
+                        "archetype_reused": composition.get("archetype_reused")},
+        "fit": rec.get("fit"),
+        "composite_status": rec["status"],
+        "generation": gen_meta,
+        "needs_review": needs_review,
+        "needs_review_reason": review_reason,
+    }
+    (out_dir / "run_manifest.json").write_text(
+        json.dumps(manifest_run, ensure_ascii=False, indent=2), encoding="utf-8")
+    final_png = rec.get("final")
+    if final_png and Path(final_png).exists():
+        print(f"  Saved {final_png}")
+    print("\n=== OUTPUTS (kit mode) ===")
+    print(f"  generated.png : {Path(out_png).stat().st_size:>8,} bytes")
+    if final_png and Path(final_png).exists():
+        print(f"  final.png     : {Path(final_png).stat().st_size:>8,} bytes")
+    if needs_review:
+        print(f"  needs_review  : TRUE — {review_reason}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--brand", default="taichi")
@@ -895,10 +1083,22 @@ def main():
                         "composite at the detected FREE-SPACE center. DEFAULT (flag absent) is "
                         "render-and-scrub: gpt renders the headline and the licensed font is "
                         "placed at gpt's MEASURED geometry. For A/B + rollback.")
+    parser.add_argument("--kit-profile", default="",
+                        help="KIT JOB: path to kit_profile.json (harness/kit.py output). With "
+                        "--composition, switches to kit reserve-box composition mode.")
+    parser.add_argument("--composition", default="",
+                        help="KIT JOB: path to this sign's composition.json (compose_select output). "
+                        "Triggers kit reserve-box mode: paint panel + chosen icon, keep the text "
+                        "zone clear, then composite the fitted licensed headline into it.")
     parser.add_argument("--explain", action="store_true",
                         help="Print the resolved generation-prompt SOURCE + mode + chroma as "
                         "JSON and EXIT before any model call (free structural test surface).")
     args = parser.parse_args()
+
+    # --- Kit reserve-box mode (feature 001, US3): a fully separate route. ---
+    if args.composition:
+        run_kit_mode(args)
+        return
 
     must_include = [s.strip() for s in args.must_include.split(";") if s.strip()] or None
     style_notes = [s.strip() for s in args.style_notes.split(";") if s.strip()] or None

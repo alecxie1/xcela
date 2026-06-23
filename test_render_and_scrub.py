@@ -112,8 +112,11 @@ def check1_dial_selects_wording():
 
 
 def check2_aligned_prompt_injected():
-    # (a) the conductor PLAN injects the aligned prompt for a reference job
-    plan = conductor_plan(_inputs(reference="/tmp/ref.png", relationship="extend"))
+    # (a) the conductor PLAN injects the aligned prompt for a reference job.
+    # NOTE (feature 001): the aligned-prompt route is the LEGACY path, now used only for brands
+    # WITHOUT an authored kit (a kit brand routes through bespoke composition instead, see
+    # test_conductor check3). taichi has no kit, so it still exercises the legacy aligned-prompt route.
+    plan = conductor_plan(_inputs(reference="/tmp/ref.png", relationship="extend", brand="taichi"))
     sa = scene_author_steps(plan)[0]["argv"]
     plan_injects = "--aligned-prompt" in sa
     # (b) scene_author actually USES it as the generation prompt (source), tier-3 skipped
@@ -160,7 +163,9 @@ def check3_render_and_scrub_universal():
 
 
 def check4_no_ref_planned_end_to_end():
-    plan = conductor_plan(_inputs(reference=None))
+    # The no-reference render-and-scrub conductor route is the LEGACY path (feature 001), now used
+    # only for brands WITHOUT a kit. taichi has no kit, so it still plans register + render-and-scrub.
+    plan = conductor_plan(_inputs(reference=None, brand="taichi"))
     labels = [s["label"] for s in plan["steps"]]
     sa = scene_author_steps(plan)[0]["argv"]
     ex = scene_author_explain(["--chroma-contain"])
