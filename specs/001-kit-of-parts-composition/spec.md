@@ -40,6 +40,15 @@ The load-bearing insight: **the kit is the constant, the composition is the vari
 human internalizes a STYLE SYSTEM and composes each sign fresh from its message. The
 reference image is a style system to INTERNALIZE, not a panel to CLONE.
 
+## Clarifications
+
+### Session 2026-06-22
+
+- Q: How is the per-message meaning→icon choice made, and who owns the vocabulary? → A: The human authors a meaning→icon vocabulary ONCE per brand (that vocabulary IS part of the kit, stored as brand data, never hardcoded). Per message the tool proposes ONE icon by DETERMINISTICALLY matching the message's meaning against that fixed vocabulary (not an open-ended generative guess); the human approves or overrides at the existing approve/nudge taste gate. When no confident match exists, the tool honest-nulls and asks the human to pick, never guessing silently.
+- Q: When the style reference and the brand answer key disagree on a kit element, which governs? → A: The answer key always wins on any disagreement. The reference is still internalized into the kit for dimensions where there is no conflict, but the answer key governs every contested element.
+- Q: When a message's meaning maps to no icon in the kit, what should happen? → A: Emit an honest null with a note and flag needs_review so the human picks the icon (never auto-substitute, never silently drop the icon role).
+- Q: When there are more messages than the kit has distinct layouts, what should happen? → A: The kit holds MULTIPLE distinct layout archetypes (a layout vocabulary). Per message the tool deterministically selects an archetype and, on a collision, picks a different archetype from the kit. Only when the layout vocabulary is genuinely exhausted does it reuse one, and then it flags the reused signs as needs_review for the human to differentiate. No hard cap. The tool does NOT auto-jitter compositions; that slight creative variation is the human finishing layer applied at approve/canvas.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Each sign is a distinct composition, not a re-texted clone (Priority: P1)
@@ -99,10 +108,13 @@ intact and text does not overlap it. [Human-eye gate.]
 
 ### Edge Cases
 
-- A message whose meaning does not map to any known icon in the kit → [NEEDS CLARIFICATION:
-  fall back to a generic kit icon, or flag needs_review for the human to pick?]
-- More messages than the kit has distinct layouts → [NEEDS CLARIFICATION: reuse layouts, or
-  cap and flag?]
+- A message whose meaning does not map to any known icon in the kit → emit an honest null
+  with a note and flag needs_review for the human to pick the icon. Never auto-substitute a
+  generic icon and never silently drop the icon role.
+- More messages than the kit has distinct layout archetypes → the tool reuses an archetype
+  only after the layout vocabulary is genuinely exhausted, and flags every reused sign as
+  needs_review so the human differentiates them. No hard cap; the tool does not auto-vary the
+  reused composition (that is the human finishing layer).
 - A reference that is NOT a clean single-panel style exemplar → out of scope; the human
   supplies a usable reference (constitution §I, human at the input gate).
 
@@ -113,10 +125,17 @@ intact and text does not overlap it. [Human-eye gate.]
 - **FR-001**: The system MUST derive a reusable KIT OF PARTS (palette, border/frame
   treatment, font, accent vocabulary) from the brand answer key + the style reference, ONCE
   per campaign, shared across all signs.
-- **FR-002**: For each message, the system MUST select a hero icon driven by the message's
-  MEANING, not a fixed default.
-- **FR-003**: For each message, the system MUST select/compose a layout appropriate to the
-  message's rhetorical mode, such that signs in one campaign differ in composition.
+- **FR-002**: For each message, the system MUST propose a hero icon by DETERMINISTICALLY
+  matching the message's MEANING against the kit's human-authored meaning→icon vocabulary
+  (not an open-ended generative guess, not a fixed default). The human approves or overrides
+  the proposal at the taste gate. When no confident match exists, the system MUST honest-null
+  and flag needs_review rather than guess.
+- **FR-003**: The kit MUST hold MULTIPLE distinct layout archetypes (a layout vocabulary).
+  For each message the system MUST deterministically select an archetype appropriate to the
+  message's rhetorical mode, picking a different archetype when two messages would collide,
+  so signs in one campaign differ in composition. The system reuses an archetype only after
+  the vocabulary is exhausted and then flags the reused signs as needs_review. The system MUST
+  NOT auto-jitter compositions; slight creative variation is the human finishing layer.
 - **FR-004**: The system MUST reserve a text zone as part of the composition and FIT the
   headline into that zone with margin, scaling type down as needed.
 - **FR-005**: The system MUST keep text and graphics in non-colliding zones (no reliance on
@@ -125,8 +144,9 @@ intact and text does not overlap it. [Human-eye gate.]
   compliance manifest, honest nulls + needs_review, human approve/nudge gate, no em-dashes
   in user-facing text.
 - **FR-007**: The reference image MUST be treated as a style system to internalize (feeds
-  the kit), NOT a panel to clone. [NEEDS CLARIFICATION: how much of the kit comes from the
-  reference vs the answer key when they disagree?]
+  the kit), NOT a panel to clone. The reference feeds kit dimensions where it does not
+  conflict with the brand answer key, but on ANY disagreement the answer key always wins
+  (the answer key governs every contested kit element).
 - **FR-008**: The system MUST NOT bake AIA-specific literals (icons, colors, layouts) into
   shared/brand-general code; AIA specifics live in data (answer key / kit definition).
 
@@ -137,8 +157,12 @@ intact and text does not overlap it. [Human-eye gate.]
 - **Message → Composition**: per-sign. Inputs: the message text + its meaning/mode. Outputs:
   chosen icon, chosen layout, a reserved text zone, fitted type spec.
 - **Icon vocabulary**: the set of meaning→icon mappings available in the kit (money bag,
-  megaphone, shield, eyes, fist, ...). [NEEDS CLARIFICATION: authored by human, or proposed
-  by a semantic step the human approves?]
+  megaphone, shield, eyes, fist, ...). Authored ONCE per brand by the human and stored as
+  brand data (never hardcoded). The tool reads it to deterministically PROPOSE a per-message
+  icon; the human approves/overrides at the taste gate.
+- **Layout vocabulary**: the set of distinct layout archetypes the kit holds (e.g. white
+  panel + red text for warn, warm solid crimson for protect). The tool deterministically
+  selects one archetype per message, avoiding collisions until the vocabulary is exhausted.
 
 ## Success Criteria *(mandatory)*
 
@@ -168,6 +192,6 @@ intact and text does not overlap it. [Human-eye gate.]
   path already authors per-sign compositions — the reframe likely ROUTES family jobs through
   composition + a kit, rather than building all-new capability. The plan step must verify
   this reuse against the actual code before proposing new modules.
-- The deepest open question is the icon-selection-by-meaning step: how the meaning→icon
-  choice is made and how much the human approves vs the tool proposes. Flagged for
-  `/speckit-clarify`.
+- The icon-selection-by-meaning step is now specified (see Clarifications 2026-06-22): a
+  human-authored meaning→icon vocabulary in brand data, deterministic per-message proposal by
+  the tool, human approval/override at the taste gate, honest-null when no confident match.
