@@ -44,14 +44,19 @@ image sets MAGNITUDE (how far, via blind vision score). See `docs/ARCHITECTURE.m
   cutout.png. Full table in `docs/ARCHITECTURE.md` §3.
 
 ## Where things live (one-liner each; full map in docs/ARCHITECTURE.md §5)
-- `harness/conductor.py` — the human-gate ORCHESTRATOR (top of the tree, stdlib-only).
-- `harness/scene_author.py` — the single-sign engine (tier-3 author OR aligned-prompt).
+- `harness/conductor.py` — the human-gate ORCHESTRATOR (top of the tree, stdlib-only; routes
+  kit brands through the kit path, kit-less brands through the legacy render-and-scrub path).
+- `harness/scene_author.py` — the single-sign engine (tier-3 author OR aligned-prompt OR
+  kit reserve-box mode via `--kit-profile` + `--composition`).
+- `harness/kit.py` — KIT loader/validator (stdlib) + derived `kit_profile` (answer key wins).
+- `harness/compose_select.py` — deterministic meaning→icon + collision-avoiding archetype pick.
 - `harness/closed_loop_composite.py` — PLACEMENT (place_measured + legacy closed_loop).
 - `harness/measure_canvas.py` — the SENSOR (OCR + container geometry).
-- `harness/composite_text.py` — licensed-font COMPOSITOR + compliance manifest.
+- `harness/composite_text.py` — licensed-font COMPOSITOR + compliance manifest + fit-to-zone clamp.
 - `register/` — reconciliation engine (derive_register = direction, calibrate = magnitude,
   reference_style_to_prompt = the analyzer + dial).
 - `answer_keys/<brand>.json` — brand DNA. `config/<brand>.yaml` — thin-spine config.
+  `kits/<brand>.json` — human-authored Kit of Parts (icon + layout vocabularies; committed DATA).
 - `brands/ output/ .env` — GITIGNORED (licensed fonts, client IP, secrets, big PNGs).
 
 ## Toolchain
@@ -81,17 +86,20 @@ generation inside a self-test.** A green self-test ≠ correct output; only the 
 - Keep this file + SYSTEM_MAP current in the SAME commit that makes them stale. A stale
   brief actively misleads the next session.
 
-## Current frame + known failure (live state in SYSTEM_MAP §6/18 regroup)
-The 6/18 reference run passes self-tests + font compliance but FAILS the eye: (a) text
-oversized/overflowing, (b) scrub damages graphics, (c) the two signs are identical behind
-different text. ONE root cause: render-and-scrub + dial=`extend` is a "ONE TEMPLATE, N
-TEXTS" machine. Fixing measure/scrub does NOT bridge this — it's the wrong frame.
-**Target frame (AIA, agreed):** "kit of parts + bespoke per-message composition." The
-reference is a STYLE SYSTEM to internalize, not a panel to clone. **Not yet built — no
-code until the spec is written and aligned.** Details: `docs/ARCHITECTURE.md` §9.
+## Current frame (live state in SYSTEM_MAP §6/23 regroup)
+The "kit of parts + bespoke per-message composition" reframe (feature
+`001-kit-of-parts-composition`) is BUILT through US3 and passes its falsifiable structural
+self-tests. It replaces the 6/18 "ONE TEMPLATE, N TEXTS" machine FOR KIT BRANDS: each sign
+gets a meaning-driven icon + a distinct layout archetype, the reserved text zone is disjoint
+from the icon zone (no scrub), and type is fit-clamped to its zone. The reference is
+internalized into the kit, not cloned. Kit-less brands keep the legacy render-and-scrub path.
+**Still pending: T020, the ONE paid run judged by the human eye** (structure green ≠ pixels
+correct). Spec/plan/tasks: `specs/001-kit-of-parts-composition/`. Details: `docs/ARCHITECTURE.md` §9.
 
 ## Top pitfalls (full list in docs/ARCHITECTURE.md §11)
-- `place_measured` inherits gpt's text size — no fit-to-margin clamp yet (failure (a)).
+- Legacy `place_measured` inherits gpt's text size (failure (a)); the KIT path instead uses
+  `composite_text.fit_text_to_zone` (type sized DOWN to the reserved zone, honest-null if it
+  cannot fit). Use the kit path for kit brands; the clamp is the generalizing fix.
 - `measure`'s legacy HSV path is fragile; the chroma path is the proven one.
 - Don't reuse `reanchor()` for render-and-scrub (it centers planned text on free space —
   the opposite of matching gpt's painted geometry).
@@ -103,4 +111,8 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 (technical plan), `/speckit-tasks` (break into testable tasks), `/speckit-implement` (build
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
+
+**Active feature:** `001-kit-of-parts-composition` — plan at
+`specs/001-kit-of-parts-composition/plan.md` (spec, research, data-model, contracts/, quickstart
+alongside it). Next: `/speckit-tasks`.
 <!-- SPECKIT END -->

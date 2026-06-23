@@ -116,8 +116,8 @@ Single project. Pipeline code in `harness/`, reused reconciliation in `register/
 
 **Purpose**: Update durable context, run the free surfaces, then the one paid eye-judged run.
 
-- [ ] T018 [P] Update `SYSTEM_MAP.md` (kit-of-parts frame BUILT; retire the 6/18 clone-failure live note) and `CLAUDE.md` (mark the fit-to-zone clamp as existing; update the "no fit-to-margin clamp" pitfall) in the same commit that makes them stale (§VII).
-- [ ] T019 [P] Run `quickstart.md` steps 1-4 (test_kit, test_compose_select, test_fit_to_zone, test_kit_reserve_box, conductor dry-run + test_conductor) and confirm all free structural surfaces are green, INCLUDING the SC-005 non-negotiables check (compliance manifest emits on the kit path per T016a; needs_review threaded into the manifest; no em-dashes in any user-facing string).
+- [X] T018 [P] Update `SYSTEM_MAP.md` (kit-of-parts frame BUILT; retire the 6/18 clone-failure live note) and `CLAUDE.md` (mark the fit-to-zone clamp as existing; update the "no fit-to-margin clamp" pitfall) in the same commit that makes them stale (§VII).
+- [X] T019 [P] Run `quickstart.md` steps 1-4 (test_kit, test_compose_select, test_fit_to_zone, test_kit_reserve_box, conductor dry-run + test_conductor) and confirm all free structural surfaces are green, INCLUDING the SC-005 non-negotiables check (compliance manifest emits on the kit path per T016a; needs_review threaded into the manifest; no em-dashes in any user-facing string).
 - [ ] T020 The ONE paid run: `.venv/bin/python harness/conductor.py --brand aia --inputs conductor_inputs_example.json`; judge `output/run_*/sign_*/final.png` by the HUMAN EYE against `desiredresultaia.jpg` for SC-001..005 (distinct compositions, text fits with margin, icons intact, distinct-yet-cohesive family, compliance + honest nulls hold). Record the verdict in `SYSTEM_MAP.md`.
 
 ---

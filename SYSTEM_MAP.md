@@ -1,7 +1,37 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-18._
+_Single source of truth for "what is this whole thing." Updated 2026-06-23._
 
-> **▶ REGROUP — 2026-06-18 (start here; supersedes 2026-06-17 below):**
+> **▶ REGROUP — 2026-06-23 (start here; supersedes the 6/18 "BIG RETHINK" below — it is now BUILT):**
+> The kit-of-parts reframe (Spec Kit feature `001-kit-of-parts-composition`) is BUILT through US3 and
+> passes its falsifiable structural self-tests. The 6/18 "ONE TEMPLATE, N TEXTS" failure is addressed
+> at the FRAME level, not patched.
+>
+> **BUILT (structure green; pixels still need the paid eye gate, T020):**
+>   • `kits/aia.json` — human-authored Kit of Parts (meaning→icon vocabulary + layout-archetype
+>     vocabulary), brand DATA, the ONLY place AIA composition literals live.
+>   • `harness/kit.py` — stdlib loader/validator (7 schema rules, honest KitError) + derived
+>     `kit_profile.json` (answer key wins every conflict). `test_kit.py` 6/6.
+>   • `harness/compose_select.py` — deterministic meaning→icon (pinned cue-count rule, honest-null on
+>     zero-cut/ambiguous-tie) + collision-avoiding archetype selection (reuse+flag). `test_compose_select.py` 5/5.
+>   • `composite_text.fit_text_to_zone` — fit-to-zone clamp: type sized DOWN to the reserved zone with
+>     margin, honest-null if it cannot fit (fixes failure (a)). `test_fit_to_zone.py` 4/4.
+>   • `scene_author` kit reserve-box mode — paints panel + chosen icon in the icon zone, keeps the text
+>     zone CLEAR, composites the fitted licensed headline into it (no scrub → fixes (b); distinct
+>     icon+layout per message → fixes (c)). `test_kit_reserve_box.py` 3/3 (incl. compliance-all-licensed).
+>   • `conductor.py` — data-driven routing: a brand WITH a kit takes the kit route (reference feeds the
+>     kit, never clones); a brand WITHOUT a kit keeps the legacy render-and-scrub/aligned-prompt route.
+>     `test_conductor.py` 5/5; `test_render_and_scrub.py` 5/5 (legacy checks pointed at the kit-less brand).
+>
+> **HOW THE 6/18 FAILURE IS ADDRESSED (frame, not patch):** (a) fit-to-zone clamp = a real
+>   fit-within-container constraint (generalizes). (b) icon_zone and text_zone are DISJOINT by kit-schema
+>   construction, so no scrub step exists to damage graphics. (c) each sign deterministically gets a
+>   meaning-driven icon + a distinct layout archetype; the reference is internalized into the kit, not cloned.
+>
+> **NOT YET DONE:** T020 — the ONE paid run (`conductor.py --brand aia --inputs conductor_inputs_example.json`)
+>   judged by the HUMAN EYE against `desiredresultaia.jpg` (SC-001..005). Structure is green; only the eye
+>   validates the pixels (constitution §II). Spec/plan/tasks: `specs/001-kit-of-parts-composition/`.
+
+> **▶ REGROUP — 2026-06-18 (superseded by 2026-06-23 above; the BIG RETHINK is now BUILT):**
 > Two things settled this session; one big rethink opened.
 >
 > **SETTLED — BUILT SINCE THE 6/17 BLOCK (commit 32420f0):**
