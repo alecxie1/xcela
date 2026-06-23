@@ -94,43 +94,59 @@ def check1_brand_generality():
 
 
 def check2_inputs_drive_output():
+    # Kit route (aia has a kit): different human messages must produce DIFFERENT bespoke
+    # compositions (icon AND layout), not one re-texted template. A template machine fails this.
     plan_x = dry_run("aia", make_inputs([["守住钱袋子", "护好幸福家"]]))
     plan_y = dry_run("aia", make_inputs([["远离非法金融", "抵制高息诱惑"]]))
-    mi_x = flag_value(scene_author_steps(plan_x)[0]["argv"], "--must-include")
-    mi_y = flag_value(scene_author_steps(plan_y)[0]["argv"], "--must-include")
-    passed = (mi_x == "守住钱袋子;护好幸福家" and mi_y == "远离非法金融;抵制高息诱惑" and mi_x != mi_y)
-    detail = f"inputs A --must-include={mi_x!r}; inputs B --must-include={mi_y!r}; differ={mi_x != mi_y}"
+    cx = plan_x["compositions"][0]
+    cy = plan_y["compositions"][0]
+    passed = (bool(cx["chosen_icon"]) and bool(cy["chosen_icon"])
+              and cx["chosen_icon"] != cy["chosen_icon"]
+              and bool(cx["chosen_archetype"]) and bool(cy["chosen_archetype"]))
+    detail = (f"inputs A -> icon={cx['chosen_icon']}/arch={cx['chosen_archetype']}; "
+              f"inputs B -> icon={cy['chosen_icon']}/arch={cy['chosen_archetype']}; "
+              f"icons differ={cx['chosen_icon'] != cy['chosen_icon']}")
     return passed, detail
 
 
 def check3_primitive_sequence():
-    # reference present (path need not exist for a dry run) -> calibrate + analyzer appear.
-    # REFERENCE job argv (post render-and-scrub change): scene_author carries --aligned-prompt
-    # + --ref-image and DROPS --chroma-contain (chroma is disabled for ref jobs); the analyzer
-    # carries the --relationship dial.
-    plan = dry_run("aia", make_inputs([["守住钱袋子", "护好幸福家"]], reference="/tmp/style_ref.png"))
+    # AIA has a kit -> KIT ROUTE: calibrate + derive_register -> kit -> scene_author (kit mode).
+    # No analyzer/aligned-prompt: the reference feeds the kit, it does NOT clone a prompt (D6).
+    # Two distinct-mode signs get DISTINCT archetypes. taichi has NO kit -> LEGACY route
+    # (analyzer + aligned-prompt, no kit step), proving the routing is data-driven (kit presence),
+    # not hardcoded per brand.
+    plan = dry_run("aia", make_inputs([["守住钱袋子", "护好幸福家"], ["远离非法金融", "抵制高息诱惑"]],
+                                      reference="/tmp/style_ref.png"))
     labels = [s["label"] for s in plan["steps"]]
-    sa = scene_author_steps(plan)[0]["argv"]
-    analyzer = [s for s in plan["steps"] if s["label"] == "analyzer"][0]["argv"]
+    sa0 = scene_author_steps(plan)[0]["argv"]
     plan_text = json.dumps(plan, ensure_ascii=False)
 
     first_sa = labels.index("scene_author")
-    register_before = labels.index("calibrate") < first_sa and labels.index("derive_register") < first_sa
-    analyzer_before_sa = labels.index("analyzer") == first_sa - 1
-    sa_flags_ok = (all(tok in sa for tok in ("flat_graphic", "--register-profile",
-                                             "--must-include", "--ref-image", "--aligned-prompt"))
-                   and "--chroma-contain" not in sa)   # ref job: chroma disabled
-    analyzer_has_dial = "--relationship" in analyzer
-    delegates = ("harness/scene_author.py" in plan_text
-                 and "register/derive_register.py" in plan_text)
+    register_before = labels.index("derive_register") < first_sa
+    kit_before_sa = "kit" in labels and labels.index("kit") < first_sa
+    kit_flags_ok = (all(tok in sa0 for tok in ("flat_graphic", "--kit-profile", "--composition"))
+                    and "--aligned-prompt" not in sa0 and "--must-include" not in sa0)
+    archs = [c["chosen_archetype"] for c in plan["compositions"]]
+    distinct_archetypes = len(archs) == 2 and archs[0] and archs[1] and archs[0] != archs[1]
+    no_analyzer_in_kit = "analyzer" not in labels
+    delegates = all(name in plan_text for name in
+                    ("harness/scene_author.py", "register/derive_register.py", "harness/kit.py"))
     no_reimpl = not any(tok in CONDUCTOR_SRC for tok in ("images.edit", "gpt-image-2", "b64decode"))
-    passed = (register_before and analyzer_before_sa and sa_flags_ok and analyzer_has_dial
-              and delegates and no_reimpl)
-    detail = (f"order={labels}; register-before-sign={register_before}; "
-              f"analyzer-immediately-before-scene_author={analyzer_before_sa}; "
-              f"ref scene_author flags ok (aligned-prompt yes, chroma-contain no)={sa_flags_ok}; "
-              f"analyzer carries --relationship={analyzer_has_dial}; delegates by name={delegates}; "
-              f"no generation reimplemented in conductor.py={no_reimpl}")
+
+    # taichi (no kit) must still take the LEGACY route — falsifies a hardcoded kit route.
+    legacy = dry_run("taichi", make_inputs([["一"]], reference="/tmp/style_ref.png"))
+    legacy_labels = [s["label"] for s in legacy["steps"]]
+    legacy_sa = scene_author_steps(legacy)[0]["argv"]
+    legacy_ok = ("analyzer" in legacy_labels and "kit" not in legacy_labels
+                 and "--aligned-prompt" in legacy_sa)
+
+    passed = (register_before and kit_before_sa and kit_flags_ok and bool(distinct_archetypes)
+              and no_analyzer_in_kit and delegates and no_reimpl and legacy_ok)
+    detail = (f"kit order={labels}; register-before-sign={register_before}; "
+              f"kit-before-scene_author={kit_before_sa}; kit scene_author flags ok="
+              f"{kit_flags_ok}; distinct archetypes={archs} ({bool(distinct_archetypes)}); "
+              f"no analyzer in kit route={no_analyzer_in_kit}; delegates by name={delegates}; "
+              f"no generation reimplemented={no_reimpl}; taichi legacy route intact={legacy_ok}")
     return passed, detail
 
 

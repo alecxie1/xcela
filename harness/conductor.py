@@ -42,11 +42,19 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PY = sys.executable  # the (venv) python running this conductor; used for every subprocess
 
+# The kit-of-parts engine modules are stdlib-only too, so importing them keeps this
+# conductor import-light (no numpy/anthropic/openai). They power the bespoke-composition
+# route used whenever a brand has an authored kit (feature 001-kit-of-parts-composition).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import kit as kitlib  # noqa: E402
+import compose_select  # noqa: E402
+
 # Proven scripts the conductor sequences (repo-relative; run with cwd=REPO_ROOT).
 SCENE_AUTHOR = "harness/scene_author.py"
 DERIVE_REGISTER = "register/derive_register.py"
 CALIBRATE = "register/calibrate_from_reference.py"
 ANALYZER = "register/reference_style_to_prompt.py"
+KIT = "harness/kit.py"
 
 # v1: the only rendering dialect the conductor drives.
 ASSET_PROFILE = "flat_graphic"
@@ -190,6 +198,42 @@ def _scene_author_argv(brand: str, out: str, sign_id: str, messages: list,
     return argv
 
 
+def _kit_argv(brand: str, out: str, has_ref: bool) -> list:
+    """Build kit_profile.json once per campaign (DERIVED kit layer: palette/font/frame from the
+    answer key + register_profile; answer key wins). Runs AFTER derive_register."""
+    argv = [KIT, "--brand", brand, "--answer-key", f"answer_keys/{brand}.json",
+            "--register-profile", f"{out}/register_profile.json",
+            "--out", f"{out}/kit_profile.json"]
+    if has_ref:
+        argv += ["--calibration", f"{out}/calibration.json"]
+    return argv
+
+
+def _scene_author_kit_argv(brand: str, out: str, sign_id: str) -> list:
+    """Kit reserve-box composition: scene_author paints panel + chosen icon in the icon zone and
+    keeps the reserved text zone clear, then composites the fitted headline into it. No clone
+    dial, no render-and-scrub. Inputs are the campaign kit_profile + this sign's composition."""
+    return [SCENE_AUTHOR, "--brand", brand, "--asset-profile", ASSET_PROFILE,
+            "--kit-profile", f"{out}/kit_profile.json",
+            "--composition", f"{out}/sign_{sign_id}/composition.json",
+            "--out", f"{out}/sign_{sign_id}"]
+
+
+def build_compositions(inputs: dict, brand: str):
+    """Deterministic per-sign compositions for the kit route (icon + collision-avoided
+    archetype + reserved text zone + needs_review). Returns None when the brand has no kit
+    (legacy route). A pre-filled hero_icon is recorded as a human OVERRIDE of the proposal."""
+    if not kitlib.kit_exists(brand):
+        return None
+    kit = kitlib.load_kit(brand)
+    signs = [{"id": s["id"], "messages": s.get("messages", [])} for s in inputs["signs"]]
+    comps = compose_select.compose_campaign(kit, signs)
+    for sign, comp in zip(inputs["signs"], comps):
+        if sign.get("hero_icon"):
+            comp["human_hero_icon"] = sign["hero_icon"]
+    return comps
+
+
 def _cmd(phase: str, label: str, script_argv: list, sign_id=None, optional=False) -> dict:
     return {"phase": phase, "kind": "command", "label": label, "sign_id": sign_id,
             "optional": optional, "argv": [PY] + script_argv}
@@ -206,6 +250,8 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
     subfields_path = f"{out}/subfields.json"
     profile_path = f"{out}/register_profile.json"
     calibration_path = f"{out}/calibration.json"
+    kit_mode = kitlib.kit_exists(brand)
+    compositions = build_compositions(inputs, brand) if kit_mode else None
 
     steps = []
     # 4. register prep (campaign-level: one profile shared by all signs)
@@ -217,29 +263,39 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         steps.append(_cmd("register", "derive_register",
                           _derive_argv(brand, out, subfields_path, None)))
 
-    # 5. per-sign loop. Reference job: analyzer (dial-selected wording) -> aligned_prompt.txt,
-    # which is INJECTED as scene_author's --aligned-prompt (no longer discarded).
-    for sign in inputs["signs"]:
-        sid = sign["id"]
-        sign_dir = f"{out}/sign_{sid}"
-        messages = sign.get("messages", [])
-        aligned_prompt = None
-        if has_ref:
-            steps.append(_cmd(f"sign:{sid}", "analyzer",
-                              _analyzer_argv(ref, messages, sign.get("hero_icon"), sign_dir,
-                                             relationship=dial or DEFAULT_DIAL),
-                              sign_id=sid, optional=True))
-            aligned_prompt = f"{sign_dir}/aligned_prompt.txt"
-        steps.append(_cmd(f"sign:{sid}", "scene_author",
-                          _scene_author_argv(brand, out, sid, messages, ref if has_ref else None,
-                                             profile_path, aligned_prompt=aligned_prompt),
-                          sign_id=sid))
+    if kit_mode:
+        # 4b. KIT ROUTE: derive the campaign kit_profile once, then compose each sign bespoke.
+        # The reference (if any) feeds the kit via calibration; it does NOT clone a prompt (D6),
+        # so there is no analyzer/aligned-prompt step here.
+        steps.append(_cmd("kit", "kit", _kit_argv(brand, out, has_ref)))
+        for sign in inputs["signs"]:
+            sid = sign["id"]
+            steps.append(_cmd(f"sign:{sid}", "scene_author",
+                              _scene_author_kit_argv(brand, out, sid), sign_id=sid))
+    else:
+        # 5. legacy per-sign loop. Reference job: analyzer (dial-selected wording) ->
+        # aligned_prompt.txt, INJECTED as scene_author's --aligned-prompt.
+        for sign in inputs["signs"]:
+            sid = sign["id"]
+            sign_dir = f"{out}/sign_{sid}"
+            messages = sign.get("messages", [])
+            aligned_prompt = None
+            if has_ref:
+                steps.append(_cmd(f"sign:{sid}", "analyzer",
+                                  _analyzer_argv(ref, messages, sign.get("hero_icon"), sign_dir,
+                                                 relationship=dial or DEFAULT_DIAL),
+                                  sign_id=sid, optional=True))
+                aligned_prompt = f"{sign_dir}/aligned_prompt.txt"
+            steps.append(_cmd(f"sign:{sid}", "scene_author",
+                              _scene_author_argv(brand, out, sid, messages, ref if has_ref else None,
+                                                 profile_path, aligned_prompt=aligned_prompt),
+                              sign_id=sid))
 
     # 6. approve gate (a gate step, not a command — present unless --no-approve)
     if not no_approve:
         steps.append({"phase": "approve", "kind": "gate", "label": "approve", "enabled": True})
 
-    return {
+    plan = {
         "brand": brand,
         "brand_paths": {"answer_key": f"answer_keys/{brand}.json",
                         "config": f"config/{brand}.yaml"},
@@ -247,6 +303,8 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         "asset_type": inputs.get("asset_type", ASSET_TYPE_DEFAULT),
         "asset_profile_v1": ASSET_PROFILE,
         "asset_type_note": "v1: asset_type is intent-framing only; output is ALWAYS flat_graphic",
+        "kit_mode": kit_mode,
+        "kit_profile": f"{out}/kit_profile.json" if kit_mode else None,
         "has_reference": has_ref,
         "reference_relationship_raw": inputs.get("reference_relationship"),
         "dial": dial,
@@ -255,6 +313,17 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         "sign_count": len(inputs["signs"]),
         "steps": steps,
     }
+    if kit_mode:
+        # Surface the bespoke per-sign choices in the plan (the falsifiable dry-run surface):
+        # chosen icon + distinct archetype + reserved text zone + needs_review, no model calls.
+        plan["compositions"] = [{
+            "sign_id": c["sign_id"], "detected_mode": c["detected_mode"],
+            "chosen_icon": c["chosen_icon"], "chosen_archetype": c["chosen_archetype"],
+            "archetype_reused": c["archetype_reused"], "text_zone": c["text_zone"],
+            "needs_review": c["needs_review"], "needs_review_reason": c["needs_review_reason"],
+            "human_hero_icon": c.get("human_hero_icon"),
+        } for c in compositions]
+    return plan
 
 
 # --------------------------------------------------------------------------- #
@@ -443,19 +512,47 @@ def _sha16(path) -> str | None:
         return None
 
 
-def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_profile, ask=input) -> str:
-    """The taste gate: show drafts, take a plain-language nudge, re-run the touched
-    sign by RE-INVOKING scene_author with the nudge added as a binding style note.
-    (approve.py is not chained here: its main() authors a fresh tier-3 from brand
-    defaults and cannot nudge an already-generated specific sign — re-invoking
-    scene_author with adjusted flags is the sanctioned path, CONDUCTOR_SPEC 5.6.)"""
+def _apply_kit_override(out: str, sid: str, change: str, brand: str) -> str | None:
+    """Kit-route taste override: 'icon=<id>' or 'arch=<id>' edits the sign's composition.json
+    (the human overriding the tool's PROPOSAL, constitution §I). Returns a note or None if the
+    change was not an icon/arch override (caller falls back to a free-text style nudge)."""
+    low = change.lower()
+    field = "chosen_icon" if low.startswith("icon=") else ("chosen_archetype" if low.startswith("arch=") else None)
+    if not field:
+        return None
+    value = change.split("=", 1)[1].strip()
+    comp_path = Path(out) / f"sign_{sid}" / "composition.json"
+    if not comp_path.exists():
+        return f"no composition.json for {sid}"
+    comp = json.loads(comp_path.read_text(encoding="utf-8"))
+    comp[field] = value
+    comp["human_override"] = {**(comp.get("human_override") or {}), field: value}
+    # A human-picked icon clears an icon-miss review; archetype override clears reuse review.
+    if field == "chosen_icon":
+        comp["needs_review"] = bool(comp.get("archetype_reused"))
+    comp_path.write_text(json.dumps(comp, ensure_ascii=False, indent=2), encoding="utf-8")
+    return f"{field}={value} (human override recorded)"
+
+
+def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_profile,
+                     ask=input, kit_mode: bool = False) -> str:
+    """The taste gate: show drafts (and, on the kit route, the proposed icon + layout per sign),
+    take a plain-language nudge, re-run the touched sign. On the kit route a nudge may be
+    'icon=<id>' or 'arch=<id>' to OVERRIDE the tool's proposal; otherwise it is a binding style
+    note. The human stays in the loop here BY DESIGN (constitution §I)."""
     out = str(out_dir)
     for _ in range(MAX_NUDGES):
         print("\n=== DRAFTS READY — your taste call (the tool stops here by design) ===")
         for s in state:
             shown = s.get("preview_png") or s.get("final_png") or "(no draft produced)"
-            print(f"  {s['sign_id']}: {shown}")
-        resp = (ask("Approve all, or 'nudge <sign_id>: <change>', or 'abort': ") or "").strip()
+            if kit_mode:
+                flag = "  [needs_review]" if s.get("needs_review") else ""
+                print(f"  {s['sign_id']}: icon={s.get('icon')} layout={s.get('archetype')}{flag}  {shown}")
+            else:
+                print(f"  {s['sign_id']}: {shown}")
+        hint = ("Approve all, 'nudge <sign_id>: icon=<id> | arch=<id> | <free change>', or 'abort': "
+                if kit_mode else "Approve all, or 'nudge <sign_id>: <change>', or 'abort': ")
+        resp = (ask(hint) or "").strip()
         low = resp.lower()
         if low in APPROVALS or low.startswith("approve"):
             return "approved"
@@ -469,11 +566,25 @@ def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_pr
             if not target or not change:
                 print("  Could not parse that. Use: nudge <sign_id>: <what to change>")
                 continue
-            argv = [PY] + _scene_author_argv(brand, out, sid, target["messages"],
-                                             inputs.get("reference_image"), register_profile)
-            argv += ["--style-notes", change]
-            print(f"  Re-running sign {sid} with your nudge: {change!r}")
-            run_step({"phase": f"sign:{sid}", "label": "scene_author", "argv": argv})
+            if kit_mode:
+                override = _apply_kit_override(out, sid, change, brand)
+                if override is not None:
+                    print(f"  Sign {sid}: {override}; re-composing.")
+                    refreshed_comp = json.loads((Path(out) / f"sign_{sid}" / "composition.json").read_text(encoding="utf-8"))
+                    target["icon"] = refreshed_comp.get("chosen_icon")
+                    target["archetype"] = refreshed_comp.get("chosen_archetype")
+                    target["needs_review"] = refreshed_comp.get("needs_review")
+                argv = [PY] + _scene_author_kit_argv(brand, out, sid)
+                if override is None:
+                    argv += ["--style-notes", change]
+                print(f"  Re-running sign {sid}.")
+                run_step({"phase": f"sign:{sid}", "label": "scene_author", "argv": argv})
+            else:
+                argv = [PY] + _scene_author_argv(brand, out, sid, target["messages"],
+                                                 inputs.get("reference_image"), register_profile)
+                argv += ["--style-notes", change]
+                print(f"  Re-running sign {sid} with your nudge: {change!r}")
+                run_step({"phase": f"sign:{sid}", "label": "scene_author", "argv": argv})
             refreshed = _collect_sign_outputs(Path(out) / f"sign_{sid}")
             target["final_png"] = (refreshed.get("final") or {}).get("path")
             target["preview_png"] = (refreshed.get("preview_white") or {}).get("path")
@@ -525,6 +636,19 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
 
     register_profile_arg = str(profile_path) if have_profile else None
     dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
+    kit_mode = kitlib.kit_exists(brand)
+
+    # --- 4b. KIT ROUTE: build the campaign kit_profile once (DERIVED layer) ---
+    kit_profile_ok = False
+    if kit_mode:
+        if have_profile:
+            kr = run_step(_cmd("kit", "kit", _kit_argv(brand, out, has_ref and Path(ref).exists())))
+            kit_profile_ok = kr["ok"] and (Path(out) / "kit_profile.json").exists()
+            if not kit_profile_ok:
+                notes.append("kit.py failed or wrote no kit_profile.json; scene_author kit mode "
+                             "will fall back to brand defaults (honest null)")
+        else:
+            notes.append("no register_profile; kit_profile not derived (kit needs the register lane)")
 
     # --- 5. per-sign loop ---
     sign_results, state = [], []
@@ -532,6 +656,38 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         sid = sign["id"]
         sign_dir = Path(out) / f"sign_{sid}"
         messages = sign.get("messages", [])
+
+        if kit_mode:
+            # composition.json was written by write_glue_artifacts (pure fn of inputs + kit).
+            comp = {}
+            comp_path = sign_dir / "composition.json"
+            if comp_path.exists():
+                try:
+                    comp = json.loads(comp_path.read_text(encoding="utf-8"))
+                except Exception:  # noqa: BLE001
+                    pass
+            if comp.get("needs_review"):
+                notes.append(f"sign {sid}: needs_review=true ({comp.get('needs_review_reason')})")
+            sa_argv = _scene_author_kit_argv(brand, out, sid)
+            sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
+            outputs = _collect_sign_outputs(sign_dir)
+            sign_results.append({
+                "sign_id": sid, "ok": sr["ok"], "messages": messages,
+                "scene_author_cmd": [PY] + sa_argv, "outputs": outputs,
+                "composition": {"chosen_icon": comp.get("chosen_icon"),
+                                "chosen_archetype": comp.get("chosen_archetype"),
+                                "archetype_reused": comp.get("archetype_reused"),
+                                "human_hero_icon": comp.get("human_hero_icon")},
+                "needs_review": comp.get("needs_review"),
+                "needs_review_reason": comp.get("needs_review_reason"),
+                "compliance": _compliance_summary(sign_dir),
+            })
+            state.append({"sign_id": sid, "messages": messages,
+                          "final_png": (outputs.get("final") or {}).get("path"),
+                          "preview_png": (outputs.get("preview_white") or {}).get("path"),
+                          "icon": comp.get("chosen_icon"), "archetype": comp.get("chosen_archetype"),
+                          "needs_review": comp.get("needs_review")})
+            continue
 
         analyzer_record = {"ran": False, "injected_into_generation": False,
                            "aligned_prompt": None, "dial": dial, "error": None}
@@ -584,7 +740,8 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
     # --- 6. approve gate ---
     approve_status = "skipped (--no-approve)"
     if not no_approve:
-        approve_status = run_approve_gate(state, inputs, brand, out_dir, register_profile_arg)
+        approve_status = run_approve_gate(state, inputs, brand, out_dir, register_profile_arg,
+                                          kit_mode=kit_mode)
 
     # --- 7. manifest (the provenance record) ---
     context = inputs.get("context") or {}
@@ -617,6 +774,14 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
             "profile_path": str(profile_path) if have_profile else None,
             "calibration_outcome": calibration_outcome,
             "used_calibration": used_calibration,
+        },
+        "kit": {
+            "kit_mode": kit_mode,
+            "kit_path": f"kits/{brand}.json" if kit_mode else None,
+            "kit_profile_path": (str(Path(out) / "kit_profile.json")
+                                 if kit_mode and kit_profile_ok else None),
+            "route": ("kit of parts + bespoke per-message composition"
+                      if kit_mode else "legacy (render-and-scrub / aligned-prompt)"),
         },
         "signs": sign_results,
         "approve_status": approve_status,
@@ -662,6 +827,15 @@ def write_glue_artifacts(inputs: dict, brand: str, out_dir) -> None:
         intent = build_intent(inputs, sign, brand)
         (out_dir / f"intent_{sign['id']}.json").write_text(
             json.dumps(intent, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Kit route: write each sign's bespoke composition (pure function of inputs + kit), so it is
+    # visible in BOTH dry-run and real mode and consumed by scene_author kit-mode.
+    compositions = build_compositions(inputs, brand)
+    if compositions is not None:
+        for comp in compositions:
+            sign_dir = out_dir / f"sign_{comp['sign_id']}"
+            sign_dir.mkdir(parents=True, exist_ok=True)
+            (sign_dir / "composition.json").write_text(
+                json.dumps(comp, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _timestamp() -> str:
