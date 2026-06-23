@@ -1,0 +1,78 @@
+{
+  "_doc": "AIA event-sign KIT OF PARTS (feature 001-kit-of-parts-composition). Human-authored brand DATA: the meaning->icon vocabulary and the layout-archetype vocabulary. This is the ONLY place AIA composition literals live (FR-008 / constitution IV). The DERIVED kit layer (palette, font, frame) is computed at run time into kit_profile.json from answer_keys/aia.json + register_profile; the answer key wins every conflict. Schema + validation rules: specs/001-kit-of-parts-composition/contracts/kit-schema.md.",
+  "brand": "aia",
+  "modes": ["protect", "warn", "resist"],
+  "accent_vocabulary": ["diamond", "star", "lightning", "dot"],
+  "icon_vocabulary": [
+    {
+      "id": "money_bag",
+      "meaning_cues": ["钱袋子", "钱袋", "守住钱", "血汗钱", "存款", "储蓄"],
+      "mode": "protect",
+      "icon_description": "a rounded flat-vector golden money bag with a white ¥ mark, soft bevel, kit palette, friendly and grabbable",
+      "asset_path": null
+    },
+    {
+      "id": "family_shield",
+      "meaning_cues": ["幸福家", "护好", "守护家", "家庭平安", "平安"],
+      "mode": "protect",
+      "icon_description": "a rounded shield enclosing a simple house-and-family glyph, soft bevel, kit palette",
+      "asset_path": null
+    },
+    {
+      "id": "megaphone_x",
+      "meaning_cues": ["非法金融", "高息", "诱惑", "诈骗", "骗局", "虚假宣传"],
+      "mode": "resist",
+      "icon_description": "a flat-vector megaphone with a bold red X overlay, kit palette, signalling rejection",
+      "asset_path": null
+    },
+    {
+      "id": "hand_block",
+      "meaning_cues": ["远离", "抵制", "拒绝", "防范"],
+      "mode": "resist",
+      "icon_description": "a flat-vector raised open hand in a stop gesture, kit palette",
+      "asset_path": null
+    },
+    {
+      "id": "warning_triangle",
+      "meaning_cues": ["警惕", "小心", "注意", "风险", "当心"],
+      "mode": "warn",
+      "icon_description": "a rounded warning triangle with an exclamation mark, kit palette, alarm register",
+      "asset_path": null
+    },
+    {
+      "id": "eyes_alert",
+      "meaning_cues": ["识别", "辨别", "擦亮眼", "保持警觉"],
+      "mode": "warn",
+      "icon_description": "a pair of alert cartoon eyes, kit palette, stay-vigilant register",
+      "asset_path": null
+    }
+  ],
+  "layout_vocabulary": [
+    {
+      "id": "protect_solid",
+      "modes": ["protect"],
+      "panel_treatment": "warm solid crimson field, gold frame, white stitched border, bevelled 3D edge; hero icon centered above a lower headline band",
+      "icon_zone": {"x_frac": 0.34, "y_frac": 0.10, "w_frac": 0.32, "h_frac": 0.34},
+      "text_zone": {"x_frac": 0.12, "y_frac": 0.52, "w_frac": 0.76, "h_frac": 0.34},
+      "accent_treatment": "gold diamonds in the corners"
+    },
+    {
+      "id": "resist_panel",
+      "modes": ["resist", "warn"],
+      "panel_treatment": "white panel with a red headline for alarm, gold frame, white stitched border; hero icon on the left, headline on the right",
+      "icon_zone": {"x_frac": 0.08, "y_frac": 0.30, "w_frac": 0.30, "h_frac": 0.40},
+      "text_zone": {"x_frac": 0.44, "y_frac": 0.18, "w_frac": 0.48, "h_frac": 0.64},
+      "accent_treatment": "lightning accents flanking the icon"
+    },
+    {
+      "id": "warn_split",
+      "modes": ["warn"],
+      "panel_treatment": "crimson upper band with the hero icon over a white lower headline panel, gold frame, white stitched border",
+      "icon_zone": {"x_frac": 0.30, "y_frac": 0.08, "w_frac": 0.40, "h_frac": 0.28},
+      "text_zone": {"x_frac": 0.10, "y_frac": 0.44, "w_frac": 0.80, "h_frac": 0.42},
+      "accent_treatment": "star accents along the band seam"
+    }
+  ],
+  "_authored_by": "human (starter kit; refine at the input gate)",
+  "_authored_date": "2026-06-22"
+}
