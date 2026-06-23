@@ -262,6 +262,79 @@ def _draw_with_tracking(draw: ImageDraw.ImageDraw, xy, text: str,
         x += adv + spacing
 
 
+# --------------------------------------------------------------------------- #
+# Fit-to-zone clamp (feature 001, US2 — fixes failure (a): oversized text).
+# Composition OWNS the reserved zone; type is sized DOWN to fit it with margin,
+# never the reverse. A headline that cannot fit even at the floor is an HONEST
+# NULL (constitution §V), never a clipped or overflowing render. This is a real
+# fit-within-container constraint (generalizes; not tuned to one image).
+# --------------------------------------------------------------------------- #
+
+def _multiline_box_px(lines, font, spacing: int) -> tuple[int, int]:
+    """Pixel (w, h) of the rendered multi-line block at this font size."""
+    img = Image.new("RGB", (10, 10))
+    draw = ImageDraw.Draw(img)
+    text = "\n".join(lines)
+    l, t, r, b = draw.multiline_textbbox((0, 0), text, font=font, spacing=spacing, anchor="la")
+    return (r - l, b - t)
+
+
+def fit_text_to_zone(lines, zone_w_px: float, zone_h_px: float, font_path: str,
+                     margin_px: int = 24, min_size_px: int = 48, max_size_px: int = 400,
+                     ttc_index: int = 0, spacing_frac: float = 0.15) -> dict:
+    """Largest font size whose multi-line text block fits inside the zone with margin on every
+    edge. Returns a FitResult (contracts/composition-schema.md): fits, final_size_px,
+    rendered_wh_px, margin_px, min_size_px. fits=False + final_size_px=None when it cannot fit
+    at min_size_px (honest null — caller flags needs_review, never clips)."""
+    avail_w = zone_w_px - 2 * margin_px
+    avail_h = zone_h_px - 2 * margin_px
+    real_path = _materialize_font(font_path)
+    lines = [s for s in (lines or []) if s] or [""]
+
+    def measure(size):
+        font = ImageFont.truetype(real_path, size, index=ttc_index)
+        w, h = _multiline_box_px(lines, font, int(size * spacing_frac))
+        return (w <= avail_w and h <= avail_h), (w, h)
+
+    base = {"margin_px": margin_px, "min_size_px": min_size_px}
+    if avail_w <= 0 or avail_h <= 0:
+        return {"fits": False, "final_size_px": None, "rendered_wh_px": None, **base}
+    ok_min, _ = measure(min_size_px)
+    if not ok_min:
+        return {"fits": False, "final_size_px": None, "rendered_wh_px": None, **base}
+
+    lo, hi, best, best_wh = min_size_px, max_size_px, min_size_px, None
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        ok, wh = measure(mid)
+        if ok:
+            best, best_wh, lo = mid, wh, mid + 1
+        else:
+            hi = mid - 1
+    return {"fits": True, "final_size_px": best, "rendered_wh_px": list(best_wh), **base}
+
+
+def fit_text_in_zone_frac(lines, zone_frac: dict, canvas_wh: tuple[int, int], font_path: str,
+                          margin_px: int = 24, min_size_px: int = 48, ttc_index: int = 0) -> dict:
+    """Convenience wrapper over fit_text_to_zone for a fractional zone on a known canvas.
+    Adds rendered_box_frac (the fitted block centered in the zone) when it fits."""
+    cw, ch = canvas_wh
+    zw, zh = zone_frac["w_frac"] * cw, zone_frac["h_frac"] * ch
+    res = fit_text_to_zone(lines, zw, zh, font_path, margin_px=margin_px,
+                           min_size_px=min_size_px, ttc_index=ttc_index)
+    if res["fits"] and res["rendered_wh_px"]:
+        rw, rh = res["rendered_wh_px"]
+        cx = zone_frac["x_frac"] + zone_frac["w_frac"] / 2
+        cy = zone_frac["y_frac"] + zone_frac["h_frac"] / 2
+        res["rendered_box_frac"] = {
+            "x_frac": cx - (rw / cw) / 2, "y_frac": cy - (rh / ch) / 2,
+            "w_frac": rw / cw, "h_frac": rh / ch,
+        }
+    else:
+        res["rendered_box_frac"] = None
+    return res
+
+
 def composite(image_path: str, spec_path: str, out_path: str) -> Path:
     img = Image.open(image_path).convert("RGBA")
     layers = json.loads(Path(spec_path).read_text(encoding="utf-8"))

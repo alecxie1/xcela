@@ -81,11 +81,11 @@ Single project. Pipeline code in `harness/`, reused reconciliation in `register/
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Write `test_fit_to_zone.py` (falsifiable, no paid calls): assert the clamp returns a strictly smaller `final_size_px` for a longer headline in the same `text_zone`; the rendered box (Pillow-measured) sits inside the zone with `margin_px` on every edge; an oversized headline at `min_size_px` returns `fits=false`/`final_size_px=null`/`needs_review` (never a clipped render), per `contracts/composition-schema.md` FitResult. MUST FAIL before T013.
+- [X] T012 [P] [US2] Write `test_fit_to_zone.py` (falsifiable, no paid calls): assert the clamp returns a strictly smaller `final_size_px` for a longer headline in the same `text_zone`; the rendered box (Pillow-measured) sits inside the zone with `margin_px` on every edge; an oversized headline at `min_size_px` returns `fits=false`/`final_size_px=null`/`needs_review` (never a clipped render), per `contracts/composition-schema.md` FitResult. MUST FAIL before T013.
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Implement the fit-to-zone clamp in `harness/composite_text.py`: given headline text + `text_zone` (px) + the licensed font resolved by the existing `resolve_font`, binary/linear-search the largest `size_px` whose Pillow-measured multi-line box fits the zone with `margin_px`; floor at `min_size_px` → honest-null (`fits=false`). Leave existing `composite()` + compliance manifest unchanged. `test_fit_to_zone.py` passes.
+- [X] T013 [US2] Implement the fit-to-zone clamp in `harness/composite_text.py`: given headline text + `text_zone` (px) + the licensed font resolved by the existing `resolve_font`, binary/linear-search the largest `size_px` whose Pillow-measured multi-line box fits the zone with `margin_px`; floor at `min_size_px` → honest-null (`fits=false`). Leave existing `composite()` + compliance manifest unchanged. `test_fit_to_zone.py` passes.
 
 **Checkpoint**: Type is sized to the zone, never the reverse; unfittable text is an honest null, not a clip.
 
