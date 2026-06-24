@@ -1,8 +1,11 @@
 {
-  "_doc": "Example conductor inputs (the --inputs file). Schema = CONDUCTOR_INPUTS_RECONCILIATION.md. context uses brief_schema_v3 bucket B/D field names verbatim so the conductor writes it straight out as subfields for derive_register. signs[] is per-sign content.",
+  "_doc": "Example conductor inputs (the --inputs file) for feature 002 faithful intake. A REPRESENTATIVE 6-sign AIA anti-fraud brief: top-level format_size + mandatory_elements + forbidden_elements are the bucket-A/C fields the old intake dropped. context uses brief_schema_v3 bucket B/D names verbatim. The intake form (conductor ask_questions) emits this exact shape; nothing here is inferred by an agent.",
   "asset_type": "手举牌 hand-held event sign",
+  "format_size": "60x40cm",
   "reference_image": "/mnt/c/Users/Alecx/Downloads/cropped ref 2.png",
   "reference_relationship": "template — extend this series (clone look, change message)",
+  "mandatory_elements": ["分别画叉", "设计两种样式"],
+  "forbidden_elements": [],
   "context": {
     "usage_context": "held for photos / posed with",
     "audience": "general public",
@@ -13,9 +16,11 @@
     "occasion": "anti-fraud public-awareness campaign (防范非法金融宣传)"
   },
   "signs": [
-    { "id": "s1", "messages": ["守住钱袋子", "护好幸福家"],
-      "hero_icon": "a cartoon golden money bag with a white ¥ symbol, protruding past the sign edge" },
-    { "id": "s2", "messages": ["远离非法金融", "抵制高息诱惑"],
-      "hero_icon": null }
+    { "id": "s1", "messages": ["守住钱袋子", "护好幸福家"], "hero_icon": null },
+    { "id": "s2", "messages": ["远离非法金融", "抵制高息诱惑"], "hero_icon": null },
+    { "id": "s3", "messages": ["警惕高额返利", "谨防庞氏骗局"], "hero_icon": null },
+    { "id": "s4", "messages": ["擦亮眼睛", "识别金融诈骗"], "hero_icon": null },
+    { "id": "s5", "messages": ["拒绝高息诱惑", "远离非法集资"], "hero_icon": null },
+    { "id": "s6", "messages": ["储蓄有道", "守护家庭平安"], "hero_icon": null }
   ]
 }

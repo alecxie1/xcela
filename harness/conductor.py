@@ -228,9 +228,16 @@ def build_compositions(inputs: dict, brand: str):
     kit = kitlib.load_kit(brand)
     signs = [{"id": s["id"], "messages": s.get("messages", [])} for s in inputs["signs"]]
     comps = compose_select.compose_campaign(kit, signs)
+    # Feature 002: attach the campaign mandatory/forbidden elements VERBATIM to each composition so
+    # they reach the generation prompt (scene_author kit mode) and the manifest/review. Faithful
+    # passthrough: copied as-is, never rephrased or interpreted into variant counts (FR-003/FR-004).
+    mandatory = list(inputs.get("mandatory_elements") or [])
+    forbidden = list(inputs.get("forbidden_elements") or [])
     for sign, comp in zip(inputs["signs"], comps):
         if sign.get("hero_icon"):
             comp["human_hero_icon"] = sign["hero_icon"]
+        comp["mandatory_elements"] = list(mandatory)
+        comp["forbidden_elements"] = list(forbidden)
     return comps
 
 
@@ -303,6 +310,9 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         "asset_type": inputs.get("asset_type", ASSET_TYPE_DEFAULT),
         "asset_profile_v1": ASSET_PROFILE,
         "asset_type_note": "v1: asset_type is intent-framing only; output is ALWAYS flat_graphic",
+        "format_size": inputs.get("format_size"),
+        "mandatory_elements": inputs.get("mandatory_elements") or [],
+        "forbidden_elements": inputs.get("forbidden_elements") or [],
         "kit_mode": kit_mode,
         "kit_profile": f"{out}/kit_profile.json" if kit_mode else None,
         "has_reference": has_ref,
@@ -419,6 +429,18 @@ def validate_inputs(inputs: dict) -> dict:
         if not sign.get("messages"):
             raise SystemExit(f"ERROR: sign {sign['id']!r} has no messages.")
     inputs.setdefault("asset_type", ASSET_TYPE_DEFAULT)
+    # Feature 002: the previously-dropped bucket-A/C fields. OPTIONAL (back-compat): absent ->
+    # empty/None, never invented. Lists pass through verbatim; a bare string is kept as one item
+    # (faithful, not rephrased). No agent inference.
+    inputs.setdefault("format_size", None)
+    for key in ("mandatory_elements", "forbidden_elements"):
+        val = inputs.get(key)
+        if val is None or val == "":
+            inputs[key] = []
+        elif isinstance(val, list):
+            inputs[key] = [str(v) for v in val]
+        else:
+            inputs[key] = [str(val)]
     return inputs
 
 

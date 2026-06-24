@@ -191,12 +191,35 @@ def check5_human_gates():
     return passed, detail
 
 
+def check6_brief_fields_carried():
+    # Feature 002: the conductor accepts + CARRIES the 3 previously-dropped fields from a
+    # pre-written inputs JSON with NO intake form (the SC-004 standalone proof + FR-002 carry),
+    # and stays BACK-COMPAT when they are absent.
+    base = make_inputs([["守住钱袋子", "护好幸福家"], ["远离非法金融"]])
+    with_fields = dict(base, format_size="60x40cm",
+                       mandatory_elements=["分别画叉", "设计两种样式"], forbidden_elements=[])
+    plan_w = dry_run("aia", with_fields)
+    plan_wo = dry_run("aia", base)  # back-compat: no new fields
+    carried = (plan_w.get("format_size") == "60x40cm"
+               and plan_w.get("mandatory_elements") == ["分别画叉", "设计两种样式"])
+    back_compat = (plan_wo.get("format_size") is None
+                   and plan_wo.get("mandatory_elements") == []
+                   and plan_wo["sign_count"] == 2)
+    passed = carried and back_compat
+    detail = (f"with fields -> format_size={plan_w.get('format_size')!r} "
+              f"mandatory={plan_w.get('mandatory_elements')}; carried={carried}; "
+              f"without fields -> format_size={plan_wo.get('format_size')!r} "
+              f"mandatory={plan_wo.get('mandatory_elements')} (back-compat={back_compat})")
+    return passed, detail
+
+
 CHECKS = [
     ("Brand-generality (kills hardcoding)", check1_brand_generality),
     ("Human input drives output (kills input-ignoring)", check2_inputs_drive_output),
     ("Correct primitive sequence + delegates (not reimplements)", check3_primitive_sequence),
     ("Sign-count generality (real N-sign loop)", check4_sign_count_generality),
     ("Human gates present (input + approve)", check5_human_gates),
+    ("Brief fields carried + back-compat (002 / SC-004 standalone)", check6_brief_fields_carried),
 ]
 
 
@@ -211,12 +234,12 @@ def main():
         except Exception as exc:  # noqa: BLE001
             ok, detail = False, f"EXCEPTION: {type(exc).__name__}: {exc}"
         passed_count += int(ok)
-        print(f"\nCHECK {i}/5 — {name}: {'PASS' if ok else 'FAIL'}")
+        print(f"\nCHECK {i}/{len(CHECKS)} — {name}: {'PASS' if ok else 'FAIL'}")
         print(f"  {detail}")
     print("\n" + "=" * 78)
-    print(f"RESULT: {passed_count}/5 checks passed")
+    print(f"RESULT: {passed_count}/{len(CHECKS)} checks passed")
     print("=" * 78)
-    sys.exit(0 if passed_count == 5 else 1)
+    sys.exit(0 if passed_count == len(CHECKS) else 1)
 
 
 if __name__ == "__main__":
