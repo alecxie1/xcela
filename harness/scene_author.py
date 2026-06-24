@@ -7,6 +7,7 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -797,6 +798,239 @@ def assemble_final_prompt(brand_key: dict, tier3: dict, asset_profile: str = "ph
     return "\n".join(sections).strip()
 
 
+# --------------------------------------------------------------------------- #
+# THIN ROUTE (feature 003). The kit/composition layer COMPETED with gpt-image-2 and
+# LOST on the real brief (SYSTEM_MAP 2026-06-24 PM): it constrained the model down to a
+# threadbare vocabulary. The thin route assembles ONE prompt directly from the brief and
+# lets gpt-image-2 compose the WHOLE sign. NO kit, NO tier-3, NO compose_select, NO
+# measure, NO composite. The licensed-font MOAT is DEFERRED — the deliverable is the RAW
+# generated.png (gpt-painted text), a KNOWN-TEMPORARY debt tracked as licensed_type.
+# Stdlib-only (no model call) so it is import-and-assert testable.
+# --------------------------------------------------------------------------- #
+
+_DIAL_HINTS = {
+    "extend": "treat the supplied reference as a visual-style TEMPLATE to extend — keep its look "
+              "and DNA, change only the message.",
+    "match_style": "match the reference's STYLE but build a FRESH layout.",
+    "mood": "use the reference only as a LOOSE mood/tone cue.",
+}
+
+
+def _brand_field_value(brand_key: dict, key: str, default: str = "") -> str:
+    """Read answer_keys/<brand>.json fields[key] whether it is the structured
+    {value: ...} form or a bare value (back-compat across answer-key vintages)."""
+    v = brand_key.get("fields", {}).get(key)
+    if isinstance(v, dict):
+        return v.get("value", default)
+    return v if v else default
+
+
+def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | None = None,
+                         dial: str | None = None, mandatory=None, forbidden=None,
+                         asset_profile: str = "flat_graphic",
+                         has_reference: bool = False, style_notes=None) -> str:
+    """Build ONE gpt-image-2 generation prompt directly from the brief (FR-001):
+      - the per-sign messages VERBATIM (gpt paints the text for now — tracked debt),
+      - the campaign + per-sign mandatory/forbidden via prompt_elements (verbatim, e.g. 分别画叉),
+      - the answer_key palette hex + logo treatment + slogan as STYLE guidance,
+      - the register/dial hint (KEEP the dial — it sets task-vs-brand magnitude),
+      - a note that the reference image is fed to gpt as a visual exemplar (ref+prompt).
+    Reuses the existing _register_directive (authority block) + prompt_elements clause. No kit,
+    no tier-3, no compose_select. Profile-agnostic enough that a future photo dialect can extend it."""
+    brand_cn = _brand_field_value(brand_key, "brand_name_cn")
+    brand_en = _brand_field_value(brand_key, "brand_name_en")
+    slogan = _brand_field_value(brand_key, "slogan")
+    rp = register_profile or {}
+    flexed = rp.get("brand_locks_flexed", [])
+    is_event_prop = rp.get("inferred_register") == "event_prop"
+    is_graphic = asset_profile == "flat_graphic"
+
+    lines: list[str] = []
+    # 1. opening (register-aware, same spirit as assemble_final_prompt's flat-graphic opener)
+    if is_graphic and is_event_prop:
+        lines.append(
+            f"A FLAT VECTOR GRAPHIC DESIGN: a playful, eye-catching hand-held event photo-prop "
+            f"sign for {brand_cn} ({brand_en}). It is a fun die-cut prop people want to grab and "
+            "pose with — NOT a corporate sign, NOT a photograph, NOT 3D. Bubbly flat illustration "
+            "style, festival energy.")
+    elif is_graphic:
+        lines.append(
+            f"A FLAT VECTOR GRAPHIC DESIGN: a designed hand-held event sign for {brand_cn} "
+            f"({brand_en}). NOT a photograph, NOT 3D — modern flat illustration, advertising "
+            "quality, crisp and clean.")
+    else:
+        lines.append(f"A promotional marketing asset for {brand_cn} ({brand_en}).")
+
+    # 2. headline messages VERBATIM (the model paints them — known-temporary debt)
+    msgs = [str(m) for m in (messages or []) if str(m).strip()]
+    if msgs:
+        lines.append("")
+        lines.append(
+            "HEADLINE TEXT (render these Chinese characters EXACTLY as written — copy them "
+            "verbatim, do NOT translate, paraphrase, transliterate, or alter a single character; "
+            "render crisply and perfectly legible as the dominant element of the sign):")
+        for m in msgs:
+            lines.append(f'  • "{m}"')
+
+    # 3. register / dial hint (KEEP the dial — magnitude of task-vs-brand departure)
+    if rp:
+        lines.append("")
+        lines.append(_register_directive(rp, brand_key).rstrip())
+    if dial and has_reference:
+        lines.append(f"REFERENCE RELATIONSHIP (dial = {dial}): {_DIAL_HINTS.get(dial, dial)}")
+
+    # 4. brand lock colors (hex) + logo treatment — answer key wins (the HARD locks we keep)
+    color_items = brand_key.get("fields", {}).get("colors", {}).get("items", [])
+    if color_items:
+        lines.append("")
+        lines.append("BRAND LOCK COLORS (the design must still read as this brand's):")
+        for c in color_items:
+            h = str(c.get("printed_html", "")).lstrip("#")
+            lines.append(f"  {c.get('name_cn', '')}/{c.get('name_en', '')}: #{h} [{c.get('role', '')}]")
+    if "logo:omit" in flexed:
+        lines.append("LOGO: omitted by this register — do NOT render any logo, wordmark, or brand "
+                     "emblem anywhere.")
+    elif "logo:subtle" in flexed:
+        lines.append("LOGO: small, peripheral placement only.")
+    else:
+        lines.append("LOGO: use the supplied brand logo faithfully — place it cleanly; do not "
+                     "redraw or distort it.")
+
+    # 5. mandatory / forbidden elements VERBATIM (002 reuse — e.g. 分别画叉 reaches the prompt)
+    clause = prompt_elements.elements_clause(mandatory, forbidden)
+    if clause:
+        lines.append("")
+        lines.append(clause)
+
+    # 5b. binding style notes from the human approve/nudge gate (taste call, mandatory)
+    notes = [str(n).strip() for n in (style_notes or []) if str(n).strip()]
+    if notes:
+        lines.append("")
+        lines.append("BINDING DESIGN RULES (human feedback — every rule is mandatory):")
+        for n in notes:
+            lines.append(f"  - {n}")
+
+    # 6. fed-reference exemplar note (the ref is designed-in: ref + prompt)
+    if has_reference:
+        lines.append("")
+        lines.append("A reference image is provided as a visual exemplar — use it as designed-in "
+                     "guidance for style and composition (reference + prompt), not to copy verbatim.")
+
+    if slogan:
+        lines.append(f"BRAND SLOGAN (optional accent only): {slogan}")
+    if is_graphic:
+        lines.append("NEGATIVES: no photographic shading, no 3D realism, no gibberish or garbled "
+                     "text, no watermark.")
+    return "\n".join(lines).strip()
+
+
+def _split_elements(raw) -> list:
+    """Split a CLI mandatory/forbidden string on the CN/EN semicolon, VERBATIM (each item kept
+    exactly, stripped only of surrounding whitespace). Blank -> [] (honest null)."""
+    return [s.strip() for s in re.split(r"[；;]", str(raw or "")) if s.strip()]
+
+
+def run_thin_mode(args) -> None:
+    """THIN ROUTE driver (FR-002): assemble_thin_prompt -> generate_variant -> STOP at
+    generated.png. No measure, no composite, no kit, no composition.json. --explain prints the
+    prompt source + mode + route + licensed_type and exits before any model call."""
+    out_dir = Path(args.out)
+    canvas_wh = _parse_size(getattr(args, "size", None))
+    brand_key = load_brand(args.brand)
+    register_profile = None
+    if args.register_profile and Path(args.register_profile).exists():
+        register_profile = json.loads(Path(args.register_profile).read_text(encoding="utf-8"))
+    messages = [s.strip() for s in str(args.must_include).split(";") if s.strip()]
+    mandatory = _split_elements(getattr(args, "mandatory_elements", ""))
+    forbidden = _split_elements(getattr(args, "forbidden_elements", ""))
+    dial = getattr(args, "dial", "") or None
+    has_reference = bool(args.ref_image)
+    style_notes = [s.strip() for s in str(getattr(args, "style_notes", "")).split(";") if s.strip()] or None
+
+    if args.explain:
+        print(json.dumps({
+            "mode": "thin",
+            "route": "thin",
+            "generation_prompt_source": "assemble_thin_prompt",
+            "uses_tier3": False,
+            "uses_kit": False,
+            "uses_compose_select": False,
+            "headline_rendered_in_image": True,
+            "measure": False,
+            "composite": "none",
+            "licensed_type": "deferred (raw gpt text)",
+            "asset_profile": args.asset_profile,
+            "output_size": f"{canvas_wh[0]}x{canvas_wh[1]}",
+            "messages": messages,
+            "dial": dial,
+            "reference_fed": has_reference,
+            "mandatory_elements": mandatory,
+            "forbidden_elements": forbidden,
+            "mandatory_in_prompt": bool(prompt_elements.elements_clause(mandatory, forbidden)),
+        }, ensure_ascii=False, indent=2))
+        return
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    print("=== THIN MODE: one assembled prompt -> gpt-image-2 composes the whole sign ===")
+    print(f"  messages={messages} dial={dial} mandatory={mandatory} forbidden={forbidden}")
+    prompt = assemble_thin_prompt(brand_key, messages, register_profile=register_profile,
+                                  dial=dial, mandatory=mandatory, forbidden=forbidden,
+                                  asset_profile=args.asset_profile, has_reference=has_reference,
+                                  style_notes=style_notes)
+    prompt_path = out_dir / "final_prompt.txt"
+    prompt_path.write_text(prompt, encoding="utf-8")
+    print(f"  Saved {prompt_path}  ({prompt_path.stat().st_size} bytes)")
+
+    print("\n=== Generate the WHOLE sign via gpt-image-2 (STOP at generated.png) ===")
+    sys.path.insert(0, str(Path(__file__).parent))
+    from generate import generate_variant
+    out_png = str(out_dir / "generated.png")
+    logo_omit = "logo:omit" in (register_profile or {}).get("brand_locks_flexed", [])
+    logo_path = brand_key.get("logo_path", LOGO_PATH)
+    refs = []
+    if args.ref_image:
+        refs.append(args.ref_image)
+    if not logo_omit:
+        refs.append(logo_path)
+    if not refs:
+        # generate_variant (images.edit) needs at least one reference image; pass the logo file
+        # even though the prompt forbids rendering it (logo:omit). Honest note.
+        refs = [logo_path]
+        print("  [note] logo:omit + no --ref-image — logo file passed as the required reference; "
+              "the prompt forbids rendering it", file=sys.stderr)
+    gen_meta = generate_variant(prompt, refs, out_png,
+                                size=f"{canvas_wh[0]}x{canvas_wh[1]}", quality="high")
+    png_size = Path(out_png).stat().st_size
+    print(f"  Saved {out_png}  ({png_size:,} bytes)")
+    if png_size < 100_000:
+        print("  WARNING: PNG is suspiciously small (<100 KB)", file=sys.stderr)
+
+    manifest_run = {
+        "brand": args.brand,
+        "asset_profile": args.asset_profile,
+        "mode": "thin",
+        "route": "thin",
+        # The moat gap is TRACKED, not silent (honest null): gpt painted the text itself.
+        "licensed_type": "deferred (raw gpt text)",
+        "prompt_path": str(prompt_path),
+        "messages": messages,
+        "dial": dial,
+        "reference_fed": has_reference,
+        "mandatory_elements": mandatory,
+        "forbidden_elements": forbidden,
+        "size": f"{canvas_wh[0]}x{canvas_wh[1]}",
+        "generation": gen_meta,
+        "needs_review": False,
+        "needs_review_reason": None,
+    }
+    (out_dir / "run_manifest.json").write_text(
+        json.dumps(manifest_run, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("\n=== OUTPUTS (thin mode) ===")
+    print(f"  final_prompt.txt : {prompt_path.stat().st_size:>8,} bytes")
+    print(f"  generated.png    : {png_size:>8,} bytes  (DELIVERABLE — raw gpt text, moat deferred)")
+    print("  (no composite, no kit, no measure — the model composed the whole sign)")
+
+
 def write_composite_spec(tier3: dict, brand: str, out_dir: Path) -> Path | None:
     """Derive composite_spec.json from the tier-3 plan (the single source of truth for
     type — no hand-written specs). One entry per composited=true text layer, anchored
@@ -1113,6 +1347,19 @@ def main():
                         help="KIT JOB: path to this sign's composition.json (compose_select output). "
                         "Triggers kit reserve-box mode: paint panel + chosen icon, keep the text "
                         "zone clear, then composite the fitted licensed headline into it.")
+    parser.add_argument("--thin", action="store_true",
+                        help="THIN ROUTE (feature 003): assemble ONE prompt directly from the brief "
+                        "(verbatim text + mandatory/forbidden + palette + dial + ref) and let "
+                        "gpt-image-2 compose the WHOLE sign. STOPS at generated.png — no kit, no "
+                        "tier-3, no compose_select, no measure, no composite. Moat deferred.")
+    parser.add_argument("--mandatory-elements", default="",
+                        help="THIN ROUTE: '；'-separated mandatory elements, passed VERBATIM into "
+                        "the prompt via prompt_elements (e.g. 分别画叉). Feature 002 reuse.")
+    parser.add_argument("--forbidden-elements", default="",
+                        help="THIN ROUTE: '；'-separated forbidden elements, passed VERBATIM.")
+    parser.add_argument("--dial", default="",
+                        help="THIN ROUTE: reference-relationship dial (extend|match_style|mood); "
+                        "the magnitude hint, applied only when a --ref-image is fed.")
     parser.add_argument("--size", default="1536x1024",
                         help="Output pixel size WxH (feature 002: resolved from the brief format_size; "
                         "drives both generation and the fit-clamp canvas). Default 1536x1024.")
@@ -1120,6 +1367,12 @@ def main():
                         help="Print the resolved generation-prompt SOURCE + mode + chroma as "
                         "JSON and EXIT before any model call (free structural test surface).")
     args = parser.parse_args()
+
+    # --- Thin route (feature 003): the DEFAULT-intended prompt-compose route. Checked first
+    # so --thin always wins; it never reads kit/composition artifacts. ---
+    if args.thin:
+        run_thin_mode(args)
+        return
 
     # --- Kit reserve-box mode (feature 001, US3): a fully separate route. ---
     if args.composition:

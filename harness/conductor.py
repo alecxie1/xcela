@@ -225,6 +225,30 @@ def _scene_author_kit_argv(brand: str, out: str, sign_id: str, size=None) -> lis
     return argv
 
 
+def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, ref,
+                            register_profile, dial, mandatory, forbidden, size=None) -> list:
+    """THIN ROUTE (feature 003): scene_author --thin assembles ONE prompt from the brief and lets
+    gpt-image-2 compose the whole sign (STOP at generated.png). No kit, no compose_select, no
+    analyzer/aligned-prompt, no measure, no composite. The reference (if any) is fed as a visual
+    exemplar via --ref-image and still sets register MAGNITUDE upstream (calibrate); it is NOT
+    cloned through the analyzer. mandatory/forbidden are this sign's EFFECTIVE union, verbatim."""
+    argv = [SCENE_AUTHOR, "--brand", brand, "--asset-profile", ASSET_PROFILE, "--thin"]
+    if register_profile:
+        argv += ["--register-profile", register_profile]
+    argv += ["--must-include", ";".join(messages), "--out", f"{out}/sign_{sign_id}"]
+    if mandatory:
+        argv += ["--mandatory-elements", "；".join(mandatory)]
+    if forbidden:
+        argv += ["--forbidden-elements", "；".join(forbidden)]
+    if dial:
+        argv += ["--dial", dial]
+    if size:
+        argv += ["--size", size]
+    if ref:
+        argv += ["--ref-image", ref]
+    return argv
+
+
 def _union_elements(campaign, per_sign) -> list:
     """Order-preserving union: campaign elements first, then this sign's, with exact-duplicate
     strings dropped while first-seen order is preserved (002 delta). Verbatim passthrough
@@ -280,10 +304,15 @@ def _cmd(phase: str, label: str, script_argv: list, sign_id=None, optional=False
             "optional": optional, "argv": [PY] + script_argv}
 
 
-def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> dict:
+def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
+               thin: bool = False) -> dict:
     """Pure: inputs + brand -> the fully-parameterized HAPPY-PATH plan. dry-run
     writes this to plan.json (the falsifiable test surface); real mode executes it
-    with documented honest-null fallbacks when a step fails."""
+    with documented honest-null fallbacks when a step fails.
+
+    thin (feature 003): take the prompt-compose THIN route — one assemble_thin_prompt +
+    generate per sign, NO kit / compose_select / measure / composite. Wins over kit even for
+    a brand that has an authored kit (the kit code stays, it is just not SELECTED by default)."""
     out = str(out_dir)
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
@@ -291,8 +320,10 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
     subfields_path = f"{out}/subfields.json"
     profile_path = f"{out}/register_profile.json"
     calibration_path = f"{out}/calibration.json"
-    kit_mode = kitlib.kit_exists(brand)
+    kit_mode = kitlib.kit_exists(brand) and not thin
     compositions = build_compositions(inputs, brand) if kit_mode else None
+    mand_campaign = list(inputs.get("mandatory_elements") or [])
+    forb_campaign = list(inputs.get("forbidden_elements") or [])
     # Feature 002: resolve the output pixel size from the brief's format_size ONCE (aspect-preserving,
     # nearest the default target; honest null on unparseable). Threaded to the kit scene_author call.
     size_resolution = fmtsize.resolve_size(inputs.get("format_size"))
@@ -312,7 +343,21 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         steps.append(_cmd("register", "derive_register",
                           _derive_argv(brand, out, subfields_path, None)))
 
-    if kit_mode:
+    if thin:
+        # 4b. THIN ROUTE (feature 003): NO kit step, NO analyzer/aligned-prompt, NO compose_select.
+        # Register/dial prep already ran above; each sign goes straight to scene_author --thin
+        # (assemble_thin_prompt -> generate -> STOP). The reference (if any) is fed as a visual
+        # exemplar via --ref-image; it set MAGNITUDE upstream (calibrate) but is NOT cloned.
+        for sign in inputs["signs"]:
+            sid = sign["id"]
+            eff_mandatory = _union_elements(mand_campaign, sign.get("mandatory_elements"))
+            eff_forbidden = _union_elements(forb_campaign, sign.get("forbidden_elements"))
+            steps.append(_cmd(f"sign:{sid}", "scene_author",
+                              _scene_author_thin_argv(brand, out, sid, sign.get("messages", []),
+                                                      ref if has_ref else None, profile_path, dial,
+                                                      eff_mandatory, eff_forbidden, size=size_wh),
+                              sign_id=sid))
+    elif kit_mode:
         # 4b. KIT ROUTE: derive the campaign kit_profile once, then compose each sign bespoke.
         # The reference (if any) feeds the kit via calibration; it does NOT clone a prompt (D6),
         # so there is no analyzer/aligned-prompt step here.
@@ -357,6 +402,8 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         "mandatory_elements": inputs.get("mandatory_elements") or [],
         "forbidden_elements": inputs.get("forbidden_elements") or [],
         "needs_review_campaign": needs_review_campaign,
+        "thin": thin,
+        "route": "thin" if thin else ("kit" if kit_mode else "legacy"),
         "kit_mode": kit_mode,
         "kit_profile": f"{out}/kit_profile.json" if kit_mode else None,
         "has_reference": has_ref,
@@ -631,7 +678,7 @@ def _apply_kit_override(out: str, sid: str, change: str, brand: str) -> str | No
 
 
 def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_profile,
-                     ask=input, kit_mode: bool = False) -> str:
+                     ask=input, kit_mode: bool = False, thin: bool = False) -> str:
     """The taste gate: show drafts (and, on the kit route, the proposed icon + layout per sign),
     take a plain-language nudge, re-run the touched sign. On the kit route a nudge may be
     'icon=<id>' or 'arch=<id>' to OVERRIDE the tool's proposal; otherwise it is a binding style
@@ -662,7 +709,23 @@ def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_pr
             if not target or not change:
                 print("  Could not parse that. Use: nudge <sign_id>: <what to change>")
                 continue
-            if kit_mode:
+            if thin:
+                # THIN ROUTE nudge: re-run scene_author --thin with the human's note as a binding
+                # style rule (the taste call). Elements/dial recomputed from the brief (verbatim).
+                sign = next((s for s in inputs["signs"] if s.get("id") == sid), {})
+                eff_mandatory = _union_elements(inputs.get("mandatory_elements"),
+                                                sign.get("mandatory_elements"))
+                eff_forbidden = _union_elements(inputs.get("forbidden_elements"),
+                                                sign.get("forbidden_elements"))
+                dial = (normalize_dial(inputs.get("reference_relationship"))
+                        if inputs.get("reference_image") else None)
+                argv = [PY] + _scene_author_thin_argv(
+                    brand, out, sid, target["messages"], inputs.get("reference_image"),
+                    register_profile, dial, eff_mandatory, eff_forbidden)
+                argv += ["--style-notes", change]
+                print(f"  Re-running sign {sid} (thin) with your nudge: {change!r}")
+                run_step({"phase": f"sign:{sid}", "label": "scene_author", "argv": argv})
+            elif kit_mode:
                 override = _apply_kit_override(out, sid, change, brand)
                 if override is not None:
                     print(f"  Sign {sid}: {override}; re-composing.")
@@ -682,7 +745,8 @@ def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_pr
                 print(f"  Re-running sign {sid} with your nudge: {change!r}")
                 run_step({"phase": f"sign:{sid}", "label": "scene_author", "argv": argv})
             refreshed = _collect_sign_outputs(Path(out) / f"sign_{sid}")
-            target["final_png"] = (refreshed.get("final") or {}).get("path")
+            target["final_png"] = ((refreshed.get("final") or refreshed.get("generated") or {})
+                                   .get("path"))
             target["preview_png"] = (refreshed.get("preview_white") or {}).get("path")
         else:
             print("  Please type: approve, 'nudge <sign_id>: <change>', or abort.")
@@ -693,11 +757,14 @@ def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_pr
 # Real-mode execution
 # --------------------------------------------------------------------------- #
 
-def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, plan: dict) -> dict:
+def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, plan: dict,
+            thin: bool = False) -> dict:
     out = str(out_dir)
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
     notes = []
+    mand_campaign = list(inputs.get("mandatory_elements") or [])
+    forb_campaign = list(inputs.get("forbidden_elements") or [])
     subfields_path = f"{out}/subfields.json"
     calibration_path = Path(out) / "calibration.json"
     profile_path = Path(out) / "register_profile.json"
@@ -732,7 +799,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
 
     register_profile_arg = str(profile_path) if have_profile else None
     dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
-    kit_mode = kitlib.kit_exists(brand)
+    kit_mode = kitlib.kit_exists(brand) and not thin
     # Feature 002: resolve output size once; flag a mandatory/forbidden contradiction (honest null).
     size_resolution = fmtsize.resolve_size(inputs.get("format_size"))
     size_wh = fmtsize.size_str(size_resolution)
@@ -764,6 +831,41 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         sid = sign["id"]
         sign_dir = Path(out) / f"sign_{sid}"
         messages = sign.get("messages", [])
+
+        if thin:
+            # THIN ROUTE (feature 003): one scene_author --thin per sign. No analyzer, no kit, no
+            # composite. The reference is fed as a visual exemplar; mandatory/forbidden are this
+            # sign's EFFECTIVE union (campaign + per-sign), verbatim.
+            eff_mandatory = _union_elements(mand_campaign, sign.get("mandatory_elements"))
+            eff_forbidden = _union_elements(forb_campaign, sign.get("forbidden_elements"))
+            element_sign_conflict = sorted(prompt_elements.has_conflict(eff_mandatory, eff_forbidden))
+            if element_sign_conflict:
+                notes.append(f"sign {sid}: mandatory ∩ forbidden = {element_sign_conflict} "
+                             "(human must resolve)")
+            sa_argv = _scene_author_thin_argv(brand, out, sid, messages, ref if has_ref else None,
+                                              register_profile_arg, dial, eff_mandatory,
+                                              eff_forbidden, size=size_wh)
+            sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
+            outputs = _collect_sign_outputs(sign_dir)
+            srm = {}
+            srm_path = sign_dir / "run_manifest.json"
+            if srm_path.exists():
+                try:
+                    srm = json.loads(srm_path.read_text(encoding="utf-8"))
+                except Exception:  # noqa: BLE001
+                    pass
+            sign_results.append({
+                "sign_id": sid, "ok": sr["ok"], "messages": messages,
+                "scene_author_cmd": [PY] + sa_argv, "outputs": outputs,
+                "route": "thin", "licensed_type": srm.get("licensed_type", "deferred (raw gpt text)"),
+                "mandatory_elements": eff_mandatory, "forbidden_elements": eff_forbidden,
+                "needs_review": bool(element_sign_conflict),
+                "needs_review_reason": ("; ".join(element_sign_conflict) if element_sign_conflict else None),
+            })
+            state.append({"sign_id": sid, "messages": messages,
+                          "final_png": (outputs.get("generated") or {}).get("path"),
+                          "preview_png": None})
+            continue
 
         if kit_mode:
             # composition.json was written by write_glue_artifacts (pure fn of inputs + kit).
@@ -849,7 +951,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
     approve_status = "skipped (--no-approve)"
     if not no_approve:
         approve_status = run_approve_gate(state, inputs, brand, out_dir, register_profile_arg,
-                                          kit_mode=kit_mode)
+                                          kit_mode=kit_mode, thin=thin)
 
     # --- 7. manifest (the provenance record) ---
     context = inputs.get("context") or {}
@@ -879,7 +981,9 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
             "WIRED: the dial selects the analyzer aligned-prompt rung, injected as "
             "scene_author --aligned-prompt" if has_ref else "no reference supplied (no dial)"),
         "cutout_status": (
-            "deferred for reference jobs (chroma disabled, no green backdrop) — final.png is "
+            "thin route: no cutout/composite — the raw generated.png IS the deliverable "
+            "(moat deferred)" if thin
+            else "deferred for reference jobs (chroma disabled, no green backdrop) — final.png is "
             "the deliverable" if has_ref
             else "chroma cutout produced for no-reference die-cut jobs"),
         "inert_provenance_recorded_not_wired": {
@@ -892,13 +996,18 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
             "calibration_outcome": calibration_outcome,
             "used_calibration": used_calibration,
         },
+        "route": "thin" if thin else ("kit" if kit_mode else "legacy"),
+        # Feature 003: the licensed-font MOAT is DEFERRED on the thin route — the deliverable is
+        # the raw gpt-painted generated.png. Tracked here, not silent (constitution §V honest null).
+        "licensed_type": "deferred (raw gpt text)" if thin else "licensed composite (kit/legacy)",
         "kit": {
             "kit_mode": kit_mode,
             "kit_path": f"kits/{brand}.json" if kit_mode else None,
             "kit_profile_path": (str(Path(out) / "kit_profile.json")
                                  if kit_mode and kit_profile_ok else None),
-            "route": ("kit of parts + bespoke per-message composition"
-                      if kit_mode else "legacy (render-and-scrub / aligned-prompt)"),
+            "route": ("thin (prompt-compose; kit not selected)" if thin else
+                      "kit of parts + bespoke per-message composition" if kit_mode else
+                      "legacy (render-and-scrub / aligned-prompt)"),
         },
         "signs": sign_results,
         "approve_status": approve_status,
@@ -936,7 +1045,7 @@ def print_plan(plan: dict) -> None:
 # Local glue artifacts (pure functions of inputs; cheap; written in BOTH modes)
 # --------------------------------------------------------------------------- #
 
-def write_glue_artifacts(inputs: dict, brand: str, out_dir) -> None:
+def write_glue_artifacts(inputs: dict, brand: str, out_dir, thin: bool = False) -> None:
     out_dir = Path(out_dir)
     (out_dir / "subfields.json").write_text(
         json.dumps(build_subfields(inputs), ensure_ascii=False, indent=2), encoding="utf-8")
@@ -944,9 +1053,10 @@ def write_glue_artifacts(inputs: dict, brand: str, out_dir) -> None:
         intent = build_intent(inputs, sign, brand)
         (out_dir / f"intent_{sign['id']}.json").write_text(
             json.dumps(intent, ensure_ascii=False, indent=2), encoding="utf-8")
-    # Kit route: write each sign's bespoke composition (pure function of inputs + kit), so it is
-    # visible in BOTH dry-run and real mode and consumed by scene_author kit-mode.
-    compositions = build_compositions(inputs, brand)
+    # Thin route (feature 003) writes NO composition.json — the kit/composition layer is not
+    # selected. Kit route: write each sign's bespoke composition (pure function of inputs + kit),
+    # so it is visible in BOTH dry-run and real mode and consumed by scene_author kit-mode.
+    compositions = None if thin else build_compositions(inputs, brand)
     if compositions is not None:
         for comp in compositions:
             sign_dir = out_dir / f"sign_{comp['sign_id']}"
@@ -974,6 +1084,12 @@ def main() -> None:
                              "calls (no vision, no Anthropic, no image generation). Requires --inputs.")
     parser.add_argument("--no-approve", action="store_true",
                         help="skip the interactive approve gate (batch/test use)")
+    parser.add_argument("--thin", action="store_true",
+                        help="THIN ROUTE (feature 003): route flat_graphic jobs through the "
+                             "prompt-compose spine — one assembled prompt per sign, gpt-image-2 "
+                             "composes the whole sign, STOP at generated.png. No kit, no "
+                             "compose_select, no measure, no composite. The kit code stays in the "
+                             "repo but is NOT selected. Moat (licensed font) deferred.")
     args = parser.parse_args()
 
     if args.dry_run and not args.inputs:
@@ -1001,9 +1117,9 @@ def main() -> None:
     validate_inputs(inputs)
 
     # 3. SUBFIELDS + per-sign intents (pure; written in both modes)
-    write_glue_artifacts(inputs, args.brand, out_dir)
+    write_glue_artifacts(inputs, args.brand, out_dir, thin=args.thin)
 
-    plan = build_plan(inputs, args.brand, out_dir, no_approve=args.no_approve)
+    plan = build_plan(inputs, args.brand, out_dir, no_approve=args.no_approve, thin=args.thin)
 
     if args.dry_run:
         plan_path = out_dir / "plan.json"
@@ -1013,7 +1129,7 @@ def main() -> None:
               "No external calls made.")
         return
 
-    execute(inputs, args.brand, out_dir, inputs_path, args.no_approve, plan)
+    execute(inputs, args.brand, out_dir, inputs_path, args.no_approve, plan, thin=args.thin)
 
 
 if __name__ == "__main__":
