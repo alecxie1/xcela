@@ -225,6 +225,20 @@ def _scene_author_kit_argv(brand: str, out: str, sign_id: str, size=None) -> lis
     return argv
 
 
+def _union_elements(campaign, per_sign) -> list:
+    """Order-preserving union: campaign elements first, then this sign's, with exact-duplicate
+    strings dropped while first-seen order is preserved (002 delta). Verbatim passthrough
+    (FR-003): each string is copied byte-for-byte, never rephrased, reordered (beyond the defined
+    campaign-then-per-sign concatenation), interpreted, or expanded. No agent/LLM in this path."""
+    out, seen = [], set()
+    for item in list(campaign or []) + list(per_sign or []):
+        s = str(item)
+        if s not in seen:
+            seen.add(s)
+            out.append(s)
+    return out
+
+
 def build_compositions(inputs: dict, brand: str):
     """Deterministic per-sign compositions for the kit route (icon + collision-avoided
     archetype + reserved text zone + needs_review). Returns None when the brand has no kit
@@ -234,16 +248,30 @@ def build_compositions(inputs: dict, brand: str):
     kit = kitlib.load_kit(brand)
     signs = [{"id": s["id"], "messages": s.get("messages", [])} for s in inputs["signs"]]
     comps = compose_select.compose_campaign(kit, signs)
-    # Feature 002: attach the campaign mandatory/forbidden elements VERBATIM to each composition so
-    # they reach the generation prompt (scene_author kit mode) and the manifest/review. Faithful
+    # Feature 002 (+ per-sign delta): each composition carries the EFFECTIVE elements = the
+    # order-preserving union of the campaign-level mandatory/forbidden (apply to all signs) and that
+    # sign's OWN mandatory/forbidden (this sign only), de-duplicated. So a campaign with
+    # mandatory_elements [] and only s5/s6 carrying 分别画叉 puts 分别画叉 on s5/s6 ONLY. Verbatim
     # passthrough: copied as-is, never rephrased or interpreted into variant counts (FR-003/FR-004).
-    mandatory = list(inputs.get("mandatory_elements") or [])
-    forbidden = list(inputs.get("forbidden_elements") or [])
+    mandatory_campaign = list(inputs.get("mandatory_elements") or [])
+    forbidden_campaign = list(inputs.get("forbidden_elements") or [])
     for sign, comp in zip(inputs["signs"], comps):
         if sign.get("hero_icon"):
             comp["human_hero_icon"] = sign["hero_icon"]
-        comp["mandatory_elements"] = list(mandatory)
-        comp["forbidden_elements"] = list(forbidden)
+        eff_mandatory = _union_elements(mandatory_campaign, sign.get("mandatory_elements"))
+        eff_forbidden = _union_elements(forbidden_campaign, sign.get("forbidden_elements"))
+        comp["mandatory_elements"] = eff_mandatory
+        comp["forbidden_elements"] = eff_forbidden
+        # Per-sign conflict (constitution §V): if this sign's effective mandatory ∩ forbidden is
+        # non-empty, flag needs_review naming the item(s); never silently resolve. Augments (does
+        # not clobber) any icon/archetype needs_review compose_select already set.
+        conflict = sorted(prompt_elements.has_conflict(eff_mandatory, eff_forbidden))
+        if conflict:
+            reason = ("mandatory_elements and forbidden_elements both contain: "
+                      + ", ".join(conflict) + " (human must resolve)")
+            comp["needs_review"] = True
+            comp["needs_review_reason"] = "; ".join(
+                r for r in (comp.get("needs_review_reason"), reason) if r)
     return comps
 
 
@@ -464,6 +492,16 @@ def validate_inputs(inputs: dict) -> dict:
         seen.add(sign["id"])
         if not sign.get("messages"):
             raise SystemExit(f"ERROR: sign {sign['id']!r} has no messages.")
+        # 002 delta: a sign MAY carry its own mandatory_elements / forbidden_elements (this sign
+        # only). OPTIONAL — absent stays absent (honest null; back-compat unchanged). When present
+        # they MUST be lists of strings; verbatim, no agent inference (FR-003).
+        for key in ("mandatory_elements", "forbidden_elements"):
+            if key not in sign or sign[key] is None:
+                continue
+            val = sign[key]
+            if not isinstance(val, list) or not all(isinstance(v, str) for v in val):
+                raise SystemExit(
+                    f"ERROR: sign {sign['id']!r} {key} must be a list of strings.")
     inputs.setdefault("asset_type", ASSET_TYPE_DEFAULT)
     # Feature 002: the previously-dropped bucket-A/C fields. OPTIONAL (back-compat): absent ->
     # empty/None, never invented. Lists pass through verbatim; a bare string is kept as one item

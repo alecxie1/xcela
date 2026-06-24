@@ -82,14 +82,28 @@ to both generation and the fit clamp. Print resolution is out of reach by design
 
 ## Entity: Per-sign Composition (extended)
 
-The existing `composition.json` (feature 001) gains the campaign elements so they reach the prompt
-and the manifest/review.
+The existing `composition.json` (feature 001) gains the EFFECTIVE elements so they reach the prompt
+and the manifest/review. "Effective" = the order-preserving union of the campaign-level elements
+(apply to all signs) and that sign's OWN elements (this sign only), with exact-duplicate strings
+dropped while first-seen order is preserved. Campaign comes FIRST, then the per-sign additions.
 
 | Field | Type | Source |
 |-------|------|--------|
 | (existing) `chosen_icon` / `chosen_archetype` / `text_zone` / `needs_review` | — | feature 001 |
-| `mandatory_elements` | list[string] | campaign inputs (verbatim) |
-| `forbidden_elements` | list[string] | campaign inputs (verbatim) |
+| `mandatory_elements` | list[string] | union(campaign, this sign's) verbatim, deduped |
+| `forbidden_elements` | list[string] | union(campaign, this sign's) verbatim, deduped |
+
+**Per-sign elements (002 delta)**: a `signs[]` item MAY carry its own `mandatory_elements` /
+`forbidden_elements` (each an OPTIONAL list[string]; absent = empty list, never invented). So a
+campaign with `mandatory_elements: []` and only s5/s6 carrying `["分别画叉"]` puts `分别画叉` on s5
+and s6 ONLY, and `[]` on s1-s4 — faithful per-sign targeting, not a campaign-wide stamp. Verbatim
+passthrough (FR-003): strings copied byte-for-byte, never rephrased, reordered (beyond the
+campaign-then-per-sign concatenation), interpreted, or expanded into variant counts; no agent/LLM.
+
+**Per-sign conflict (constitution §V)**: if a sign's EFFECTIVE mandatory ∩ effective forbidden is
+non-empty, that sign's `needs_review` is set (augmenting, not clobbering, any icon/archetype review)
+with a reason naming the conflicting item(s). Never silently resolved. The campaign-level conflict
+check (manifest `needs_review_campaign`) still applies independently.
 
 ---
 
@@ -144,3 +158,7 @@ Also written to `review.md` in the run dir.
 - The review digest over a synthetic run dir lists each sign's image + icon + archetype + text_zone
   + needs_review.
 - A `mandatory_elements` ∩ `forbidden_elements` conflict sets `needs_review` (not silently resolved).
+- A campaign with `mandatory_elements: []` and only s5/s6 carrying `["分别画叉"]` yields `分别画叉` in
+  the s5 and s6 `composition.json` ONLY; s1-s4 carry `[]` (per-sign targeting, not a campaign stamp).
+- `union(["A"], ["A","B"]) == ["A","B"]` (order preserved, dedup); a sign with no per-sign field
+  inherits exactly the campaign list. A non-list per-sign field raises `SystemExit` in `validate_inputs`.
