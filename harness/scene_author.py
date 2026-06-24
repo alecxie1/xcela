@@ -15,6 +15,7 @@ load_dotenv(Path.home() / ".hermes" / ".env", override=True)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kit as kitlib  # noqa: E402  (stdlib-only kit loader; used by the kit reserve-box mode)
+import prompt_elements  # noqa: E402  (stdlib mandatory/forbidden clause, feature 002)
 
 TIER2_INTENT = {
     "subject": "new limited-edition garden fresh tomato cheeseburger",
@@ -921,6 +922,12 @@ def assemble_kit_prompt(kit: dict, kit_profile: dict, composition: dict) -> str:
         "compositing the licensed font. Leave that band empty.")
     if "logo:omit" in (kit_profile.get("locks_flexed") or []):
         lines.append("Do NOT render any logo or wordmark.")
+    # Feature 002: the brief's mandatory/forbidden elements, VERBATIM (e.g. 分别画叉). Profile-agnostic
+    # clause builder so the future photo/poster assembler reuses it unchanged.
+    clause = prompt_elements.elements_clause(composition.get("mandatory_elements"),
+                                             composition.get("forbidden_elements"))
+    if clause:
+        lines.append(clause)
     lines.append("NEGATIVES: no photographic shading, no 3D realism, no gibberish text, no "
                  "watermark, no characters of any language anywhere on the sign.")
     return "\n".join(lines)
@@ -960,8 +967,18 @@ def compose_kit_headline(kit: dict, kit_profile: dict, composition: dict, brand:
     return {"status": "placed", "fit": fit, "final": str(final), "spec": spec, "color": color}
 
 
+def _parse_size(s, default=CANVAS) -> tuple:
+    """'WxH' -> (w, h); feature 002 resolved output size. Falls back to the default canvas."""
+    try:
+        w, h = str(s).lower().split("x")
+        return (int(w), int(h))
+    except (ValueError, AttributeError):
+        return default
+
+
 def run_kit_mode(args) -> None:
     out_dir = Path(args.out)
+    canvas_wh = _parse_size(getattr(args, "size", None))
     kit = kitlib.load_kit(args.brand)
     kit_profile = (json.loads(Path(args.kit_profile).read_text(encoding="utf-8"))
                    if args.kit_profile and Path(args.kit_profile).exists() else {})
@@ -984,6 +1001,11 @@ def run_kit_mode(args) -> None:
             "icon_text_zones_disjoint": disjoint,
             "needs_review": composition.get("needs_review"),
             "asset_profile": args.asset_profile,
+            "output_size": f"{canvas_wh[0]}x{canvas_wh[1]}",
+            "mandatory_elements": composition.get("mandatory_elements") or [],
+            "forbidden_elements": composition.get("forbidden_elements") or [],
+            "mandatory_in_prompt": bool(prompt_elements.elements_clause(
+                composition.get("mandatory_elements"), composition.get("forbidden_elements"))),
         }, ensure_ascii=False, indent=2))
         return
 
@@ -1000,11 +1022,12 @@ def run_kit_mode(args) -> None:
     from generate import generate_variant
     out_png = str(out_dir / "generated.png")
     logo_path = brand_key.get("logo_path", LOGO_PATH)
-    gen_meta = generate_variant(prompt, [logo_path], out_png, size="1536x1024", quality="high")
+    gen_meta = generate_variant(prompt, [logo_path], out_png,
+                                size=f"{canvas_wh[0]}x{canvas_wh[1]}", quality="high")
 
     print("\n=== Step 5: Composite the fitted licensed headline into the reserved zone ===")
     rec = compose_kit_headline(kit, kit_profile, composition, args.brand, out_png,
-                               str(out_dir / "final.png"))
+                               str(out_dir / "final.png"), canvas_wh=canvas_wh)
     needs_review = bool(composition.get("needs_review"))
     review_reason = composition.get("needs_review_reason")
     if rec["status"] == "unfit":
@@ -1090,6 +1113,9 @@ def main():
                         help="KIT JOB: path to this sign's composition.json (compose_select output). "
                         "Triggers kit reserve-box mode: paint panel + chosen icon, keep the text "
                         "zone clear, then composite the fitted licensed headline into it.")
+    parser.add_argument("--size", default="1536x1024",
+                        help="Output pixel size WxH (feature 002: resolved from the brief format_size; "
+                        "drives both generation and the fit-clamp canvas). Default 1536x1024.")
     parser.add_argument("--explain", action="store_true",
                         help="Print the resolved generation-prompt SOURCE + mode + chroma as "
                         "JSON and EXIT before any model call (free structural test surface).")

@@ -48,6 +48,8 @@ PY = sys.executable  # the (venv) python running this conductor; used for every 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kit as kitlib  # noqa: E402
 import compose_select  # noqa: E402
+import format_size as fmtsize  # noqa: E402  (stdlib size resolver, feature 002)
+import prompt_elements  # noqa: E402  (stdlib mandatory/forbidden clause, feature 002)
 
 # Proven scripts the conductor sequences (repo-relative; run with cwd=REPO_ROOT).
 SCENE_AUTHOR = "harness/scene_author.py"
@@ -209,14 +211,18 @@ def _kit_argv(brand: str, out: str, has_ref: bool) -> list:
     return argv
 
 
-def _scene_author_kit_argv(brand: str, out: str, sign_id: str) -> list:
+def _scene_author_kit_argv(brand: str, out: str, sign_id: str, size=None) -> list:
     """Kit reserve-box composition: scene_author paints panel + chosen icon in the icon zone and
     keeps the reserved text zone clear, then composites the fitted headline into it. No clone
-    dial, no render-and-scrub. Inputs are the campaign kit_profile + this sign's composition."""
-    return [SCENE_AUTHOR, "--brand", brand, "--asset-profile", ASSET_PROFILE,
+    dial, no render-and-scrub. Inputs are the campaign kit_profile + this sign's composition.
+    `size` (WxH, feature 002) is the format_size-resolved output dimensions."""
+    argv = [SCENE_AUTHOR, "--brand", brand, "--asset-profile", ASSET_PROFILE,
             "--kit-profile", f"{out}/kit_profile.json",
             "--composition", f"{out}/sign_{sign_id}/composition.json",
             "--out", f"{out}/sign_{sign_id}"]
+    if size:
+        argv += ["--size", size]
+    return argv
 
 
 def build_compositions(inputs: dict, brand: str):
@@ -259,6 +265,14 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
     calibration_path = f"{out}/calibration.json"
     kit_mode = kitlib.kit_exists(brand)
     compositions = build_compositions(inputs, brand) if kit_mode else None
+    # Feature 002: resolve the output pixel size from the brief's format_size ONCE (aspect-preserving,
+    # nearest the default target; honest null on unparseable). Threaded to the kit scene_author call.
+    size_resolution = fmtsize.resolve_size(inputs.get("format_size"))
+    size_wh = fmtsize.size_str(size_resolution)
+    _conflict = sorted(prompt_elements.has_conflict(
+        inputs.get("mandatory_elements"), inputs.get("forbidden_elements")))
+    needs_review_campaign = (("mandatory_elements and forbidden_elements both contain: "
+                              + ", ".join(_conflict) + " (human must resolve)") if _conflict else None)
 
     steps = []
     # 4. register prep (campaign-level: one profile shared by all signs)
@@ -278,7 +292,7 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         for sign in inputs["signs"]:
             sid = sign["id"]
             steps.append(_cmd(f"sign:{sid}", "scene_author",
-                              _scene_author_kit_argv(brand, out, sid), sign_id=sid))
+                              _scene_author_kit_argv(brand, out, sid, size=size_wh), sign_id=sid))
     else:
         # 5. legacy per-sign loop. Reference job: analyzer (dial-selected wording) ->
         # aligned_prompt.txt, INJECTED as scene_author's --aligned-prompt.
@@ -311,8 +325,10 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False) -> d
         "asset_profile_v1": ASSET_PROFILE,
         "asset_type_note": "v1: asset_type is intent-framing only; output is ALWAYS flat_graphic",
         "format_size": inputs.get("format_size"),
+        "size_resolution": size_resolution,
         "mandatory_elements": inputs.get("mandatory_elements") or [],
         "forbidden_elements": inputs.get("forbidden_elements") or [],
+        "needs_review_campaign": needs_review_campaign,
         "kit_mode": kit_mode,
         "kit_profile": f"{out}/kit_profile.json" if kit_mode else None,
         "has_reference": has_ref,
@@ -679,6 +695,18 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
     register_profile_arg = str(profile_path) if have_profile else None
     dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
     kit_mode = kitlib.kit_exists(brand)
+    # Feature 002: resolve output size once; flag a mandatory/forbidden contradiction (honest null).
+    size_resolution = fmtsize.resolve_size(inputs.get("format_size"))
+    size_wh = fmtsize.size_str(size_resolution)
+    if size_resolution.get("needs_review"):
+        notes.append(f"format_size: {size_resolution.get('note')}")
+    element_conflict = sorted(prompt_elements.has_conflict(
+        inputs.get("mandatory_elements"), inputs.get("forbidden_elements")))
+    needs_review_campaign = None
+    if element_conflict:
+        needs_review_campaign = ("mandatory_elements and forbidden_elements both contain: "
+                                 + ", ".join(element_conflict) + " (human must resolve)")
+        notes.append(f"needs_review: {needs_review_campaign}")
 
     # --- 4b. KIT ROUTE: build the campaign kit_profile once (DERIVED layer) ---
     kit_profile_ok = False
@@ -710,7 +738,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                     pass
             if comp.get("needs_review"):
                 notes.append(f"sign {sid}: needs_review=true ({comp.get('needs_review_reason')})")
-            sa_argv = _scene_author_kit_argv(brand, out, sid)
+            sa_argv = _scene_author_kit_argv(brand, out, sid, size=size_wh)
             sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
             outputs = _collect_sign_outputs(sign_dir)
             sign_results.append({
@@ -804,8 +832,10 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         # inputs the pipeline actually consumed (FR-002 / SC-001). size_resolution is added by the
         # size-wiring step (US2).
         "format_size": inputs.get("format_size"),
+        "size_resolution": size_resolution,
         "mandatory_elements": inputs.get("mandatory_elements") or [],
         "forbidden_elements": inputs.get("forbidden_elements") or [],
+        "needs_review_campaign": needs_review_campaign,
         "brief_fields_received": inputs,
         "reference_relationship_status": (
             "WIRED: the dial selects the analyzer aligned-prompt rung, injected as "
