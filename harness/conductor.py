@@ -226,7 +226,8 @@ def _scene_author_kit_argv(brand: str, out: str, sign_id: str, size=None) -> lis
 
 
 def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, ref,
-                            register_profile, dial, mandatory, forbidden, size=None) -> list:
+                            register_profile, dial, mandatory, forbidden, size=None,
+                            style_notes=None) -> list:
     """THIN ROUTE (feature 003): scene_author --thin assembles ONE prompt from the brief and lets
     gpt-image-2 compose the whole sign (STOP at generated.png). No kit, no compose_select, no
     analyzer/aligned-prompt, no measure, no composite. The reference (if any) is fed as a visual
@@ -244,6 +245,8 @@ def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, 
         argv += ["--dial", dial]
     if size:
         argv += ["--size", size]
+    if style_notes:
+        argv += ["--style-notes", style_notes]
     if ref:
         argv += ["--ref-image", ref]
     return argv
@@ -305,7 +308,7 @@ def _cmd(phase: str, label: str, script_argv: list, sign_id=None, optional=False
 
 
 def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
-               thin: bool = False) -> dict:
+               thin: bool = False, style_notes=None) -> dict:
     """Pure: inputs + brand -> the fully-parameterized HAPPY-PATH plan. dry-run
     writes this to plan.json (the falsifiable test surface); real mode executes it
     with documented honest-null fallbacks when a step fails.
@@ -355,7 +358,8 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
             steps.append(_cmd(f"sign:{sid}", "scene_author",
                               _scene_author_thin_argv(brand, out, sid, sign.get("messages", []),
                                                       ref if has_ref else None, profile_path, dial,
-                                                      eff_mandatory, eff_forbidden, size=size_wh),
+                                                      eff_mandatory, eff_forbidden, size=size_wh,
+                                                      style_notes=style_notes),
                               sign_id=sid))
     elif kit_mode:
         # 4b. KIT ROUTE: derive the campaign kit_profile once, then compose each sign bespoke.
@@ -758,7 +762,7 @@ def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_pr
 # --------------------------------------------------------------------------- #
 
 def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, plan: dict,
-            thin: bool = False) -> dict:
+            thin: bool = False, style_notes=None) -> dict:
     out = str(out_dir)
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
@@ -844,7 +848,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                              "(human must resolve)")
             sa_argv = _scene_author_thin_argv(brand, out, sid, messages, ref if has_ref else None,
                                               register_profile_arg, dial, eff_mandatory,
-                                              eff_forbidden, size=size_wh)
+                                              eff_forbidden, size=size_wh, style_notes=style_notes)
             sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
             outputs = _collect_sign_outputs(sign_dir)
             srm = {}
@@ -1084,6 +1088,11 @@ def main() -> None:
                              "calls (no vision, no Anthropic, no image generation). Requires --inputs.")
     parser.add_argument("--no-approve", action="store_true",
                         help="skip the interactive approve gate (batch/test use)")
+    parser.add_argument("--style-notes", default="",
+                        help="Binding style note (feature 004): a campaign-level nudge threaded "
+                             "VERBATIM to the thin scene_author as --style-notes (a binding clause). "
+                             "Lets the browser taste gate's nudge-rerun reach generation "
+                             "non-interactively. Empty = none.")
     parser.add_argument("--thin", action="store_true",
                         help="THIN ROUTE (feature 003): route flat_graphic jobs through the "
                              "prompt-compose spine — one assembled prompt per sign, gpt-image-2 "
@@ -1119,7 +1128,9 @@ def main() -> None:
     # 3. SUBFIELDS + per-sign intents (pure; written in both modes)
     write_glue_artifacts(inputs, args.brand, out_dir, thin=args.thin)
 
-    plan = build_plan(inputs, args.brand, out_dir, no_approve=args.no_approve, thin=args.thin)
+    style_notes = args.style_notes.strip() or None
+    plan = build_plan(inputs, args.brand, out_dir, no_approve=args.no_approve, thin=args.thin,
+                      style_notes=style_notes)
 
     if args.dry_run:
         plan_path = out_dir / "plan.json"
@@ -1129,7 +1140,8 @@ def main() -> None:
               "No external calls made.")
         return
 
-    execute(inputs, args.brand, out_dir, inputs_path, args.no_approve, plan, thin=args.thin)
+    execute(inputs, args.brand, out_dir, inputs_path, args.no_approve, plan, thin=args.thin,
+            style_notes=style_notes)
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ def make_inputs(messages_per_sign, reference=None):
     }
 
 
-def dry_run(brand, inputs_obj, no_approve=True):
+def dry_run(brand, inputs_obj, no_approve=True, extra_args=None):
     """Run the conductor in --dry-run and return its plan.json as a dict.
     Raises with captured stderr if the run fails or writes no plan."""
     with tempfile.TemporaryDirectory() as d:
@@ -57,6 +57,7 @@ def dry_run(brand, inputs_obj, no_approve=True):
                 "--inputs", str(inputs_path), "--brand", brand, "--out", str(out)]
         if no_approve:
             argv.append("--no-approve")
+        argv += list(extra_args or [])
         proc = subprocess.run(argv, cwd=str(REPO_ROOT), capture_output=True, text=True)
         plan_path = out / "plan.json"
         if proc.returncode != 0 or not plan_path.exists():
@@ -233,6 +234,23 @@ def check6_brief_fields_carried():
     return passed, detail
 
 
+def check7_style_notes_threads_thin():
+    # Feature 004: a top-level --style-notes (campaign) threads into the THIN scene_author argv,
+    # so the browser taste gate's nudge reaches generation non-interactively. Back-compat: a thin
+    # run without --style-notes omits it (the standalone thin route is unchanged).
+    plan = dry_run("aia", make_inputs([["守住钱袋子"]]),
+                   extra_args=["--thin", "--style-notes", "make it bolder"])
+    sa = scene_author_steps(plan)[0]["argv"]
+    threaded = flag_value(sa, "--style-notes") == "make it bolder" and "--thin" in sa
+    plan2 = dry_run("aia", make_inputs([["守住钱袋子"]]), extra_args=["--thin"])
+    sa2 = scene_author_steps(plan2)[0]["argv"]
+    back_compat = "--style-notes" not in sa2 and "--thin" in sa2
+    passed = threaded and back_compat
+    detail = (f"thin argv --style-notes={flag_value(sa, '--style-notes')!r} (threaded={threaded}); "
+              f"no-notes thin omits it={back_compat}")
+    return passed, detail
+
+
 CHECKS = [
     ("Brand-generality (kills hardcoding)", check1_brand_generality),
     ("Human input drives output (kills input-ignoring)", check2_inputs_drive_output),
@@ -240,6 +258,7 @@ CHECKS = [
     ("Sign-count generality (real N-sign loop)", check4_sign_count_generality),
     ("Human gates present (input + approve)", check5_human_gates),
     ("Brief fields carried + back-compat (002 / SC-004 standalone)", check6_brief_fields_carried),
+    ("Style-notes threads to thin scene_author (004 nudge surface)", check7_style_notes_threads_thin),
 ]
 
 
