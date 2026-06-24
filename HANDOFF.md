@@ -78,25 +78,43 @@ VERIFICATION DONE (Hermes ran the tests, not just relayed the agent's word):
   NOTE: conductor may need a flag/inputs tweak to take the new kit route — check
   `specs/001-kit-of-parts-composition/quickstart.md` for the exact invocation.
 
-## NEXT FOCUS (Alec's stated priority): A FRONTEND TO VISUALIZE + DEMO
-Alec wants to build a frontend to visualize the pipeline and have a demo. NOT yet specced.
-Open questions for the next chat to settle WITH Alec before any build:
-- Demo for WHOM? (himself / Handyprint stakeholders / the Hanzi Li collaboration pitch?)
-- Visualize WHAT? (the final signs gallery? the pipeline stages/reconciliation? the
-  approve-nudge loop interactive?)
-- STANDALONE-vs-HOST rule (Alec's standing worry): the core must run AGENT-FREE (one
-  command, no Hermes) BEFORE a web host wraps it. A host over a Hermes-dependent core is
-  hollow. Confirm the conductor runs clean standalone first.
-- Likely the right move: spec 002 via Spec Kit (`/speckit-specify` a frontend), same
-  workflow. Keep it a thin visualization over the EXISTING agent-free conductor outputs.
-- Watch Alec's DEADLINE/DEMO REFLEX: an upcoming call triggers "build something to show" →
-  premature deliverable. The honest artifact (working pipeline + findings) usually lands
-  better with a technical peer than rushed plumbing.
+## NEXT FOCUS (updated 2026-06-23 PM): FIX THE INTAKE, not the frontend-as-demo
+The frontend is still wanted, but the framing CHANGED this session. A control experiment
+reframed the problem: see SYSTEM_MAP.md "REGROUP 2026-06-23 PM" (read it first). Short version:
+
+- We ran T020 (kit output exists: `output/run_aia_20260623_110905/`) AND Alec ran raw
+  gpt-image-2 himself on Lily's full brief + reference. Raw beat our output by his eye.
+- BUT both sides were confounded: the pipeline got a STARVED hand-translated input (2 of 6
+  signs, 分别画叉 / size dropped); the raw side got Alec's hand-added "extend these, keep the
+  DNA" prepend. So "raw > pipeline" is NOT established on equal inputs.
+- ROOT CAUSE (in code + git): the tool never parses a brief (a chat hand-wrote `--inputs`,
+  lossily) AND `conductor.py` never reads `mandatory_elements` or `format_size`. The brains
+  were NEVER tested on a faithful complete brief. This confounds every prior pipeline test.
+
+DECISION: spec 002 = self-service FAITHFUL INTAKE + REVIEW (Fork A: fields are the spine,
+per Richard "users don't know what they want"; with B's lesson: wire the dropped fields,
+pass literal text verbatim, reference feeds both channels). Goal: Alec authors the brief
+HIMSELF and judges HIMSELF, with NO agent translator. This makes the first CLEAN test
+possible. The comparison (raw vs pipeline on equal inputs) and the stakeholder demo
+frontend are BOTH deferred to later specs. Standalone-vs-host rule still binds: the
+intake surface must be THIN over the agent-free CLI, which must still run headless.
+
+The `/speckit-specify` brief is already authored at:
+  `specs/_inbox/002-faithful-brief-intake.md`  ← READ THIS; it has the full spec input.
 
 ## IMMEDIATE TODO AT START OF NEXT CHAT
-1. Alec is about to push 10 commits to GitHub manually (master ahead of origin/master by 10).
-   Confirm `git status` shows synced if he says he pushed.
-2. If continuing spec 001: run the PAID validation + get Alec's eye on the signs. That is the
-   real "is it fixed" gate, still outstanding.
-3. If starting the frontend: settle the 4 open questions above with Alec first, then
-   `/speckit-specify`. Do not start coding before the demo's audience + purpose are clear.
+1. Git is SYNCED as of 6/23 PM (HEAD == origin/master earlier; re-confirm with `git status`).
+   Note: this session left UNCOMMITTED working changes (the 002 brief, SYSTEM_MAP + HANDOFF
+   updates, baseline_gptimage_only.py, ocr_*.py, output/baseline_gptimage_only/,
+   output/run_aia_20260623_110905/). Alec pushes manually; help him stage/commit if he asks.
+2. Spec 002 is the active thread. Alec will run `/speckit-specify` himself in Claude Code
+   against `specs/_inbox/002-faithful-brief-intake.md` (sequential numbering → it becomes
+   `specs/002-*`; no branch hook, works on master). When he pastes the generated spec.md
+   back, VERIFY it against the constitution + the brief before planning (architect-verifies-
+   engineer loop). Likely 1-3 [NEEDS CLARIFICATION], e.g. how `format_size` drives aspect on
+   the fixed 1536x1024 canvas.
+3. Spec 001 (kit-of-parts) is BUILT + has now RUN (T020 done). Do NOT rip out the register/kit
+   brains: they were never fairly tested (starved input). Re-judging them fairly is exactly
+   what spec 002 unblocks.
+4. Throwaway artifacts from this session that may want cleanup later: `baseline_gptimage_only.py`,
+   `ocr_readback.py`, `ocr_alec_batch.py` (control-experiment scripts, not pipeline code).
