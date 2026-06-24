@@ -110,8 +110,8 @@ Single project. Pipeline code in `harness/`, brand data in `answer_keys/` + `kit
 
 **Purpose**: Update durable context, run the free surfaces (incl. the 001 regression suite), then the human's paid run.
 
-- [ ] T015 [P] Update `SYSTEM_MAP.md` + `CLAUDE.md` in the same commit that makes them stale (§VII): the intake is fixed (faithful self-service form), the 3 dropped fields are wired (`format_size` → target-area size; `mandatory_elements`/`forbidden_elements` → prompt + manifest), the review digest exists, and `asset_type → asset_profile` selection + the photo/poster render dialect is an explicit FUTURE spec.
-- [ ] T016 [P] Run quickstart steps 1-4 (`test_format_size`, `test_faithful_intake`, `test_brief_wiring`, `test_review`, `test_conductor`) and confirm the 001 regression suite stays green (`test_kit`, `test_compose_select`, `test_fit_to_zone`, `test_kit_reserve_box`, `test_render_and_scrub`) — no regression from the new fields / de-hardcoded canvas.
+- [X] T015 [P] Update `SYSTEM_MAP.md` + `CLAUDE.md` in the same commit that makes them stale (§VII): the intake is fixed (faithful self-service form), the 3 dropped fields are wired (`format_size` → target-area size; `mandatory_elements`/`forbidden_elements` → prompt + manifest), the review digest exists, and `asset_type → asset_profile` selection + the photo/poster render dialect is an explicit FUTURE spec.
+- [X] T016 [P] Run quickstart steps 1-4 (`test_format_size`, `test_faithful_intake`, `test_brief_wiring`, `test_review`, `test_conductor`) and confirm the 001 regression suite stays green (`test_kit`, `test_compose_select`, `test_fit_to_zone`, `test_kit_reserve_box`, `test_render_and_scrub`) — no regression from the new fields / de-hardcoded canvas.
 - [ ] T017 The human's run (SC-003, NOT automated): `.venv/bin/python harness/conductor.py --brand aia` (the extended form; fill all 6 signs, 分别画叉, 设计两种样式 verbatim, 60x40cm, the reference) → the one PAID pipeline run → `.venv/bin/python harness/review.py --run output/run_aia_<ts>` → judge by eye (constitution §II). Record the verdict in `SYSTEM_MAP.md`. Needs spend + the human; left for the user.
 
 ---

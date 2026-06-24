@@ -1,7 +1,77 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-23._
+_Single source of truth for "what is this whole thing." Updated 2026-06-24._
 
-> **▶ REGROUP — 2026-06-23 (start here; supersedes the 6/18 "BIG RETHINK" below — it is now BUILT):**
+> **▶ REGROUP — 2026-06-24 (START HERE; the intake fix from the 6/23 PM decision is now BUILT):**
+> Spec 002 (faithful self-service brief intake + review) is BUILT through US3 and passes its
+> falsifiable structural self-tests. The intake confound the 6/23 PM block located is fixed:
+>   • INTAKE no longer drops fields: `conductor.ask_questions` now captures EVERY `brief_schema_v3`
+>     field VERBATIM (incl. the previously-dropped `format_size`, `mandatory_elements`,
+>     `forbidden_elements`); the manifest echoes the inputs the pipeline actually received.
+>   • The two under-wired fields now REACH generation: `harness/format_size.py` resolves the brief
+>     size to a valid gpt-image-2 pixel size (aspect-preserving, nearest a configurable ~1.57 MP
+>     target — 3:2→1536x1024, 1:1→1248x1248, 3:1→2160x720; >3:1/<1:3 clamp + needs_review), and
+>     `mandatory_elements` (e.g. 分别画叉) flow VERBATIM into the kit prompt via
+>     `harness/prompt_elements.py` + the manifest. The hardcoded 1536x1024 / CANVAS is gone.
+>   • `harness/review.py` gives the human one read-only digest of a run (images + inputs received +
+>     composition picks + needs_review) to render the eye verdict. New 002 code is asset-profile-AGNOSTIC.
+>   • Tests: test_format_size 7/7, test_faithful_intake 4/4, test_brief_wiring 4/4, test_review 4/4,
+>     test_conductor 6/6; the 001 suite stays green. NO paid generation in any test.
+>
+> **NOT YET DONE:** the human's PAID run on the faithful 6-sign brief + the eye verdict (the first
+> CLEAN test, SC-003). Structure is green; only the eye validates pixels (constitution §II).
+> **FUTURE SPEC (explicitly out of 002 scope):** `asset_type → asset_profile` selection + the
+> photographic `poster`/`photo` render dialect (taichi, AIA mother's day). 002 kept the new code
+> profile-agnostic so that path is pure addition. Spec/plan/tasks: `specs/002-faithful-brief-intake/`.
+
+> **▶ REGROUP — 2026-06-23 PM (superseded by 2026-06-24 above; the intake fix is now BUILT):**
+> A control experiment + code/git root-cause this session invalidated our prior pipeline tests
+> and reframed the whole problem from "fix the brains" to "fix the intake."
+>
+> **THE EXPERIMENT:** T020 finally ran (kit run `output/run_aia_20260623_110905/`): structurally
+> clean (distinct icon+layout per sign, text fit per-zone 139px vs 114px, licensed font exact,
+> zero needs_review). BUT Alec then ran raw gpt-image-2 himself (full Lily brief + the 4-panel
+> reference, no pipeline) and by his eye it beat our output by a considerable margin, producing
+> all 6 signs with the 分别画叉 X-marks. Alec's verdict: "our only advantage is licensed font."
+>
+> **THE CONFOUND (both sides were contaminated, so the test is NOT clean — important):**
+>   • Pipeline side: it was fed a STARVED, hand-translated input (2 of 6 signs; 分别画叉 / 两种样式 /
+>     size all dropped). The translator was a past Hermes chat, not the tool. (constitution §I violation)
+>   • Raw side: Alec PREPENDED "extend these 4 signs, keep the same visual language and DNA" to Lily's
+>     brief, i.e. he hand-supplied the reconciliation. That prepend maps 1:1 to the EXISTING
+>     `reference_relationship="template"` field that Lily's brief omitted.
+>   ⇒ We CANNOT conclude raw > pipeline on equal inputs. We CAN conclude: (1) the intake is broken;
+>     (2) Richard's "users don't know what they want, fields make them decide" is now evidence-backed
+>     (the winning instruction was a field Lily left blank).
+>
+> **THE ROOT CAUSE (located in code + git, not theorized):**
+>   • LOSSY HUMAN TRANSLATOR: nothing in the tool parses a brief; a chat hand-wrote `--inputs` JSON
+>     and silently dropped content. Every "pipeline test" to date secretly tested
+>     [lossy hand-translation + pipeline]. The brains were NEVER tested on a faithful brief.
+>   • UNDER-WIRED CONTRACT: `conductor.py` never reads `mandatory_elements` (bucket C, where 分别画叉
+>     lives) or `format_size` (bucket A, 60x40cm). `grep harness/` confirms NO consumer exists.
+>     The X-marks have zero path through our pipeline.
+>   • Divergence point: the conductor was BORN (commit 07d733b) consuming a digested 10-field
+>     `brief_schema_v3` form, not Alec's mental model of "ref + prompt + brand assets." They never matched.
+>
+> **METHODOLOGY NOTE (verification, not vibes):** VLM vision over-scored throughout (called every sign
+> "production-ready / approved"); mechanical CJK OCR (rapidocr) was the trustworthy reader and DISAGREED
+> with the VLM on 3 of Alec's 6 signs (护/拥, 集/渠, 抵/拒). Native-reader Alec confirmed OCR correct,
+> VLM wrong on all 3. Lesson re-affirmed (constitution §II): the eye + mechanical OCR beat the VLM.
+>
+> **DECISION → PENDING SPEC 002 (Fork A chosen, with B's lesson):** fix the intake so a CLEAN test
+> becomes possible. Fields are the spine (per Richard + the evidence); wire the dropped fields
+> (`mandatory_elements`, `format_size`) through to generation + manifest; pass literal text verbatim;
+> reference stays first-class feeding BOTH channels (ref+prompt > ref > prompt, already designed-in).
+> Self-service intake + review so Alec authors the brief and judges himself, with NO agent translator.
+> Brief authored at `specs/_inbox/002-faithful-brief-intake.md` (run `/speckit-specify` against it).
+> Comparison (raw vs pipeline on identical inputs) deferred to a later spec. The eventual stakeholder
+> frontend is also later. v1 = faithful intake first, because no comparison is honest until intake is fixed.
+>
+> **STILL TRUE FROM THE AM BLOCK BELOW:** the kit-of-parts CODE (spec 001) is built + structurally green;
+> T020 has now RUN. What changed is our READ of it: structure-green ≠ competitive, and we now know the
+> input it was tested on was starved. Do not rip out the register/kit brains; they were never fairly tested.
+
+> **▶ REGROUP — 2026-06-23 AM (superseded by the PM block above; kept for lineage):**
 > The kit-of-parts reframe (Spec Kit feature `001-kit-of-parts-composition`) is BUILT through US3 and
 > passes its falsifiable structural self-tests. The 6/18 "ONE TEMPLATE, N TEXTS" failure is addressed
 > at the FRAME level, not patched.

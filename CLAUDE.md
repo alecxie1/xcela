@@ -50,6 +50,10 @@ image sets MAGNITUDE (how far, via blind vision score). See `docs/ARCHITECTURE.m
   kit reserve-box mode via `--kit-profile` + `--composition`).
 - `harness/kit.py` — KIT loader/validator (stdlib) + derived `kit_profile` (answer key wins).
 - `harness/compose_select.py` — deterministic meaning→icon + collision-avoiding archetype pick.
+- `harness/format_size.py` — (002, stdlib) brief `format_size` → valid gpt-image-2 pixel size,
+  aspect-preserving nearest a configurable target area (default ~1.57 MP). Profile-agnostic.
+- `harness/prompt_elements.py` — (002, stdlib) verbatim mandatory/forbidden → prompt clause.
+- `harness/review.py` — (002, stdlib) read-only self-service review digest over a run's artifacts.
 - `harness/closed_loop_composite.py` — PLACEMENT (place_measured + legacy closed_loop).
 - `harness/measure_canvas.py` — the SENSOR (OCR + container geometry).
 - `harness/composite_text.py` — licensed-font COMPOSITOR + compliance manifest + fit-to-zone clamp.
@@ -112,7 +116,11 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `001-kit-of-parts-composition` — plan at
-`specs/001-kit-of-parts-composition/plan.md` (spec, research, data-model, contracts/, quickstart
-alongside it). Next: `/speckit-tasks`.
+**Active feature:** `002-faithful-brief-intake` — BUILT through US3 + structurally green.
+Fixed the INTAKE: faithful self-service brief (`ask_questions` captures all `brief_schema_v3`
+fields verbatim), wired the dropped `format_size` (→ `format_size.py` aspect-preserving size) +
+`mandatory_elements`/`forbidden_elements` (→ `prompt_elements.py` into the kit prompt + manifest),
+and added `review.py`. New code is asset-profile-AGNOSTIC. Pending: the human's paid run + eye
+verdict (T017, SC-003). FUTURE spec: `asset_type → asset_profile` selection + photo/poster dialect.
+Prior `001-kit-of-parts-composition` is built through US3 (paid eye gate T020 pending).
 <!-- SPECKIT END -->
