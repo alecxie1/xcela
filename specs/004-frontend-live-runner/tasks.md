@@ -95,11 +95,11 @@ Single project + a NEW thin local web frontend in `frontend/` (stdlib `http.serv
 
 ### Tests for User Story 3
 
-- [ ] T012 [P] [US3] Extend `test_frontend_runner.py` with the taste-gate semantics: a NUDGE builds an argv carrying `--style-notes <note>` and NO `--out` (so a new run dir per attempt), and APPROVE triggers no new conductor call. Add a `test_frontend_stages.py` assertion that `run_view` over two distinct synthetic attempt dirs returns each independently (prior attempt preserved + comparable). MUST FAIL before T013 where it asserts new behavior.
+- [X] T012 [P] [US3] Extend `test_frontend_runner.py` with the taste-gate semantics: a NUDGE builds an argv carrying `--style-notes <note>` and NO `--out` (so a new run dir per attempt), and APPROVE triggers no new conductor call. Add a `test_frontend_stages.py` assertion that `run_view` over two distinct synthetic attempt dirs returns each independently (prior attempt preserved + comparable). MUST FAIL before T013 where it asserts new behavior.
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Implement the taste gate in `frontend/index.html` + `frontend/server.py`: after a run reaches the sign, expose exactly TWO controls — Approve (stop; mark the current attempt the deliverable) and Nudge (a binding-note field → `POST /run` with `style_notes` → a NEW `run_id`; render the new attempt while keeping the prior viewable to compare). Reject-without-rerun is NOT offered. The nudge cost is labeled. `test_frontend_runner.py` + `test_frontend_stages.py` pass.
+- [X] T013 [US3] Implement the taste gate in `frontend/index.html` + `frontend/server.py`: after a run reaches the sign, expose exactly TWO controls — Approve (stop; mark the current attempt the deliverable) and Nudge (a binding-note field → `POST /run` with `style_notes` → a NEW `run_id`; render the new attempt while keeping the prior viewable to compare). Reject-without-rerun is NOT offered. The nudge cost is labeled. `test_frontend_runner.py` + `test_frontend_stages.py` pass.
 
 **Checkpoint**: The human taste gate works end-to-end against the agent-free CLI; attempts are preserved.
 
