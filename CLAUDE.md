@@ -59,6 +59,9 @@ image sets MAGNITUDE (how far, via blind vision score). See `docs/ARCHITECTURE.m
 - `harness/composite_text.py` — licensed-font COMPOSITOR + compliance manifest + fit-to-zone clamp.
 - `register/` — reconciliation engine (derive_register = direction, calibrate = magnitude,
   reference_style_to_prompt = the analyzer + dial).
+- `frontend/` — (004, stdlib) THIN local web live-runner over the CLI: `inputs_writer` (form ->
+  002 JSON), `run_view` (run dir -> progressive stages), `runner` (build/launch `conductor --thin`),
+  `server.py` + `index.html`. Shells out + reads artifacts; never reimplements generation.
 - `answer_keys/<brand>.json` — brand DNA. `config/<brand>.yaml` — thin-spine config.
   `kits/<brand>.json` — human-authored Kit of Parts (icon + layout vocabularies; committed DATA).
 - `brands/ output/ .env` — GITIGNORED (licensed fonts, client IP, secrets, big PNGs).
@@ -116,11 +119,14 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `002-faithful-brief-intake` — BUILT through US3 + structurally green.
-Fixed the INTAKE: faithful self-service brief (`ask_questions` captures all `brief_schema_v3`
-fields verbatim), wired the dropped `format_size` (→ `format_size.py` aspect-preserving size) +
-`mandatory_elements`/`forbidden_elements` (→ `prompt_elements.py` into the kit prompt + manifest),
-and added `review.py`. New code is asset-profile-AGNOSTIC. Pending: the human's paid run + eye
-verdict (T017, SC-003). FUTURE spec: `asset_type → asset_profile` selection + photo/poster dialect.
-Prior `001-kit-of-parts-composition` is built through US3 (paid eye gate T020 pending).
+**Active feature:** `004-frontend-live-runner` — BUILT (US1-US3) + structurally green. A THIN local
+web frontend over the agent-free CLI (`frontend/`): type a single-sign brief, press Run (paid,
+cost-labeled), watch stages appear progressively from the run dir (brief, dial, assembled prompt,
+sign), approve or nudge-rerun (each nudge = a new run dir, prior attempts comparable). stdlib server
++ static page, no new deps; the ONE engine change was a top-level `conductor --style-notes`
+pass-through. Pending: the operator's paid run + eye verdict (T016). Run: `.venv/bin/python
+frontend/server.py`.
+Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
+`002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
+(the prompt-compose thin route `conductor --thin`, the engine 004 wraps).
 <!-- SPECKIT END -->

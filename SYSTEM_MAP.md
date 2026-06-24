@@ -1,7 +1,19 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-06-24 (PM)._
 
-> **▶ REGROUP — 2026-06-24 PM (START HERE; the project-defining keep/cut decision):**
+> **▶ BUILD STATUS — 2026-06-24: feature 004 (frontend live-runner) is BUILT + structurally green.**
+> A THIN local web frontend over the agent-free CLI (`frontend/`): the operator types ONE single-sign
+> brief, presses Run (paid, cost-labeled), and watches the THIN route's stages appear progressively
+> from the run dir (brief, register/dial, assembled prompt, generated sign), then approves or
+> nudge-reruns (each nudge = a new run dir, prior attempts comparable). The UI shells out to
+> `conductor.py --thin --no-approve [--style-notes]` and reads artifacts; it never reimplements
+> generation. The ONE engine change was a top-level `conductor --style-notes` pass-through. Tests:
+> test_frontend_intake 4/4, test_frontend_stages 5/5, test_frontend_runner 3/3, test_conductor 7/7;
+> all prior suites (001/002/003) stay green. Pending: the operator's PAID single-sign run + eye
+> verdict (~$0.08). Spec/plan/tasks: `specs/004-frontend-live-runner/`. The keep/cut decision below
+> still stands (thin route is the engine; the kit composition layer is parked).
+
+> **▶ REGROUP — 2026-06-24 PM (the project-defining keep/cut decision):**
 > The faithful 6-sign paid run (`output/run_aia_20260624_104106/`) gave the FIRST un-confounded
 > verdict by Alec's eye, and it is decisive: on Lily's real brief the kit COMPOSITION layer produced
 > 2 good signs, 3 near-duplicates (s3/s5/s6 all `resist_panel`+`megaphone_x`), and 1 blank honest-null
