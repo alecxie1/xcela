@@ -133,6 +133,26 @@ def check6_dial_kept_on_thin():
     return passed, f"dial hint present={'template' in prompt.lower()}; prompt_len={len(prompt)}"
 
 
+def check7_no_slogan_no_invented_text():
+    """The two prompt-assembler fixes (post first thin run): (1) the brand slogan is NOT injected as
+    paintable text (it leaked 健康长久好生活 onto every sign); (2) the headline block forbids ANY other
+    Chinese text; (3) a mandatory element is framed as a DESIGN INSTRUCTION (depict/do), not 'render
+    the text exactly' (which painted the literal characters 分别画叉). A wrong build reintroduces any."""
+    brand_key = scene_author.load_brand("aia")
+    rp = {"inferred_register": "event_prop", "brand_locks_flexed": ["logo:omit"]}
+    prompt = scene_author.assemble_thin_prompt(
+        brand_key, ["金融传销", "虚拟货币骗局"], register_profile=rp, dial="template",
+        mandatory=["分别画叉"], forbidden=[], has_reference=True)
+    slogan = scene_author._brand_field_value(brand_key, "slogan") or ""
+    no_slogan = (not slogan) or (slogan not in prompt)        # slogan text not injected
+    only_words_guard = "ONLY words that may appear" in prompt  # headline forbids other text
+    # mandatory is framed as a depict/do instruction, NOT 'render exactly as written'
+    action_framed = "DEPICT or DO" in prompt and "render the instruction text itself" in prompt
+    passed = no_slogan and only_words_guard and action_framed
+    return passed, (f"slogan_not_injected={no_slogan} (slogan={slogan!r}); "
+                    f"only-words guard={only_words_guard}; mandatory-as-action={action_framed}")
+
+
 CHECKS = [
     ("Thin route DROPS kit/compose/measure/composite; 6× scene_author --thin", check1_thin_route_drops_composition),
     ("Verbatim headline + 分别画叉 in assembled prompt (byte-for-byte)", check2_verbatim_headline_and_X_in_prompt),
@@ -140,6 +160,7 @@ CHECKS = [
     ("Moat-deferred marker tracked (licensed_type=deferred)", check4_moat_deferred_marker),
     ("Default route UNCHANGED without --thin (kit; opt-in)", check5_default_route_unchanged_backcompat),
     ("Register/dial KEPT on the thin route", check6_dial_kept_on_thin),
+    ("No slogan leak + headline-only-words + mandatory-as-action", check7_no_slogan_no_invented_text),
 ]
 
 

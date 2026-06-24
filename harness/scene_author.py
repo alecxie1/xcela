@@ -868,7 +868,9 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
         lines.append(
             "HEADLINE TEXT (render these Chinese characters EXACTLY as written — copy them "
             "verbatim, do NOT translate, paraphrase, transliterate, or alter a single character; "
-            "render crisply and perfectly legible as the dominant element of the sign):")
+            "render crisply and perfectly legible as the dominant element of the sign). These are "
+            "the ONLY words that may appear on the sign — do NOT add, invent, or render any other "
+            "Chinese text, tagline, slogan, caption, label, or watermark anywhere:")
         for m in msgs:
             lines.append(f'  • "{m}"')
 
@@ -916,11 +918,13 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
         lines.append("A reference image is provided as a visual exemplar — use it as designed-in "
                      "guidance for style and composition (reference + prompt), not to copy verbatim.")
 
-    if slogan:
-        lines.append(f"BRAND SLOGAN (optional accent only): {slogan}")
+    # NOTE: the brand slogan is deliberately NOT injected here. On the thin route gpt paints any
+    # Chinese it sees, so passing the slogan as text made it hallucinate a tagline (健康长久好生活)
+    # onto every sign. The headline lines above are the ONLY words allowed on the sign.
     if is_graphic:
         lines.append("NEGATIVES: no photographic shading, no 3D realism, no gibberish or garbled "
-                     "text, no watermark.")
+                     "text, no extra Chinese text beyond the headline above, no tagline, no "
+                     "watermark.")
     return "\n".join(lines).strip()
 
 

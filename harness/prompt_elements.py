@@ -16,7 +16,9 @@ def elements_clause(mandatory, forbidden) -> str:
     forb = [str(f).strip() for f in (forbidden or []) if str(f).strip()]
     parts = []
     if mand:
-        parts.append("REQUIRED elements (every one MUST appear on the sign, exactly as written): "
+        parts.append("DESIGN REQUIREMENTS (the sign MUST satisfy each of these as a design / "
+                     "illustration instruction — DEPICT or DO what each one describes; do NOT render "
+                     "the instruction text itself as words anywhere on the sign): "
                      + "; ".join(mand) + ".")
     if forb:
         parts.append("FORBIDDEN elements (none of these may appear): " + "; ".join(forb) + ".")
