@@ -1,0 +1,26 @@
+{
+  "_doc": "Lily's ACTUAL AIA anti-fraud brief, authored faithfully for the 002 per-sign test. 6 signs. Two-styles directive (设计两种样式) is represented STRUCTURALLY as two entries with the same message (s1,s2) so the kit's collision-avoiding archetype picker yields two distinct layouts, NOT as a text instruction. 分别画叉 (draw an X) is PER-SIGN on the two scam-type signs (s5,s6) only, never on the protect signs. Campaign-level mandatory/forbidden are empty: nothing applies to all 6. This is the human-form-fill proxy; nothing here is agent-inferred.",
+  "asset_type": "手举牌 hand-held event sign",
+  "format_size": "60x40cm",
+  "reference_image": "/mnt/c/Users/Alecx/Downloads/cropped ref 2.png",
+  "reference_relationship": "template — extend this series (clone look, change message)",
+  "mandatory_elements": [],
+  "forbidden_elements": [],
+  "context": {
+    "usage_context": "held for photos / posed with",
+    "audience": "general public",
+    "setting": "event / festival",
+    "vibe": { "formality": 2, "playfulness": 8, "warmth": 7 },
+    "logo_treatment": "omit",
+    "brand_strictness": "expressive departure",
+    "occasion": "anti-fraud public-awareness campaign (防范非法金融宣传)"
+  },
+  "signs": [
+    { "id": "s1", "messages": ["守住钱袋子", "护好幸福家"], "hero_icon": null },
+    { "id": "s2", "messages": ["守住钱袋子", "护好幸福家"], "hero_icon": null },
+    { "id": "s3", "messages": ["远离非法金融", "抵制高息诱惑"], "hero_icon": null },
+    { "id": "s4", "messages": ["珍惜一生血汗", "远离非法金融"], "hero_icon": null },
+    { "id": "s5", "messages": ["金融传销", "虚拟货币骗局"], "hero_icon": null, "mandatory_elements": ["分别画叉"] },
+    { "id": "s6", "messages": ["非法集资", "网络金融诈骗"], "hero_icon": null, "mandatory_elements": ["分别画叉"] }
+  ]
+}

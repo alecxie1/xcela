@@ -1,7 +1,47 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-24._
+_Single source of truth for "what is this whole thing." Updated 2026-06-24 (PM)._
 
-> **▶ REGROUP — 2026-06-24 (START HERE; the intake fix from the 6/23 PM decision is now BUILT):**
+> **▶ REGROUP — 2026-06-24 PM (START HERE; the project-defining keep/cut decision):**
+> The faithful 6-sign paid run (`output/run_aia_20260624_104106/`) gave the FIRST un-confounded
+> verdict by Alec's eye, and it is decisive: on Lily's real brief the kit COMPOSITION layer produced
+> 2 good signs, 3 near-duplicates (s3/s5/s6 all `resist_panel`+`megaphone_x`), and 1 blank honest-null
+> (s4, no icon match). Alec's standalone gpt-image-2 on the same brief produced 6 varied on-brief signs
+> in ONE shot. Conclusion (the bitter lesson, on our own task): the deterministic composition layer
+> COMPETES with the model and LOSES — it constrains gpt down to its own threadbare vocabulary. It is
+> not neutral; it makes output WORSE on the real distribution of briefs.
+>
+> **THE DECISION (keep what complements the model; cut what competes with it):**
+>   • CUT (delete as the default path): `compose_select` (meaning→icon), the kit layout-archetype
+>     vocabulary, reserve-box icon_zone/text_zone, the fit-to-zone clamp. These are the layer that lost.
+>   • KEEP (active): faithful intake (002), the register/DIAL (Alec: the task sits at the
+>     task-governs-hard end of the dial — expressive departure — which is a per-job dial READING, not
+>     proof the dial is useless; a corporate asset would read the other way, so the dial stays),
+>     answer_key brand locks (hex/font/logo), `analyze_brand_v3` VLM extraction (Alec has confidence in
+>     it; human verifies the answer_key), logo fed to gpt, the human approve/nudge gate, the manifest.
+>   • DEFER (built, switched OFF this interim — NOT deleted): the licensed-font MOAT
+>     (`build_font_index`, `resolve_font`, `composite_text`, compliance). Node-5 font-swap dropped for
+>     now to de-risk; returns as its own spec. Research verdict for that future spec: gpt-image (soft
+>     mask, per OpenAI docs) CANNOT pixel-lock a zone or render licensed type, so the legacy
+>     measure→scrub→redraw (a) and reserve-band (b) are both dead ends; the real moat is FURNITURE +
+>     DETERMINISTIC TYPESET (gpt paints text-free furniture; we own 100% of type via SVG/CSS
+>     stroke+shadow+skew, rasterize, composite). Separability check on `desiredresultaia.jpg`: 5/6 signs
+>     are flat-band (easy to typeset), 1 is integrated (hard → honest-null). Favorable, but UNPROVEN —
+>     it needs a SPIKE (does gpt leave clean empty furniture? does typeset look native?) before any spec.
+>
+> **THE INTERIM BUILD (Alec's chosen milestone): PROVE THE THIN SPINE, not ship the product.**
+>   Spine = intake(002) → register/dial → assemble ONE prompt/sign (verbatim text + 分别画叉 + palette
+>   hex + dial hint + reference + logo) → gpt-image-2 composes the WHOLE sign → deliverable = RAW
+>   generated.png (gpt-painted text, KNOWN-TEMPORARY debt) → human gate → manifest. Explicitly: the
+>   interim tool does NOT yet beat "run the prompt yourself" — the moat is what makes it a product, and
+>   it is deferred ON PURPOSE. "Done" = the agent-free spine runs end-to-end and each stage is visible.
+>   Do NOT re-bundle the moat into this milestone (that re-creates the over-build trap we just escaped).
+>
+> **NOT YET DONE:** the thin-spine pivot is DECIDED but NOT SPEC'd or built. Next: spec the thin spine
+>   (route kit brands through prompt-compose, retire compose_select/archetype as default) for Claude
+>   Code; then later, the moat spike + spec. Visual keep/cut map captured in this session's chat.
+
+> **▶ REGROUP — 2026-06-24 (superseded by the PM block above; the intake fix is BUILT and now the
+> composition layer above it is being CUT — kept for lineage):**
 > Spec 002 (faithful self-service brief intake + review) is BUILT through US3 and passes its
 > falsifiable structural self-tests. The intake confound the 6/23 PM block located is fixed:
 >   • INTAKE no longer drops fields: `conductor.ask_questions` now captures EVERY `brief_schema_v3`
