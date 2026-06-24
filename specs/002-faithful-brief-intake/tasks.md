@@ -96,11 +96,11 @@ Single project. Pipeline code in `harness/`, brand data in `answer_keys/` + `kit
 
 ### Tests for User Story 3
 
-- [ ] T013 [P] [US3] Write `test_review.py`: build a SYNTHETIC run dir (a `conductor_manifest.json` with `size_resolution` + mandatory/forbidden + `brief_fields_received`, two `sign_*/composition.json`, a fixture `final.png` + `.compliance.json`); assert the digest shows, per sign, the image path + chosen icon + layout archetype + reserved text_zone + needs_review + reason, plus the campaign fields; assert a sign with a MISSING `final.png` or a run with NO kit `composition.json` is reported as honest-null (no crash, profile-agnostic, D8). MUST FAIL before T014.
+- [X] T013 [P] [US3] Write `test_review.py`: build a SYNTHETIC run dir (a `conductor_manifest.json` with `size_resolution` + mandatory/forbidden + `brief_fields_received`, two `sign_*/composition.json`, a fixture `final.png` + `.compliance.json`); assert the digest shows, per sign, the image path + chosen icon + layout archetype + reserved text_zone + needs_review + reason, plus the campaign fields; assert a sign with a MISSING `final.png` or a run with NO kit `composition.json` is reported as honest-null (no crash, profile-agnostic, D8). MUST FAIL before T014.
 
 ### Implementation for User Story 3
 
-- [ ] T014 [US3] Implement `harness/review.py --run <dir>` per `contracts/review-digest-contract.md`: READ-ONLY over `conductor_manifest.json` + `sign_*/composition.json` + `sign_*/final.png(.compliance.json)` + `sign_*/run_manifest.json`; print the per-sign + campaign digest and write `review.md` into the run dir; recompute nothing; degrade gracefully (honest null) on missing / non-kit artifacts; no em-dashes. `test_review.py` passes.
+- [X] T014 [US3] Implement `harness/review.py --run <dir>` per `contracts/review-digest-contract.md`: READ-ONLY over `conductor_manifest.json` + `sign_*/composition.json` + `sign_*/final.png(.compliance.json)` + `sign_*/run_manifest.json`; print the per-sign + campaign digest and write `review.md` into the run dir; recompute nothing; degrade gracefully (honest null) on missing / non-kit artifacts; no em-dashes. `test_review.py` passes.
 
 **Checkpoint**: The human has one place to see what the pipeline got and render an eye verdict. The clean test can run end to end.
 
