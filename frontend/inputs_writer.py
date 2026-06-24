@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""frontend/inputs_writer.py — single-sign form state -> 002-shape conductor inputs JSON.
+"""frontend/inputs_writer.py - single-sign form state -> 002-shape conductor inputs JSON.
 
 Feature 004, the anti-lossy core. Stdlib-only, PURE. Renders the feature-002 inputs contract
 (`specs/002-faithful-brief-intake/contracts/inputs-schema.md`), NOT the stale repo-root
 `brief_schema.json`. Literal values (messages, mandatory/forbidden elements, occasion, etc.) pass
-through VERBATIM — never rephrased, reordered, or inferred (002 FR-003). Exactly ONE `signs[]` entry
+through VERBATIM - never rephrased, reordered, or inferred (002 FR-003). Exactly ONE `signs[]` entry
 (the single-sign invariant). A reference image is REQUIRED in v1.
 
 Note: `brand` is a CLI arg to the conductor, NOT a field of the inputs JSON; `to_inputs` omits it.

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Runner (single sign)</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: #1a1a1a; }
+  header { background: #2a2a2e; color: #fff; padding: 12px 20px; font-weight: 600; }
+  main { display: grid; grid-template-columns: 360px 1fr; gap: 0; height: calc(100vh - 48px); }
+  .panel { padding: 16px 20px; overflow-y: auto; }
+  .form { background: #fff; border-right: 1px solid #ddd; }
+  label { display: block; margin: 10px 0 3px; font-weight: 600; font-size: 12px; color: #444; }
+  input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+  .row { display: flex; gap: 8px; }
+  .row > div { flex: 1; }
+  .slider-val { font-weight: 600; color: #2a6; }
+  button { margin-top: 14px; padding: 10px 14px; border: 0; border-radius: 6px; background: #c0392b; color: #fff; font-weight: 600; cursor: pointer; width: 100%; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  .stage { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 14px; }
+  .stage h3 { margin: 0; padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 13px; }
+  .stage .body { padding: 12px 14px; }
+  .pending { color: #999; }
+  .note { color: #b8860b; font-style: italic; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #fafafa; padding: 10px; border-radius: 4px; max-height: 320px; overflow: auto; margin: 0; }
+  img { max-width: 100%; border-radius: 6px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .ok { background: #2a6; } .wait { background: #ccc; }
+</style>
+</head>
+<body>
+<header>Handyprint Live Runner (single sign, thin route)</header>
+<main>
+  <section class="panel form">
+    <label>Brand</label>
+    <select id="brand"></select>
+
+    <label>Asset type</label>
+    <input id="asset_type" value="手举牌 hand-held event sign">
+
+    <label>Format / size</label>
+    <input id="format_size" value="60x40cm">
+
+    <label>Reference image path (required)</label>
+    <input id="reference_image" placeholder="/abs/path/to/reference.png">
+
+    <label>Reference relationship</label>
+    <input id="reference_relationship" value="template - extend this series">
+
+    <div class="row">
+      <div><label>Formality <span class="slider-val" id="fv">2</span></label><input type="range" id="formality" min="0" max="10" value="2"></div>
+      <div><label>Playfulness <span class="slider-val" id="pv">8</span></label><input type="range" id="playfulness" min="0" max="10" value="8"></div>
+      <div><label>Warmth <span class="slider-val" id="wv">7</span></label><input type="range" id="warmth" min="0" max="10" value="7"></div>
+    </div>
+
+    <label>Logo treatment</label>
+    <select id="logo_treatment"><option>omit</option><option>subtle</option><option>faithful</option></select>
+
+    <label>Brand strictness</label>
+    <select id="brand_strictness"><option>expressive departure</option><option>brand + accents</option><option>strict VI</option></select>
+
+    <label>Occasion</label>
+    <input id="occasion" value="防范非法金融宣传">
+
+    <label>Usage context</label>
+    <input id="usage_context" value="held for photos / posed with">
+
+    <label>Audience</label>
+    <input id="audience" value="general public">
+
+    <label>Mandatory elements (one per line, verbatim)</label>
+    <textarea id="mandatory_elements" rows="2">分别画叉</textarea>
+
+    <label>Forbidden elements (one per line)</label>
+    <textarea id="forbidden_elements" rows="1"></textarea>
+
+    <label>Sign message line(s) (one per line, verbatim)</label>
+    <textarea id="messages" rows="2">守住钱袋子
+护好幸福家</textarea>
+
+    <button id="run">Run (paid, about $0.08)</button>
+    <div id="formNote" class="note"></div>
+  </section>
+
+  <section class="panel">
+    <div class="stage"><h3><span class="dot wait" id="d_brief"></span>1. Brief (what the pipeline received)</h3><div class="body" id="brief"><span class="pending">waiting for a run...</span></div></div>
+    <div class="stage"><h3><span class="dot wait" id="d_register"></span>2. Register / dial</h3><div class="body" id="register"><span class="pending">not yet</span></div></div>
+    <div class="stage"><h3><span class="dot wait" id="d_prompt"></span>3. Assembled prompt</h3><div class="body" id="prompt"><span class="pending">not yet</span></div></div>
+    <div class="stage"><h3><span class="dot wait" id="d_image"></span>4. Generated sign</h3><div class="body" id="image"><span class="pending">not yet (appears after the dial and prompt)</span></div></div>
+    <div id="gate"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+for (const [s, v] of [["formality","fv"],["playfulness","pv"],["warmth","wv"]]) {
+  $(s).addEventListener("input", () => $(v).textContent = $(s).value);
+}
+let currentRun = null, poller = null;
+
+async function loadBrands() {
+  const r = await fetch("/brands"); const j = await r.json();
+  $("brand").innerHTML = j.brands.map(b => `<option>${b}</option>`).join("");
+  $("run").textContent = `Run (paid, about $${j.per_run_cost_usd.toFixed(2)})`;
+}
+function lines(id) { return $(id).value.split("\n").map(s => s.trim()).filter(Boolean); }
+function formState() {
+  return {
+    brand: $("brand").value, asset_type: $("asset_type").value, format_size: $("format_size").value,
+    reference_image: $("reference_image").value.trim(),
+    reference_relationship: $("reference_relationship").value,
+    vibe: { formality: +$("formality").value, playfulness: +$("playfulness").value, warmth: +$("warmth").value },
+    logo_treatment: $("logo_treatment").value, brand_strictness: $("brand_strictness").value,
+    occasion: $("occasion").value, usage_context: $("usage_context").value, audience: $("audience").value,
+    mandatory_elements: lines("mandatory_elements"), forbidden_elements: lines("forbidden_elements"),
+    messages: lines("messages"),
+  };
+}
+function renderStage(key, st) {
+  const dot = $("d_" + key), body = $(key);
+  dot.className = "dot " + (st.present ? "ok" : "wait");
+  if (key === "image") {
+    body.innerHTML = st.present ? `<img src="/run/${currentRun}/image?t=${Date.now()}">`
+      : `<span class="pending">rendering...</span>` + (st.note ? `<div class="note">${st.note}</div>` : "");
+    return;
+  }
+  if (!st.present) { body.innerHTML = `<span class="pending">not yet</span>` + (st.note ? `<div class="note">${st.note}</div>` : ""); return; }
+  const c = st.content;
+  body.innerHTML = `<pre>${typeof c === "string" ? c : JSON.stringify(c, null, 2)}</pre>`;
+}
+async function poll() {
+  if (!currentRun) return;
+  const r = await fetch(`/run/${currentRun}/stages`); const v = await r.json();
+  ["brief","register","prompt","image"].forEach(k => renderStage(k, v[k]));
+  if (v.image.present || (!v.inflight)) {
+    clearInterval(poller); poller = null; $("run").disabled = false;
+    if (v.image.present) showGate();
+  }
+}
+async function startRun(style_notes) {
+  const body = Object.assign(formState(), style_notes ? { style_notes } : {});
+  if (!body.reference_image) { $("formNote").textContent = "A reference image path is required."; return; }
+  $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = "";
+  const r = await fetch("/run", { method: "POST", body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) { $("formNote").textContent = j.error || "run failed"; $("run").disabled = false; return; }
+  currentRun = j.run_id;
+  if (poller) clearInterval(poller);
+  poller = setInterval(poll, 1000); poll();
+}
+$("run").addEventListener("click", () => startRun(null));
+function showGate() { /* taste gate (approve / nudge) wired in US3 (T013) */ }
+loadBrands();
+</script>
+</body>
+</html>
