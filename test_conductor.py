@@ -168,12 +168,26 @@ def check5_human_gates():
                       for s in with_gate["steps"])
     no_approve_when_flagged = not any(s.get("label") == "approve" for s in without_gate["steps"])
 
-    # (b) the input gate actually drives inputs (questions are not ignored)
-    answers = iter(["CUSTOM-ASSET", "", "2", "8", "omit", "expressive departure",
-                    "anti-fraud", "守住钱袋子；护好幸福家", "money bag", ""])
+    # (b) the input gate actually drives inputs (questions are not ignored). Keyword-matched so it
+    # is robust to the 002 question-order changes (format_size / audience / usage / mandatory ...).
+    sign_msgs = iter(["守住钱袋子；护好幸福家", ""])
+    hero = iter(["money bag"])
 
-    def fake_ask(_prompt):
-        return next(answers, "")
+    def fake_ask(prompt):
+        p = prompt.lower()
+        if "message line" in p:
+            return next(sign_msgs, "")
+        if "hero icon" in p:
+            return next(hero, "")
+        if "asset type" in p:
+            return "CUSTOM-ASSET"
+        if "formal" in p:
+            return "2"
+        if "playful" in p:
+            return "8"
+        if "logo" in p:
+            return "omit"
+        return ""  # all other prompts take their default
 
     gathered = conductor.ask_questions(ask=fake_ask)
     input_drives = (gathered["asset_type"] == "CUSTOM-ASSET"

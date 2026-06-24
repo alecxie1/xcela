@@ -347,6 +347,12 @@ def _to_int(value, default: int) -> int:
         return default
 
 
+def _split_list(raw) -> list:
+    """Split a human-typed list on the CN/EN semicolon, VERBATIM (each item stripped only of
+    surrounding whitespace; never rephrased). Blank -> [] (honest null)."""
+    return [s.strip() for s in re.split(r"[；;]", str(raw or "")) if s.strip()]
+
+
 def ask_questions(ask=input) -> dict:
     """The human input gate: a short, adaptive, accept-all guided-subfields form
     (brief_schema_v3 buckets B/D). `ask` is injectable so the form is testable
@@ -357,6 +363,8 @@ def ask_questions(ask=input) -> dict:
 
     print("=== Guided questions (press Enter to accept the default) ===")
     asset_type = q("Asset type", ASSET_TYPE_DEFAULT)
+    # Feature 002: bucket-A physical size (was dropped). Free text, e.g. 60x40cm; Enter to skip.
+    format_size = (ask("Physical format / size (e.g. 60x40cm, Enter to skip): ") or "").strip() or None
     reference = (ask("Reference image path (Enter to skip): ") or "").strip()
     # The reference-relationship dial is asked ONLY when a reference is supplied (a no-ref
     # job has no dial). 3 choices; defaults to extend (max similarity, the proven gold).
@@ -365,17 +373,26 @@ def ask_questions(ask=input) -> dict:
         reference_relationship = normalize_dial(
             q("Reference relationship? extend (clone look, change message) | match_style "
               "(same style, fresh layout) | mood (tone cue only)", DEFAULT_DIAL))
+    # bucket B is now human-settable (was derived/defaulted), defaulting to today's values.
+    audience = q("Audience", DEFAULT_AUDIENCE)
+    usage_context = q("Usage context", _usage_from_asset(asset_type))
     formality = _to_int(q("How formal? 0 casual to 10 official", 5), 5)
     playfulness = _to_int(q("How playful? 0 serious to 10 fun", 5), 5)
     logo_treatment = q("Logo? required/prominent | subtle | omit", "required/prominent")
     brand_strictness = q("On-brand tightness? strict VI | brand + accents | expressive departure",
                          "brand + accents")
     occasion = (ask("Occasion / campaign (short, optional): ") or "").strip()
+    # Feature 002: bucket-C mandatory/forbidden elements (were dropped). VERBATIM passthrough —
+    # split on the CN/EN semicolon only; each item kept exactly as typed (no rephrase, FR-003).
+    mandatory_elements = _split_list(ask(
+        "Mandatory elements (must appear; e.g. 分别画叉；设计两种样式; separate with '；', Enter for none): "))
+    forbidden_elements = _split_list(ask(
+        "Forbidden elements (must NOT appear; separate with '；', Enter for none): "))
 
     context = {
-        # bucket B (usage_context drives the register; audience/setting are inert provenance)
-        "usage_context": _usage_from_asset(asset_type),
-        "audience": DEFAULT_AUDIENCE,
+        # bucket B (usage_context drives the register; audience/setting are provenance)
+        "usage_context": usage_context,
+        "audience": audience,
         "setting": DEFAULT_SETTING,
         # bucket D (formality/playfulness/logo_treatment/brand_strictness drive the register;
         # warmth is inert provenance — derive_register does not read it today)
@@ -387,8 +404,11 @@ def ask_questions(ask=input) -> dict:
     signs = _ask_signs(ask)
     return {
         "asset_type": asset_type,
+        "format_size": format_size,
         "reference_image": reference or None,
         "reference_relationship": reference_relationship,  # dial (Axis B); None for no-ref jobs
+        "mandatory_elements": mandatory_elements,
+        "forbidden_elements": forbidden_elements,
         "context": context,
         "signs": signs,
     }
@@ -780,6 +800,13 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         "reference_image": ref,
         "reference_relationship": inputs.get("reference_relationship"),
         "dial": dial,
+        # Feature 002: the previously-dropped fields, recorded VERBATIM, plus a lossless echo of the
+        # inputs the pipeline actually consumed (FR-002 / SC-001). size_resolution is added by the
+        # size-wiring step (US2).
+        "format_size": inputs.get("format_size"),
+        "mandatory_elements": inputs.get("mandatory_elements") or [],
+        "forbidden_elements": inputs.get("forbidden_elements") or [],
+        "brief_fields_received": inputs,
         "reference_relationship_status": (
             "WIRED: the dial selects the analyzer aligned-prompt rung, injected as "
             "scene_author --aligned-prompt" if has_ref else "no reference supplied (no dial)"),
