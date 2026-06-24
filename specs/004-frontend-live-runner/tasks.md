@@ -55,11 +55,11 @@ Single project + a NEW thin local web frontend in `frontend/` (stdlib `http.serv
 
 ### Tests for User Story 1
 
-- [ ] T004 [P] [US1] Write `test_frontend_intake.py`: build a single-sign form state, call `inputs_writer`, and assert the JSON has exactly ONE `signs[]` entry; `messages` / `mandatory_elements` / `vibe.formality|playfulness|warmth` equal the typed values byte-for-byte (no rephrase/reorder/inferred field); a blank optional → empty (honest null); and the result passes `conductor.validate_inputs`. MUST FAIL before T005.
+- [X] T004 [P] [US1] Write `test_frontend_intake.py`: build a single-sign form state, call `inputs_writer`, and assert the JSON has exactly ONE `signs[]` entry; `messages` / `mandatory_elements` / `vibe.formality|playfulness|warmth` equal the typed values byte-for-byte (no rephrase/reorder/inferred field); a blank optional → empty (honest null); and the result passes `conductor.validate_inputs`. MUST FAIL before T005.
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Implement `frontend/inputs_writer.py` (pure, stdlib): `to_inputs(form_state) -> dict` building the 002-shape single-sign inputs per `contracts/inputs-json.md` (one `signs[]` entry; verbatim; `reference_image` required; renders the 002 contract, NOT the stale `brief_schema.json`) + `write_inputs(form_state, path)`. `test_frontend_intake.py` passes.
+- [X] T005 [US1] Implement `frontend/inputs_writer.py` (pure, stdlib): `to_inputs(form_state) -> dict` building the 002-shape single-sign inputs per `contracts/inputs-json.md` (one `signs[]` entry; verbatim; `reference_image` required; renders the 002 contract, NOT the stale `brief_schema.json`) + `write_inputs(form_state, path)`. `test_frontend_intake.py` passes.
 
 **Checkpoint**: The form's output is a lossless, CLI-valid single-sign brief. MVP intake.
 
