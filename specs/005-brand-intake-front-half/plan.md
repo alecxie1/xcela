@@ -67,7 +67,7 @@ The VLM semantic layer and logo auto-crop are out of scope.
 |-----------|------|--------|
 | I. Agent-free, NOT human-free | Page-finding is a DETERMINISTIC heuristic that SUGGESTS; the human CONFIRMS the pages and VERIFIES every lock (the input gate). No LLM auto-detects pages or judges the key (the v3 silent-judgment disease is rejected). | PASS |
 | II. Ground truth = the eye | The front-half tests assert STRUCTURE only; the cold-brand extraction + the one paid sign are the human's smoke / eye-gate. No VLM PASS counts as proof. | PASS |
-| III. Falsifiable tests only | Page-finder returns the hex-token page (not a color-mention page); validation FAILS LOUD on a missing primary color / logo_path; the lean key yields a prompt BYTE-IDENTICAL to the fat key. Each fails a wrong build. | PASS |
+| III. Falsifiable tests only | Page-finder returns the hex-token page (not a color-mention page); validation FAILS LOUD on a missing primary color / logo_path; the lean key (styles kept) yields a prompt BYTE-IDENTICAL to the fat key, and the styles-absent key differs only in the font-directive line (SC-005, two-part). Each fails a wrong build. | PASS |
 | IV. Generalize, do not hand-tune | Reuse the deterministic extractors (not the taichi-wired v3); the lean key is the CONSUMED subset (no AIA fat shape); no brand literals in the new code. | PASS |
 | V. Honest nulls, never invented | Every stage fails loud or emits honest-null + a note (the v3 exit-0-on-failure anti-pattern is forbidden). `logo_path` missing -> fail loud (no silent taichi default). `needs_review` -> acknowledged or kept-flagged (written into the key), never green-on-empty. | PASS |
 | VI. Reconciliation per-dimension | Untouched. The key feeds `derive_register` / `assemble_thin_prompt` unchanged; the front-half adapts to that read surface, it does not change reconciliation. | PASS |
@@ -106,6 +106,8 @@ brand_intake/                  # NEW package: the BODY around the proven extract
 ├── page_finder.py             # PURE: suggest_pages(pdf) -> {color/fonts/brand_name: [1-indexed pages]}
 │                              #   regex over the TEXT LAYER for real hex tokens + font-name patterns.
 │                              #   NOT a model. Returns 1-indexed (the render_page footgun).
+├── extract.py                 # REUSE wrappers (T007): extract_brand_colors -> extract_colors.extract_colors
+│                              #   (hex records + needs_review, role unset); read_brand_names -> page_text.
 ├── assemble_key.py            # PURE: build_lean_key(brand, names, color_records+roles, logo_path,
 │                              #   source_pdf) -> the lean answer_key dict (consumed subset only).
 ├── validate_key.py            # PURE: validate_lean_key(key) -> raises with a NAMED reason on a

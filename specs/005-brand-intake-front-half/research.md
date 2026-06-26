@@ -55,9 +55,19 @@ names + `colors.items[].printed_html/role/name_*`; `derive_register` anchors `pr
 `typography.styles`. Nothing else has a code path into the thin prompt. The new key is deliberately
 THINNER than AIA's (AIA is fat because it was GRADED).
 
-**Falsifiable test (the regression guard)**: strip an existing fat key (aia.json) to the lean subset
-and assert `assemble_thin_prompt` (+ `derive_register`) produces a BYTE-IDENTICAL prompt vs the fat
-key. A control: changing a CONSUMED field (a primary hex) MUST change the prompt (the diff detects it).
+**Probe finding (run this session, the F1 correction)**: `typography.styles` is NOT a free drop. A
+`derive_register` probe on AIA showed the realistic event-prop profile (held-for-photos, formality 2,
+playfulness 8, logo omit, expressive, no reference) flexes `font:rounded`, so `font_resolved` is
+resolved from `typography.styles` and `assemble_thin_prompt` injects the named family
+(`汉仪元隆黑 ... 汉仪元隆黑-75简`). A lean key WITHOUT styles emits the generic fallback
+"(rounded library family)" on that one line. So byte-identity is two claims, not one.
+
+**Falsifiable test (the regression guard, TWO parts; PIN the profile above)**: (a) strip aia.json to
+the lean subset BUT KEEP `typography.styles` -> `assemble_thin_prompt` (+ `derive_register`) produces
+a BYTE-IDENTICAL prompt vs the fat key (proves the dropped graded/legacy fields are zero-effect);
+control: a primary-hex change MUST change the prompt. (b) the real new-brand lean key (styles ABSENT)
+differs from the fat key ONLY in the font-directive line, which is the generic fallback (the FR-010
+honest-null; contained, no other drift).
 
 ---
 

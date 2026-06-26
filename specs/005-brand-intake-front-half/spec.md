@@ -17,7 +17,9 @@ self-check that flags `needs_review` on disagreement. This feature builds the BO
 proven organs: PDF in, human-gated extraction, a LEAN verified answer_key out.
 
 > **Scope note (constitution §IV):** the output key carries ONLY the fields the thin route consumes
-> (proven: a key stripped to that subset yields a BYTE-IDENTICAL gpt prompt vs the fat AIA key). The
+> (a key stripped to that subset, with `typography.styles` kept, yields a BYTE-IDENTICAL gpt prompt
+> vs the fat AIA key; a styles-absent new-brand key differs only in the font-directive line, the
+> documented honest-null -- see SC-005, confirmed by a `derive_register` probe). The
 > new key is deliberately THINNER than AIA's; AIA is fat because it was built to be GRADED, this is
 > built to be CONSUMED. Do not copy AIA's shape, copy its consumed subset.
 
@@ -95,8 +97,9 @@ model.
 
 **Independent Test**: Validation FAILS LOUD (raises / nonzero) on a key missing a primary color OR a
 real logo_path; the assembled lean key fed to the thin prompt assembler yields a NON-EMPTY prompt
-with the primary hex present; and the lean key's prompt is BYTE-IDENTICAL to the same brand's
-fat-key prompt. Free, no model calls.
+with the primary hex present; and the lean key WITH `typography.styles` kept is byte-identical to the
+fat-key prompt, while the styles-absent new-brand key differs only in the font-directive line (the
+honest-null generic fallback) -- the two-part invariant of SC-005. Free, no model calls.
 
 **Acceptance Scenarios**:
 
@@ -104,7 +107,8 @@ fat-key prompt. Free, no model calls.
    validation runs, **Then** it FAILS LOUD with a named reason and does NOT produce a degraded prompt.
 2. **Given** a complete verified lean key, **When** it is fed to the thin prompt assembler + the
    register derivation, **Then** the prompt is non-empty, contains the primary color hex (no blank
-   "color  stays"), and is byte-identical to the fat-key prompt for that brand.
+   "color  stays"), and (styles kept) is byte-identical to the fat-key prompt; a styles-absent key
+   differs only in the font-directive line (the documented honest-null), per SC-005.
 3. **Given** the verify gate with a `needs_review` color flag, **When** the human acknowledges every
    flag (confirm / edit / keep-flagged) and no hard-fail lock is missing, **Then** the key is written
    to `answer_keys/<brand>.json` (a kept flag recorded in it) and the logo is placed/verified under
@@ -203,8 +207,15 @@ fat-key prompt. Free, no model calls.
   NOT silently produce a degraded prompt. Save is also blocked while any `needs_review` lock is
   UNACKNOWLEDGED (confirm / edit / keep-flagged); a kept flag is written into the saved key.
   (structural, falsifiable)
-- **SC-005**: The lean key (names + colors + logo + styles only) yields a prompt BYTE-IDENTICAL to
-  the same brand's fat-key prompt (the generalization invariant / regression guard). (structural)
+- **SC-005**: The generalization invariant, in TWO parts (a `derive_register` probe on AIA confirmed
+  the split is real: the event-prop profile flexes `font:rounded`, so `typography.styles` IS a
+  consumed field via the font directive). (a) A fat key stripped to the lean subset BUT KEEPING
+  `typography.styles` yields a prompt BYTE-IDENTICAL to the fat key, proving the dropped graded /
+  legacy fields (type/scoring tags, `_candidates_rejected`/`_provenance`/`_confidence`, English fonts,
+  `rules`, `category`, `motifs`, `tone`, `imagery_style`, `logo_appearance`, `slogan`) are zero-effect.
+  (b) The real new-brand lean key (styles ABSENT, FR-010) differs from the fat key ONLY in the single
+  font-directive line, which degrades to the generic fallback (e.g. "(rounded library family)") --
+  the documented FR-010 honest-null, contained, with NO other drift. (structural, falsifiable)
 - **SC-006**: The whole deterministic front-half runs from ONE CLI command on a PDF path with NO
   model calls in the color / name path; the build + tests spend nothing. (process)
 - **SC-007**: The resulting key runs through the EXISTING thin back-half (the one paid sign is the

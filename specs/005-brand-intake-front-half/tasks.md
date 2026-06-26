@@ -55,7 +55,7 @@ Single project + a NEW `brand_intake/` package that REUSES the root extractors (
 
 ### Tests for User Story 1
 
-- [ ] T004 [P] [US1] Write `test_page_finder.py`: build the synthetic PDF (T002 helper); assert `suggest_pages(pdf)["color"]` contains the hex-token page (2, 1-indexed) and NOT the color-mention-only page (1); assert `fonts` contains the font-name page; assert all returned page numbers are 1-indexed; assert `text_layer_ratio` is reported. MUST FAIL before T005.
+- [ ] T004 [P] [US1] Write `test_page_finder.py`: build the synthetic PDF (T002 helper); assert `2 in suggest_pages(pdf)["color"]` (the hex-token page, 1-indexed) AND `1 not in suggest_pages(pdf)["color"]` (the color-mention-only page is explicitly ABSENT, the falsifiable negative); assert `fonts` contains the font-name page; assert all returned page numbers are 1-indexed; assert `text_layer_ratio` is reported. MUST FAIL before T005.
 
 ### Implementation for User Story 1
 
@@ -73,7 +73,7 @@ Single project + a NEW `brand_intake/` package that REUSES the root extractors (
 
 ### Tests for User Story 2
 
-- [ ] T006 [P] [US2] Add to `test_brand_key.py` (or a `test_extract_reconcile.py`) the model-free reconcile assertions: `extract_colors.delta_e(h, h) == 0`; `delta_e(garbled_hex, swatch) > reconcile_threshold` (so the `needs_review` mechanism fires deterministically); a `read_brand_names(pdf, name_pages)` helper returns the CN/EN strings from the synthetic PDF's text layer (not inferred). MUST FAIL before T007.
+- [ ] T006 [P] [US2] Add to `test_brand_key.py` the model-free reconcile assertions: `extract_colors.delta_e(h, h) == 0`; `delta_e(garbled_hex, swatch) > reconcile_threshold` (so the `needs_review` mechanism fires deterministically); a `read_brand_names(pdf, name_pages)` helper returns the CN/EN strings from the synthetic PDF's text layer (not inferred). MUST FAIL before T007.
 
 ### Implementation for User Story 2
 
@@ -87,11 +87,11 @@ Single project + a NEW `brand_intake/` package that REUSES the root extractors (
 
 **Goal**: Assemble the LEAN key, VALIDATE LOUD (primary color + real logo_path), run the acknowledgment-gated human verify, write `answer_keys/<brand>.json` + place the logo. The key runs the EXISTING thin route unchanged.
 
-**Independent Test**: `test_brand_key.py` green — `validate_lean_key` RAISES on a missing primary / logo_path; the lean key yields a NON-EMPTY thin prompt with the primary hex; a fat key stripped to lean yields a BYTE-IDENTICAL prompt vs the fat key.
+**Independent Test**: `test_brand_key.py` green — `validate_lean_key` RAISES on a missing primary / logo_path; the lean key yields a NON-EMPTY thin prompt with the primary hex; a fat key stripped to lean WITH styles kept yields a BYTE-IDENTICAL prompt vs the fat key, and the styles-absent key differs only in the font-directive line (SC-005, two-part).
 
 ### Tests for User Story 3
 
-- [ ] T008 [P] [US3] Write `test_brand_key.py`: (a) `validate_lean_key(key_without_primary)` raises with a named reason; (b) `validate_lean_key(key_with_missing_or_unreal_logo_path)` raises; (c) `build_lean_key(...)` then `assemble_thin_prompt` (+ `derive_register`) yields a NON-EMPTY prompt containing the primary hex and NO blank "color  stays"; (d) REGRESSION GUARD: strip `answer_keys/aia.json` to the lean subset → byte-IDENTICAL prompt vs the fat key, AND a control where changing a primary hex CHANGES the prompt. MUST FAIL before T009/T010.
+- [ ] T008 [P] [US3] Write `test_brand_key.py`: (a) `validate_lean_key(key_without_primary)` raises with a named reason; (b) `validate_lean_key(key_with_missing_or_unreal_logo_path)` raises; (c) `build_lean_key(...)` then `assemble_thin_prompt` (+ `derive_register`) yields a NON-EMPTY prompt containing the primary hex and NO blank "color  stays"; (d) REGRESSION GUARD (two parts, per the SC-005 probe finding — PIN the register profile: subfields = held-for-photos / formality 2 / playfulness 8 / logo omit / expressive, NO reference, which yields event_prop + flexes `font:rounded`): (d1) strip `answer_keys/aia.json` to the lean subset BUT KEEP `typography.styles` → BYTE-IDENTICAL prompt vs the fat key (proves the dropped graded/legacy fields are zero-effect), plus a control where changing a primary hex CHANGES the prompt; (d2) the new-brand lean key with styles ABSENT differs from the fat key ONLY in the font-directive line and that line is the generic fallback (e.g. "(rounded library family)") — assert the diff is exactly that one line (the FR-010 honest-null, no other drift). MUST FAIL before T009/T010.
 
 ### Implementation for User Story 3
 
@@ -110,7 +110,7 @@ Single project + a NEW `brand_intake/` package that REUSES the root extractors (
 
 - [ ] T013 [P] Update `SYSTEM_MAP.md` + `CLAUDE.md` in the same commit that makes them stale (§VII): the brand-intake front-half is built (PDF → page-finder → reused extractors → acknowledgment-gated verify → lean key); reuse of the deterministic extractors (NOT v3); the validate-loud landmine containment (logo_path); placement = standalone CLI v1 (UI later); the deferred VLM semantic layer + font-pairing.
 - [ ] T014 [P] Run the free structural suite (`test_page_finder`, `test_brand_key`, `tests_support/verify_reuse`) and confirm the prior suites stay green (001/002/003/004 + the thin route via `test_conductor`/`test_render_and_scrub`). Paste real output. No paid calls.
-- [ ] T015 The human-run smoke (SC-003/SC-007, NOT automated): run `brand_intake/intake.py --pdf <cold_brand_VI.pdf> --brand <id> --verified-by "<you>"` on a real never-seen brand (e.g. chajiuxingqiu / mahoupao); confirm the extracted hex matches the printed spec (e.g. #31B4E7 / #73C900 / #94D4EB) and a garbled read flips needs_review; then run the lean key through the EXISTING thin back-half (`conductor.py --brand <id> --thin --no-approve --inputs <single_sign>.json`) and judge the sign by eye (§II). The cold-brand OCR + the one paid sign are the human's gate AFTER the build. Record the verdict in `SYSTEM_MAP.md`.
+- [ ] T015 The human-run smoke (SC-003/SC-007, NOT automated): run `brand_intake/intake.py --pdf <cold_brand_VI.pdf> --brand <id> --verified-by "<you>"` on a real never-seen brand; confirm the extracted hex matches THAT brand's printed spec (for chajiuxingqiu specifically: #31B4E7 / #73C900 / #94D4EB; for any other brand, match its own printed hexes) and a garbled read flips needs_review; then run the lean key through the EXISTING thin back-half (`conductor.py --brand <id> --thin --no-approve --inputs <single_sign>.json`) and judge the sign by eye (§II). The cold-brand OCR + the one paid sign are the human's gate AFTER the build. Record the verdict in `SYSTEM_MAP.md`.
 
 ---
 

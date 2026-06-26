@@ -97,7 +97,9 @@ is acknowledged AND validation passes. Hard-fail (no save) only on the validatio
   _logo_path)` raises; neither produces a degraded prompt.
 - the lean key fed to `assemble_thin_prompt` (+ `derive_register`) yields a NON-EMPTY prompt with the
   primary hex present and NO blank "color  stays".
-- a fat key (aia.json) stripped to the lean subset yields a BYTE-IDENTICAL prompt vs the fat key;
+- a fat key (aia.json) stripped to the lean subset BUT KEEPING `typography.styles` yields a
+  BYTE-IDENTICAL prompt vs the fat key; the real new-brand lean key (styles ABSENT) differs ONLY in
+  the font-directive line (the FR-010 honest-null generic fallback), no other drift;
   changing a primary hex changes the prompt (the control).
 - `extract_colors.delta_e(h, h) == 0`; `delta_e(garbled, swatch) > reconcile_threshold` (the
   `needs_review` mechanism fires deterministically).

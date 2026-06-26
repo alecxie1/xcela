@@ -30,6 +30,10 @@ The output `answer_keys/<brand>.json`. Carries ONLY what the thin route reads (v
 
 1. The lean key fed to `assemble_thin_prompt` (+ `derive_register`) yields a NON-EMPTY prompt with the
    primary color hex present (no blank "color  stays").
-2. A fat key (aia.json) stripped to this subset yields a BYTE-IDENTICAL prompt vs the fat key (the
-   generalization invariant). A consumed-field change (a primary hex) DOES change the prompt (control).
+2. Generalization invariant, TWO parts (a probe confirmed AIA's event-prop profile flexes
+   `font:rounded`, so `typography.styles` is consumed via the font directive): (a) a fat key stripped
+   to this subset BUT KEEPING `typography.styles` yields a BYTE-IDENTICAL prompt vs the fat key
+   (the dropped graded/legacy fields are zero-effect); a primary-hex change DOES change the prompt
+   (control). (b) the real new-brand lean key (styles ABSENT) differs ONLY in the font-directive line,
+   which is the generic fallback (the FR-010 honest-null) -- no other drift.
 3. A new brand needs NO `kits/<brand>.json` (`--thin` bypasses the kit) and NO `config/<brand>.yaml`.

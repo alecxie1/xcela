@@ -27,8 +27,10 @@ detected; all page numbers are 1-indexed (the `render_page` footgun).
 Expect: `validate_lean_key` RAISES with a named reason on a key missing a primary color OR a real
 `logo_path`; the lean key fed to `assemble_thin_prompt` (+ `derive_register`) yields a NON-EMPTY
 prompt with the primary hex present (no blank "color  stays"); a fat key (aia.json) stripped to the
-lean subset yields a BYTE-IDENTICAL prompt vs the fat key (and changing a primary hex changes it);
-`extract_colors.delta_e` fires `needs_review` past the reconcile threshold.
+lean subset WITH `typography.styles` kept yields a BYTE-IDENTICAL prompt vs the fat key (and changing
+a primary hex changes it), while the styles-absent new-brand key differs ONLY in the font-directive
+line (the honest-null generic fallback); `extract_colors.delta_e` fires `needs_review` past the
+reconcile threshold.
 
 ## Step 3 - Cold-brand extraction smoke (human-run, local OCR, no paid API)
 
