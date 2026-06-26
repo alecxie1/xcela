@@ -59,6 +59,11 @@ image sets MAGNITUDE (how far, via blind vision score). See `docs/ARCHITECTURE.m
 - `harness/composite_text.py` — licensed-font COMPOSITOR + compliance manifest + fit-to-zone clamp.
 - `register/` — reconciliation engine (derive_register = direction, calibrate = magnitude,
   reference_style_to_prompt = the analyzer + dial).
+- `extract_colors.py` / `extract_text_layer.py` — (proven, model-free) deterministic brand extractors
+  (OCR+pixel reconcile / text-layer fonts). REUSED by 005; `render_page` is 1-INDEXED.
+- `brand_intake/` — (005, stdlib) brand-onboarding FRONT-half over those extractors: `page_finder`
+  (suggest 1-indexed spec pages), `extract` (reuse wrappers), `assemble_key` + `validate_key` (lean
+  key + fail-loud), `intake.py` (CLI: PDF -> verify gate -> answer_keys/<brand>.json). NOT the v3 scaffold.
 - `frontend/` — (004, stdlib) THIN local web live-runner over the CLI: `inputs_writer` (form ->
   002 JSON), `run_view` (run dir -> progressive stages), `runner` (build/launch `conductor --thin`),
   `server.py` + `index.html`. Shells out + reads artifacts; never reimplements generation.
@@ -119,13 +124,16 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `005-brand-intake-front-half` — plan at `specs/005-brand-intake-front-half/plan.md`
-(spec, research, data-model, contracts/, quickstart alongside). The brand-onboarding FRONT-half: a
-PDF to a human-VERIFIED lean `answer_keys/<brand>.json` the existing thin route consumes unchanged. A
-new `brand_intake/` package (page_finder + assemble_key + validate_key, all PURE, + an interactive CLI
-verify gate) REUSES the proven deterministic extractors (`extract_colors.py`, `extract_text_layer.py`),
-NOT the v3 scaffold. Fail-loud on a missing primary color / logo_path; acknowledgment-gated verify;
-`typography.styles` honest-null in v1. Placement = standalone CLI v1 (UI later). Next: `/speckit-tasks`.
+**Active feature:** `005-brand-intake-front-half` — BUILT (US1-US3) + structurally green (20 checks:
+verify_reuse 6, page_finder 5, brand_key 9). The brand-onboarding FRONT-half: a PDF to a
+human-VERIFIED lean `answer_keys/<brand>.json` the existing thin route consumes unchanged, via
+`brand_intake/` (page_finder + extract wrappers + assemble_key + validate_key, all PURE, + the
+`intake.py` CLI verify gate) REUSING the proven extractors, NOT the v3 scaffold. Fail-loud on missing
+primary color / logo_path; acknowledgment-gated verify; `typography.styles` honest-null. SC-005 is a
+TWO-PART invariant (a probe showed AIA flexes `font:rounded`, so styles IS consumed via the font
+directive): lean-with-styles == fat byte-identical; styles-absent differs ONLY in the font line (the
+honest-null). Pending: the human cold-brand smoke + paid sign (T015). Run:
+`.venv/bin/python brand_intake/intake.py --pdf <VI.pdf> --brand <id> --verified-by "<you>"`.
 
 Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`

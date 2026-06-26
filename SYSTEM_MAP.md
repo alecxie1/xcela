@@ -1,5 +1,21 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-24 (PM)._
+_Single source of truth for "what is this whole thing." Updated 2026-06-26._
+
+> **▶ BUILD STATUS — 2026-06-26: feature 005 (brand-intake front-half) is BUILT + structurally green.**
+> The brand-onboarding FRONT-half now exists: a PDF to a human-VERIFIED lean `answer_keys/<brand>.json`
+> the existing thin route consumes UNCHANGED. New `brand_intake/` package (page_finder + extract
+> wrappers + assemble_key + validate_key, all PURE, + the `intake.py` CLI verify gate) REUSES the
+> proven deterministic extractors (`extract_colors` / `extract_text_layer`), NOT the dead v3 scaffold.
+> Page-finding suggests 1-indexed spec pages (real hex-token page, not a color-mention page); the human
+> confirms. Validation FAILS LOUD on a missing primary color / logo_path (contains the silent-taichi-
+> logo landmine `scene_author` falls back to). Verify gate is acknowledgment-gated (confirm/edit/
+> keep-flagged); `typography.styles` honest-null in v1. A `derive_register` probe corrected SC-005 to a
+> TWO-PART invariant: lean-with-styles == fat byte-identical (the dropped graded/legacy fields are
+> zero-effect); the real styles-absent new-brand key differs ONLY in the font-directive line (the
+> FR-010 honest-null). Tests: verify_reuse 6/6, page_finder 5/5, brand_key 9/9; all prior suites
+> (001-004) green; `--no-gate` ran end-to-end on a synthetic PDF, no paid call. PENDING: the human
+> cold-brand OCR smoke (e.g. chajiuxingqiu) + the one paid sign through the back-half (T015).
+> Spec/plan/tasks: `specs/005-brand-intake-front-half/`.
 
 > **▶ BUILD STATUS — 2026-06-24: feature 004 (frontend live-runner) is BUILT + structurally green.**
 > A THIN local web frontend over the agent-free CLI (`frontend/`): the operator types ONE single-sign
