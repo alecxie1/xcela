@@ -41,7 +41,7 @@ Single project + a NEW `brand_intake/` package that REUSES the root extractors (
 
 **⚠️ CRITICAL**: The lean schema + byte-identical guard depend on the verified read surface; the page-finder depends on the 1-indexed footgun.
 
-- [ ] T003 Write `tests_support/verify_reuse.py` (a one-shot STEP-ZERO check, no paid calls): assert `extract_colors.render_page` is 1-indexed (`doc[page_no_1idx - 1]`), `extract_colors.extract_colors` + `delta_e` import and run on the synthetic PDF, `extract_text_layer.page_text` / `text_layer_ratio` import, and `harness.scene_author.assemble_thin_prompt` + `register.derive_register.derive_register` import. Documents the exact reused surface so a drift in any of them fails loudly here, not deep in a later task.
+- [X] T003 Write `tests_support/verify_reuse.py` (a one-shot STEP-ZERO check, no paid calls): assert `extract_colors.render_page` is 1-indexed (`doc[page_no_1idx - 1]`), `extract_colors.extract_colors` + `delta_e` import and run on the synthetic PDF, `extract_text_layer.page_text` / `text_layer_ratio` import, and `harness.scene_author.assemble_thin_prompt` + `register.derive_register.derive_register` import. Documents the exact reused surface so a drift in any of them fails loudly here, not deep in a later task.
 
 **Checkpoint**: The reused organs are confirmed present + shaped as the plan assumes.
 
@@ -55,11 +55,11 @@ Single project + a NEW `brand_intake/` package that REUSES the root extractors (
 
 ### Tests for User Story 1
 
-- [ ] T004 [P] [US1] Write `test_page_finder.py`: build the synthetic PDF (T002 helper); assert `2 in suggest_pages(pdf)["color"]` (the hex-token page, 1-indexed) AND `1 not in suggest_pages(pdf)["color"]` (the color-mention-only page is explicitly ABSENT, the falsifiable negative); assert `fonts` contains the font-name page; assert all returned page numbers are 1-indexed; assert `text_layer_ratio` is reported. MUST FAIL before T005.
+- [X] T004 [P] [US1] Write `test_page_finder.py`: build the synthetic PDF (T002 helper); assert `2 in suggest_pages(pdf)["color"]` (the hex-token page, 1-indexed) AND `1 not in suggest_pages(pdf)["color"]` (the color-mention-only page is explicitly ABSENT, the falsifiable negative); assert `fonts` contains the font-name page; assert all returned page numbers are 1-indexed; assert `text_layer_ratio` is reported. MUST FAIL before T005.
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Implement `brand_intake/page_finder.py` `suggest_pages(pdf_path) -> {color, fonts, brand_name, text_layer_ratio}` per `contracts/page-finder.md`: scan each page's text layer (`extract_text_layer.page_text` / fitz), rank color pages by real hex/RGB token count (reuse the `extract_colors._HEX_RE` / `_RGB_RE` shapes), font pages by `extract_text_layer._CJK_FONT_RE` / `_EN_FONT_RE` minus the stoplist, brand-name by early/title pages. PURE, model-free, 1-INDEXED (the footgun). `test_page_finder.py` passes.
+- [X] T005 [US1] Implement `brand_intake/page_finder.py` `suggest_pages(pdf_path) -> {color, fonts, brand_name, text_layer_ratio}` per `contracts/page-finder.md`: scan each page's text layer (`extract_text_layer.page_text` / fitz), rank color pages by real hex/RGB token count (reuse the `extract_colors._HEX_RE` / `_RGB_RE` shapes), font pages by `extract_text_layer._CJK_FONT_RE` / `_EN_FONT_RE` minus the stoplist, brand-name by early/title pages. PURE, model-free, 1-INDEXED (the footgun). `test_page_finder.py` passes.
 
 **Checkpoint**: The hardcoded `BRANDS` page dict is replaced by discovery the human confirms. MVP.
 
