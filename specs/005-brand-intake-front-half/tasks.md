@@ -28,8 +28,8 @@ Single project + a NEW `brand_intake/` package that REUSES the root extractors (
 
 **Purpose**: Stand up the `brand_intake/` package + a synthetic-PDF test fixture helper the falsifiable tests build on.
 
-- [ ] T001 Create the `brand_intake/` package: `brand_intake/__init__.py` (empty) + a short `brand_intake/README.md` noting it is the brand-onboarding FRONT-half that REUSES `extract_colors.py` + `extract_text_layer.py` (NOT `analyze_brand_v3.py`), outputs a LEAN `answer_keys/<brand>.json` the existing thin route consumes unchanged, and is stdlib + the extractors' existing deps (no new dep). Confirm `brand_intake/` is git-tracked.
-- [ ] T002 [P] Add a synthetic-PDF fixture helper `tests_support/make_pdf.py` (stdlib + `fitz`): build a small multi-page PDF in a temp dir from page text (e.g. page 1 "color palette" with NO hex, page 2 "主色 #31B4E7", a font page "汉仪旗黑 / Helvetica"). Used by the page-finder + (optionally) extractor tests; no external file, no model.
+- [X] T001 Create the `brand_intake/` package: `brand_intake/__init__.py` (empty) + a short `brand_intake/README.md` noting it is the brand-onboarding FRONT-half that REUSES `extract_colors.py` + `extract_text_layer.py` (NOT `analyze_brand_v3.py`), outputs a LEAN `answer_keys/<brand>.json` the existing thin route consumes unchanged, and is stdlib + the extractors' existing deps (no new dep). Confirm `brand_intake/` is git-tracked.
+- [X] T002 [P] Add a synthetic-PDF fixture helper `tests_support/make_pdf.py` (stdlib + `fitz`): build a small multi-page PDF in a temp dir from page text (e.g. page 1 "color palette" with NO hex, page 2 "主色 #31B4E7", a font page "汉仪旗黑 / Helvetica"). Used by the page-finder + (optionally) extractor tests; no external file, no model.
 
 **Checkpoint**: `brand_intake/` exists; tests can synthesize a PDF without an external asset.
 
