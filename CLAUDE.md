@@ -119,14 +119,16 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `004-frontend-live-runner` — BUILT (US1-US3) + structurally green. A THIN local
-web frontend over the agent-free CLI (`frontend/`): type a single-sign brief, press Run (paid,
-cost-labeled), watch stages appear progressively from the run dir (brief, dial, assembled prompt,
-sign), approve or nudge-rerun (each nudge = a new run dir, prior attempts comparable). stdlib server
-+ static page, no new deps; the ONE engine change was a top-level `conductor --style-notes`
-pass-through. Pending: the operator's paid run + eye verdict (T016). Run: `.venv/bin/python
-frontend/server.py`.
+**Active feature:** `005-brand-intake-front-half` — plan at `specs/005-brand-intake-front-half/plan.md`
+(spec, research, data-model, contracts/, quickstart alongside). The brand-onboarding FRONT-half: a
+PDF to a human-VERIFIED lean `answer_keys/<brand>.json` the existing thin route consumes unchanged. A
+new `brand_intake/` package (page_finder + assemble_key + validate_key, all PURE, + an interactive CLI
+verify gate) REUSES the proven deterministic extractors (`extract_colors.py`, `extract_text_layer.py`),
+NOT the v3 scaffold. Fail-loud on a missing primary color / logo_path; acknowledgment-gated verify;
+`typography.styles` honest-null in v1. Placement = standalone CLI v1 (UI later). Next: `/speckit-tasks`.
+
 Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
-(the prompt-compose thin route `conductor --thin`, the engine 004 wraps).
+(the prompt-compose thin route `conductor --thin`, the engine 004 wraps), `004-frontend-live-runner`
+(thin local web live-runner, operator paid run T016 pending).
 <!-- SPECKIT END -->
