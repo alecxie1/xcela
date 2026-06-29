@@ -124,16 +124,17 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `005-brand-intake-front-half` — BUILT (US1-US3) + structurally green (20 checks:
-verify_reuse 6, page_finder 5, brand_key 9). The brand-onboarding FRONT-half: a PDF to a
-human-VERIFIED lean `answer_keys/<brand>.json` the existing thin route consumes unchanged, via
-`brand_intake/` (page_finder + extract wrappers + assemble_key + validate_key, all PURE, + the
-`intake.py` CLI verify gate) REUSING the proven extractors, NOT the v3 scaffold. Fail-loud on missing
-primary color / logo_path; acknowledgment-gated verify; `typography.styles` honest-null. SC-005 is a
-TWO-PART invariant (a probe showed AIA flexes `font:rounded`, so styles IS consumed via the font
-directive): lean-with-styles == fat byte-identical; styles-absent differs ONLY in the font line (the
-honest-null). Pending: the human cold-brand smoke + paid sign (T015). Run:
-`.venv/bin/python brand_intake/intake.py --pdf <VI.pdf> --brand <id> --verified-by "<you>"`.
+**Active feature:** `006-web-onboarding-gate` — plan at `specs/006-web-onboarding-gate/plan.md`
+(spec, research, data-model, contracts/, quickstart alongside). The designer-facing WEB gate that
+wraps the proven 005 `brand_intake/` PURE modules in the 004 local-web pattern (NOT `intake.main()`):
+a 3-step wizard (upload PDF -> confirm suggested pages -> extract+verify -> validate-loud + save) that
+writes a lean `answer_keys/<brand>.json` the thin route + the 004 live-runner consume unchanged (the
+`/brands` dropdown lists `answer_keys/*.json`, so onboard->generate is free). New: `frontend/multipart.py`
+(stdlib upload, no `cgi`), `frontend/onboard.py` (wizard over a TRANSIENT draft dir), `brand_intake/persist.py`
+(shared place-logo + write-key + id-collision, CLI + web). Clarified: real upload; transient draft
+(discard on abandon, only save writes); zero-color blocks + re-pick; existing id blocks; styles
+honest-null; standalone CLI preserved. Next: `/speckit-tasks`.
+005 is BUILT + fully verified (T015 cold-brand chajiuxingqiu onboarded end to end).
 
 Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
