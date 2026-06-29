@@ -1,5 +1,22 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-26._
+_Single source of truth for "what is this whole thing." Updated 2026-06-28._
+
+> **▶ BUILD STATUS — 2026-06-28: feature 006 (designer-facing web onboarding gate) is BUILT + structurally green.**
+> A designer can now onboard a cold brand entirely in the browser (no terminal): a 3-step wizard in
+> the existing `frontend/` local app — upload the brand PDF -> confirm the suggested 1-indexed spec
+> pages -> extract + verify the locks (assign color roles, confirm names, acknowledge each
+> needs_review, upload the logo) -> validate-loud + save a lean `answer_keys/<brand>.json`. It WRAPS
+> the proven 005 `brand_intake/` PURE modules in the 004 local-web pattern; it never reimplements
+> extraction/validation/gate logic and never calls the stdin-bound `intake.main()`. New: `frontend/
+> onboard.py` (wizard over a TRANSIENT draft dir, discarded on save/abandon), `frontend/multipart.py`
+> (stdlib upload parsing, no `cgi`, no new dep), `brand_intake/persist.py` (the ONE write home the CLI
+> and the web gate share). Fail-loud (4xx, no write) on a missing primary color / logo / unacknowledged
+> flag / existing brand id; a zero-color page set BLOCKS + returns to page-confirm; `typography.styles`
+> honest-null. The saved brand appears in the 004 live-runner dropdown automatically (`/brands` lists
+> `answer_keys/*.json`) -> onboard then generate, one local app (verified end-to-end over HTTP). Tests:
+> multipart 3/3, onboard 9/9, verify_reuse 6/6; all prior 001-005 suites green; NO paid calls.
+> PENDING: the human browser smoke (upload a real cold-brand PDF in the UI) + the one paid sign through
+> the back-half (T017). Spec/plan/tasks: `specs/006-web-onboarding-gate/`.
 
 > **▶ BUILD STATUS — 2026-06-26: feature 005 (brand-intake front-half) is BUILT + structurally green.**
 > The brand-onboarding FRONT-half now exists: a PDF to a human-VERIFIED lean `answer_keys/<brand>.json`

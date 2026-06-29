@@ -64,9 +64,13 @@ image sets MAGNITUDE (how far, via blind vision score). See `docs/ARCHITECTURE.m
 - `brand_intake/` — (005, stdlib) brand-onboarding FRONT-half over those extractors: `page_finder`
   (suggest 1-indexed spec pages), `extract` (reuse wrappers), `assemble_key` + `validate_key` (lean
   key + fail-loud), `intake.py` (CLI: PDF -> verify gate -> answer_keys/<brand>.json). NOT the v3 scaffold.
-- `frontend/` — (004, stdlib) THIN local web live-runner over the CLI: `inputs_writer` (form ->
-  002 JSON), `run_view` (run dir -> progressive stages), `runner` (build/launch `conductor --thin`),
-  `server.py` + `index.html`. Shells out + reads artifacts; never reimplements generation.
+- `frontend/` — (004 + 006, stdlib) THIN local web app over the CLI. 004 live-runner: `inputs_writer`
+  (form -> 002 JSON), `run_view` (run dir -> progressive stages), `runner` (build/launch `conductor
+  --thin`), `server.py` + `index.html`. 006 onboarding gate: `onboard.py` (3-step wizard over a
+  transient draft, wraps the 005 brand_intake modules), `multipart.py` (stdlib upload), `onboard.html`
+  + the `/onboard/*` routes. Shells out + reads artifacts; never reimplements generation/extraction.
+- `brand_intake/persist.py` — (006, shared) the one write home (key_exists/place_logo/write_key) the
+  005 CLI and the 006 web gate both call.
 - `answer_keys/<brand>.json` — brand DNA. `config/<brand>.yaml` — thin-spine config.
   `kits/<brand>.json` — human-authored Kit of Parts (icon + layout vocabularies; committed DATA).
 - `brands/ output/ .env` — GITIGNORED (licensed fonts, client IP, secrets, big PNGs).
@@ -124,17 +128,18 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `006-web-onboarding-gate` — plan at `specs/006-web-onboarding-gate/plan.md`
-(spec, research, data-model, contracts/, quickstart alongside). The designer-facing WEB gate that
-wraps the proven 005 `brand_intake/` PURE modules in the 004 local-web pattern (NOT `intake.main()`):
-a 3-step wizard (upload PDF -> confirm suggested pages -> extract+verify -> validate-loud + save) that
-writes a lean `answer_keys/<brand>.json` the thin route + the 004 live-runner consume unchanged (the
-`/brands` dropdown lists `answer_keys/*.json`, so onboard->generate is free). New: `frontend/multipart.py`
-(stdlib upload, no `cgi`), `frontend/onboard.py` (wizard over a TRANSIENT draft dir), `brand_intake/persist.py`
-(shared place-logo + write-key + id-collision, CLI + web). Clarified: real upload; transient draft
-(discard on abandon, only save writes); zero-color blocks + re-pick; existing id blocks; styles
-honest-null; standalone CLI preserved. Next: `/speckit-tasks`.
-005 is BUILT + fully verified (T015 cold-brand chajiuxingqiu onboarded end to end).
+**Active feature:** `006-web-onboarding-gate` — BUILT (US1-US3) + structurally green (18 checks:
+multipart 3, onboard 9, verify_reuse 6; all prior 001-005 suites green). The designer-facing WEB gate:
+a 3-step browser wizard (upload PDF -> confirm suggested pages -> extract+verify -> validate-loud +
+save) that wraps the proven 005 `brand_intake/` PURE modules in the 004 local-web pattern (NOT
+`intake.main()`) and writes a lean `answer_keys/<brand>.json` the thin route + the 004 live-runner
+consume unchanged (the `/brands` dropdown lists `answer_keys/*.json`, so onboard->generate is free,
+verified end-to-end over HTTP). `frontend/onboard.py` (wizard over a TRANSIENT draft, discard on
+save/abandon), `frontend/multipart.py` (stdlib upload, no `cgi`), `brand_intake/persist.py` (shared
+write home, CLI + web). Fail-loud on no primary / logo / unacknowledged flag / existing id; zero-color
+blocks; styles honest-null; standalone CLI preserved. Pending: the human browser smoke + paid sign
+(T017). Run: `.venv/bin/python frontend/server.py` then open `/onboard`.
+Prior built: 001-005 (005 fully verified, T015 cold-brand chajiuxingqiu onboarded end to end).
 
 Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
