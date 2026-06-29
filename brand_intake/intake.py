@@ -29,6 +29,7 @@ import page_finder
 import extract as extract_mod
 import assemble_key
 import validate_key
+import persist
 
 _ACKS = {"confirm", "edit", "keep-flagged"}
 
@@ -124,15 +125,14 @@ def main():
         sys.exit(f"ERROR: {len(blocked)} color flag(s) not acknowledged; cannot save. "
                  "Acknowledge each needs_review (confirm/edit/keep-flagged).")
 
+    # id-collision guard: never silently overwrite a committed brand key (shared with the web gate).
+    if persist.key_exists(args.brand):
+        sys.exit(f"ERROR: answer_keys/{args.brand}.json already exists; choose a new brand id "
+                 "(editing an existing key is out of scope).")
+
     logo = args.logo or (input("  logo file path: ").strip() if not args.no_gate else "")
-    # place the logo under brands/<brand>/ (the JSON references it there)
-    logo_dest = ""
-    if logo and Path(logo).is_file():
-        brand_dir = _REPO / "brands" / args.brand
-        brand_dir.mkdir(parents=True, exist_ok=True)
-        logo_dest = str(brand_dir / Path(logo).name)
-        if Path(logo).resolve() != Path(logo_dest).resolve():
-            shutil.copyfile(logo, logo_dest)
+    # place the logo under brands/<brand>/ via the shared write home (the JSON references it there)
+    logo_dest = persist.place_logo(args.brand, logo)
 
     key = assemble_key.build_lean_key(
         brand_cn, brand_en, finalize_items(items), logo_dest,
@@ -140,8 +140,7 @@ def main():
 
     validate_key.validate_lean_key(key)  # FAILS LOUD on missing primary / logo_path
 
-    out = _REPO / "answer_keys" / f"{args.brand}.json"
-    out.write_text(json.dumps(key, ensure_ascii=False, indent=2), encoding="utf-8")
+    out = persist.write_key(args.brand, key)
     print(f"\nWrote {out}")
     print(f"Logo placed: {logo_dest or '(none)'}")
     print("Run the back-half:  .venv/bin/python harness/conductor.py --brand "

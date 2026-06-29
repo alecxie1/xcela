@@ -28,8 +28,8 @@ Single project + the existing `frontend/` stdlib web app (extended) + the 005 `b
 
 **Purpose**: The shared write helper + the stdlib upload parser both the CLI and the web gate stand on. No wizard logic yet.
 
-- [ ] T001 [P] Implement `brand_intake/persist.py` (shared, CLI + web) per `contracts/persist-contract.md`: `key_exists(brand) -> bool` (answer_keys/<brand>.json exists, the id-collision guard); `place_logo(brand, src) -> dest` (copy under gitignored `brands/<brand>/`, return the path, NEVER the taichi default); `write_key(brand, key) -> path` (write answer_keys/<brand>.json; callers validate first). PURE/IO helpers, no model.
-- [ ] T002 [P] Implement `frontend/multipart.py` (stdlib, PURE) per `contracts/multipart-contract.md`: `parse_multipart(body: bytes, content_type: str) -> {fields, files}` via hand-rolled boundary parsing (no `cgi`, no new dep); binary file bytes preserved byte-for-byte; malformed/empty body -> empty dicts (no crash).
+- [X] T001 [P] Implement `brand_intake/persist.py` (shared, CLI + web) per `contracts/persist-contract.md`: `key_exists(brand) -> bool` (answer_keys/<brand>.json exists, the id-collision guard); `place_logo(brand, src) -> dest` (copy under gitignored `brands/<brand>/`, return the path, NEVER the taichi default); `write_key(brand, key) -> path` (write answer_keys/<brand>.json; callers validate first). PURE/IO helpers, no model.
+- [X] T002 [P] Implement `frontend/multipart.py` (stdlib, PURE) per `contracts/multipart-contract.md`: `parse_multipart(body: bytes, content_type: str) -> {fields, files}` via hand-rolled boundary parsing (no `cgi`, no new dep); binary file bytes preserved byte-for-byte; malformed/empty body -> empty dicts (no crash).
 
 **Checkpoint**: the write home + the upload parser exist, independently testable.
 
@@ -41,8 +41,8 @@ Single project + the existing `frontend/` stdlib web app (extended) + the 005 `b
 
 **⚠️ CRITICAL**: `onboard.save_draft` (US3) and the CLI must share ONE write home; confirm it here.
 
-- [ ] T003 [P] Write `test_multipart.py`: a synthetic multipart body with one text field + one file part round-trips — `parse_multipart` returns the field value AND the file's filename + EXACT bytes (assert a binary PDF/PNG byte-string survives unmodified); a malformed body yields empty fields/files (no crash). MUST FAIL before T002 is done (write alongside T002; both [P]).
-- [ ] T004 Refactor `brand_intake/intake.py` to call `persist.place_logo` / `persist.write_key` / `persist.key_exists` for its write tail (replace the inline logo-copy + JSON-write), adding the id-collision block (FR-014). The CLI flow is otherwise UNCHANGED and still runs standalone. Confirm via `tests_support/verify_reuse.py` + a `--no-gate` CLI run on the synthetic fixture that the CLI still writes a valid key end to end.
+- [X] T003 [P] Write `test_multipart.py`: a synthetic multipart body with one text field + one file part round-trips — `parse_multipart` returns the field value AND the file's filename + EXACT bytes (assert a binary PDF/PNG byte-string survives unmodified); a malformed body yields empty fields/files (no crash). MUST FAIL before T002 is done (write alongside T002; both [P]).
+- [X] T004 Refactor `brand_intake/intake.py` to call `persist.place_logo` / `persist.write_key` / `persist.key_exists` for its write tail (replace the inline logo-copy + JSON-write), adding the id-collision block (FR-014). The CLI flow is otherwise UNCHANGED and still runs standalone. Confirm via `tests_support/verify_reuse.py` + a `--no-gate` CLI run on the synthetic fixture that the CLI still writes a valid key end to end.
 
 **Checkpoint**: one shared write home; the CLI is intact on it; multipart parsing proven.
 
