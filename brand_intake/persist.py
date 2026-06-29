@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""brand_intake/persist.py — the shared write home for an onboarded brand (feature 006).
+"""brand_intake/persist.py - the shared write home for an onboarded brand (feature 006).
 
 ONE place to "check the id + place the logo + write the key", called by BOTH the 005 CLI
 (`intake.py`) and the 006 web gate (`frontend/onboard.py`), so they produce byte-identical artifacts

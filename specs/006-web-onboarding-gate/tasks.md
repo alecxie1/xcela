@@ -56,12 +56,12 @@ Single project + the existing `frontend/` stdlib web app (extended) + the 005 `b
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Add to `test_onboard.py` the start-draft assertions: `start_draft(pdf_bytes)` (synthetic fixture via `tests_support/make_pdf`) returns a `draft_id` + `suggestions`; `suggestions["color"]` contains the hex-token page (2, 1-indexed) and NOT the color-mention page (1); a draft dir was created holding the PDF on disk. MUST FAIL before T006.
+- [X] T005 [P] [US1] Add to `test_onboard.py` the start-draft assertions: `start_draft(pdf_bytes)` (synthetic fixture via `tests_support/make_pdf`) returns a `draft_id` + `suggestions`; `suggestions["color"]` contains the hex-token page (2, 1-indexed) and NOT the color-mention page (1); a draft dir was created holding the PDF on disk. MUST FAIL before T006.
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement `frontend/onboard.py` `start_draft(pdf_bytes) -> {draft_id, suggestions}` per `contracts/draft-model.md`: create a transient draft dir under a scratch path, write the PDF to `<draft>/source.pdf`, return an opaque draft_id + `page_finder.suggest_pages(...)`. PURE-callable (bytes in, dict out); no committed artifact written. `test_onboard.py` start-draft checks pass.
-- [ ] T007 [US1] Add the upload route to `frontend/server.py`: `GET /onboard` (serve the wizard screen) + `POST /onboard/upload` (multipart PDF -> `parse_multipart` -> `onboard.start_draft` -> `{draft_id, suggestions}`). Thin glue; reuse `_send`. Reject a body with no PDF (fail loud).
+- [X] T006 [US1] Implement `frontend/onboard.py` `start_draft(pdf_bytes) -> {draft_id, suggestions}` per `contracts/draft-model.md`: create a transient draft dir under a scratch path, write the PDF to `<draft>/source.pdf`, return an opaque draft_id + `page_finder.suggest_pages(...)`. PURE-callable (bytes in, dict out); no committed artifact written. `test_onboard.py` start-draft checks pass.
+- [X] T007 [US1] Add the upload route to `frontend/server.py`: `GET /onboard` (serve the wizard screen) + `POST /onboard/upload` (multipart PDF -> `parse_multipart` -> `onboard.start_draft` -> `{draft_id, suggestions}`). Thin glue; reuse `_send`. Reject a body with no PDF (fail loud).
 
 **Checkpoint**: a designer can upload a PDF in the browser and see suggested pages. MVP entry.
 
@@ -75,12 +75,12 @@ Single project + the existing `frontend/` stdlib web app (extended) + the 005 `b
 
 ### Tests for User Story 2
 
-- [ ] T008 [P] [US2] Add to `test_onboard.py` the extract assertions: `extract_draft(draft_id, {color:[2], name:[1]})` over the fixture returns colors carrying `hex` + `needs_review` and brand-name candidates; `extract_draft(draft_id, {color:[1]})` (the no-hex page) returns a `block` (no colors), NOT an empty success. MUST FAIL before T009.
+- [X] T008 [P] [US2] Add to `test_onboard.py` the extract assertions: `extract_draft(draft_id, {color:[2], name:[1]})` over the fixture returns colors carrying `hex` + `needs_review` and brand-name candidates; `extract_draft(draft_id, {color:[1]})` (the no-hex page) returns a `block` (no colors), NOT an empty success. MUST FAIL before T009.
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Implement `frontend/onboard.py` `extract_draft(draft_id, confirmed_pages) -> {locks, names} | {block}` per `contracts/draft-model.md`: run `extract.extract_brand_colors` + `read_brand_names` on the confirmed pages; on ZERO colors return `{block: "no colors found on these pages"}` (never fabricate / never empty gate); else return the locks (role unset) + name candidates. `test_onboard.py` extract checks pass.
-- [ ] T010 [US2] Add the extract route to `frontend/server.py`: `POST /onboard/<id>/extract` (JSON confirmed pages -> `onboard.extract_draft` -> `{locks, names}` or a `{block}` the UI shows + returns to page-confirm). Thin glue.
+- [X] T009 [US2] Implement `frontend/onboard.py` `extract_draft(draft_id, confirmed_pages) -> {locks, names} | {block}` per `contracts/draft-model.md`: run `extract.extract_brand_colors` + `read_brand_names` on the confirmed pages; on ZERO colors return `{block: "no colors found on these pages"}` (never fabricate / never empty gate); else return the locks (role unset) + name candidates. `test_onboard.py` extract checks pass.
+- [X] T010 [US2] Add the extract route to `frontend/server.py`: `POST /onboard/<id>/extract` (JSON confirmed pages -> `onboard.extract_draft` -> `{locks, names}` or a `{block}` the UI shows + returns to page-confirm). Thin glue.
 
 **Checkpoint**: confirmed pages yield reviewable locks with provenance; a bad page set blocks honestly.
 
@@ -94,13 +94,13 @@ Single project + the existing `frontend/` stdlib web app (extended) + the 005 `b
 
 ### Tests for User Story 3
 
-- [ ] T011 [P] [US3] Add to `test_onboard.py` the save assertions (throwaway brand id, cleaned up): `save_draft` with one primary + a real logo + every flag acknowledged writes `answer_keys/<id>.json` that passes `validate_lean_key` and yields a non-empty thin prompt with the primary hex; the draft dir is gone after save; the brand appears in `frontend.server._brands()`. FAIL-LOUD (no file written): no primary; missing/unreal logo; an unacknowledged needs_review flag; an existing brand id (collision, reuse `aia`). A keep-flagged lock persists `needs_review` in the saved key. ALSO assert the saved key has NO `fields.typography.styles` (FR-010 honest-null is falsifiable, not incidental). MUST FAIL before T012.
+- [X] T011 [P] [US3] Add to `test_onboard.py` the save assertions (throwaway brand id, cleaned up): `save_draft` with one primary + a real logo + every flag acknowledged writes `answer_keys/<id>.json` that passes `validate_lean_key` and yields a non-empty thin prompt with the primary hex; the draft dir is gone after save; the brand appears in `frontend.server._brands()`. FAIL-LOUD (no file written): no primary; missing/unreal logo; an unacknowledged needs_review flag; an existing brand id (collision, reuse `aia`). A keep-flagged lock persists `needs_review` in the saved key. ALSO assert the saved key has NO `fields.typography.styles` (FR-010 honest-null is falsifiable, not incidental). MUST FAIL before T012.
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Implement `frontend/onboard.py` `save_draft(draft_id, verified, logo_bytes) -> {brand, key_path}` per `contracts/draft-model.md`: block on `unacknowledged_flags`; block on `persist.key_exists(brand)` (id collision); `build_lean_key(... finalize_items(verified.colors) ...)`; `validate_lean_key` (fail loud on no primary / missing-or-unreal logo); `persist.place_logo` + `persist.write_key`; discard the draft dir. Raise/return a named error (no write) on any fail. `test_onboard.py` save checks pass.
-- [ ] T013 [US3] Add the save route to `frontend/server.py`: `POST /onboard/<id>/save` (multipart logo + JSON verified locks/roles/acks/names -> `onboard.save_draft`); 200 + `{brand, key_path}` on success, 4xx + `{error: <named reason>}` and NO write on any fail. Single-flight (reuse `_inflight`).
-- [ ] T014 [US3] Implement the onboarding wizard screen (`frontend/index.html` onboarding section or a new `frontend/onboard.html` served at `/onboard`): the 3 steps — (1) upload PDF, (2) confirm suggested pages, (3) extract (cost-free loading state) -> verify gate (assign color roles, confirm brand names, acknowledge each needs_review confirm/edit/keep-flagged, upload logo) -> Save. Show in-browser fail-loud errors; on success show "this brand is now available in the live-runner." Inline vanilla JS, no framework, no em-dashes.
+- [X] T012 [US3] Implement `frontend/onboard.py` `save_draft(draft_id, verified, logo_bytes) -> {brand, key_path}` per `contracts/draft-model.md`: block on `unacknowledged_flags`; block on `persist.key_exists(brand)` (id collision); `build_lean_key(... finalize_items(verified.colors) ...)`; `validate_lean_key` (fail loud on no primary / missing-or-unreal logo); `persist.place_logo` + `persist.write_key`; discard the draft dir. Raise/return a named error (no write) on any fail. `test_onboard.py` save checks pass.
+- [X] T013 [US3] Add the save route to `frontend/server.py`: `POST /onboard/<id>/save` (multipart logo + JSON verified locks/roles/acks/names -> `onboard.save_draft`); 200 + `{brand, key_path}` on success, 4xx + `{error: <named reason>}` and NO write on any fail. Single-flight (reuse `_inflight`).
+- [X] T014 [US3] Implement the onboarding wizard screen (`frontend/index.html` onboarding section or a new `frontend/onboard.html` served at `/onboard`): the 3 steps — (1) upload PDF, (2) confirm suggested pages, (3) extract (cost-free loading state) -> verify gate (assign color roles, confirm brand names, acknowledge each needs_review confirm/edit/keep-flagged, upload logo) -> Save. Show in-browser fail-loud errors; on success show "this brand is now available in the live-runner." Inline vanilla JS, no framework, no em-dashes.
 
 **Checkpoint**: a designer onboards a brand end to end in the browser; the key is validated, saved, and visible in the live-runner.
 

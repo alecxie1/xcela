@@ -23,6 +23,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import inputs_writer  # noqa: E402
 import run_view as run_view_mod  # noqa: E402
 import runner  # noqa: E402
+import onboard as onboard_mod  # noqa: E402  (feature 006: the web onboarding wizard)
+import multipart  # noqa: E402  (feature 006: stdlib multipart upload parsing)
 
 HERE = Path(__file__).resolve().parent
 OUTPUT = REPO_ROOT / "output"
@@ -64,6 +66,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/":
             return self._send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/onboard":
+            return self._send(200, (HERE / "onboard.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/brands":
             return self._send(200, {"brands": _brands(), "per_run_cost_usd": PER_RUN_COST_USD})
         if path.startswith("/run/") and path.endswith("/stages"):
@@ -78,8 +82,20 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, img.read_bytes(), "image/png")
         return self._send(404, {"error": "not found"})
 
+    def _read_body(self):
+        return self.rfile.read(int(self.headers.get("Content-Length") or 0))
+
     def do_POST(self):
-        if self.path.split("?", 1)[0] != "/run":
+        path = self.path.split("?", 1)[0]
+        # --- Feature 006: onboarding wizard routes ---
+        if path == "/onboard/upload":
+            return self._onboard_upload()
+        if path.startswith("/onboard/") and path.endswith("/extract"):
+            return self._onboard_extract(path[len("/onboard/"):-len("/extract")])
+        if path.startswith("/onboard/") and path.endswith("/save"):
+            return self._onboard_save(path[len("/onboard/"):-len("/save")])
+        # --- Feature 004: the back-half run ---
+        if path != "/run":
             return self._send(404, {"error": "not found"})
         length = int(self.headers.get("Content-Length") or 0)
         try:
@@ -104,6 +120,56 @@ class Handler(BaseHTTPRequestHandler):
                 _inflight.release()
             return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
         return self._send(200, {"run_id": run_id, "per_run_cost_usd": PER_RUN_COST_USD})
+
+    # --- Feature 006 onboarding handlers (thin glue over onboard.py; no model, never intake.main) ---
+
+    def _onboard_upload(self):
+        parsed = multipart.parse_multipart(self._read_body(), self.headers.get("Content-Type", ""))
+        pdf = parsed["files"].get("pdf")
+        if not pdf or not pdf[1]:
+            return self._send(400, {"error": "a PDF file is required"})
+        try:
+            res = onboard_mod.start_draft(pdf[1])
+        except Exception as exc:  # noqa: BLE001
+            return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
+        return self._send(200, {"draft_id": res["draft_id"], "suggestions": res["suggestions"]})
+
+    def _onboard_extract(self, draft_id):
+        try:
+            pages = json.loads(self._read_body() or b"{}")
+        except json.JSONDecodeError:
+            return self._send(400, {"error": "invalid JSON body"})
+        try:
+            res = onboard_mod.extract_draft(draft_id, pages)
+        except onboard_mod.OnboardError as exc:
+            return self._send(400, {"error": str(exc)})
+        return self._send(200, res)  # {locks, names} or {block}
+
+    def _onboard_save(self, draft_id):
+        parsed = multipart.parse_multipart(self._read_body(), self.headers.get("Content-Type", ""))
+        try:
+            verified = json.loads(parsed["fields"].get("verified") or "{}")
+        except json.JSONDecodeError:
+            return self._send(400, {"error": "invalid 'verified' JSON field"})
+        logo = parsed["files"].get("logo")
+        logo_src = ""
+        if logo and logo[1]:  # save the uploaded logo to a temp file for persist.place_logo
+            tmp = OUTPUT / ".onboard_tmp"
+            tmp.mkdir(exist_ok=True)
+            logo_src = str(tmp / logo[0])
+            Path(logo_src).write_bytes(logo[1])
+        if not _inflight.acquire(blocking=False):
+            return self._send(409, {"error": "a job is already in flight (single-flight); wait for it"})
+        try:
+            res = onboard_mod.save_draft(draft_id, verified, logo_src)
+        except onboard_mod.OnboardError as exc:
+            return self._send(400, {"error": str(exc)})  # fail loud, no file written
+        except Exception as exc:  # noqa: BLE001
+            return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
+        finally:
+            if _inflight.locked():
+                _inflight.release()
+        return self._send(200, {**res, "message": "this brand is now available in the live-runner"})
 
     def log_message(self, *args):  # quiet
         pass

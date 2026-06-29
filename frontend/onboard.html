@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brand Onboarding</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: #1a1a1a; }
+  header { background: #2a2a2e; color: #fff; padding: 12px 20px; font-weight: 600; }
+  header a { color: #9cd; float: right; font-weight: 400; }
+  main { max-width: 760px; margin: 0 auto; padding: 20px; }
+  .step { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 16px; padding: 16px 20px; }
+  .step.done { opacity: 0.6; }
+  h3 { margin: 0 0 10px; font-size: 14px; }
+  label { display: block; margin: 8px 0 3px; font-weight: 600; font-size: 12px; color: #444; }
+  input, select { box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+  input[type=text] { width: 100%; }
+  button { margin-top: 12px; padding: 9px 14px; border: 0; border-radius: 6px; background: #2a6; color: #fff; font-weight: 600; cursor: pointer; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  .swatch { display: inline-block; width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ccc; vertical-align: middle; margin-right: 8px; }
+  .color-row { padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+  .flag { color: #b8860b; font-weight: 600; }
+  .err { color: #c0392b; font-weight: 600; margin-top: 8px; }
+  .ok { color: #2a6; font-weight: 600; }
+  .pending { color: #999; }
+  pre { white-space: pre-wrap; background: #fafafa; padding: 8px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>Brand Onboarding <a href="/">back to live-runner</a></header>
+<main>
+  <div class="step" id="s1">
+    <h3>1. Upload the brand guideline PDF</h3>
+    <input type="file" id="pdf" accept="application/pdf">
+    <button id="uploadBtn">Upload and suggest pages</button>
+    <div id="s1err" class="err"></div>
+  </div>
+
+  <div class="step" id="s2" style="display:none">
+    <h3>2. Confirm the spec pages (1-indexed; correct if wrong)</h3>
+    <label>Color page(s), comma-separated</label><input type="text" id="colorPages">
+    <label>Brand-name page(s), comma-separated</label><input type="text" id="namePages">
+    <button id="extractBtn">Extract (local, no cost, takes a few seconds)</button>
+    <div id="s2err" class="err"></div>
+    <div id="s2busy" class="pending" style="display:none">extracting (running OCR locally)...</div>
+  </div>
+
+  <div class="step" id="s3" style="display:none">
+    <h3>3. Verify the locks, then save</h3>
+    <label>Brand id (folder + key name)</label><input type="text" id="brandId">
+    <label>Brand name (CN)</label><input type="text" id="brandCn">
+    <label>Brand name (EN)</label><input type="text" id="brandEn">
+    <div id="colors"></div>
+    <label>Logo file</label><input type="file" id="logo" accept="image/*">
+    <button id="saveBtn">Validate and save</button>
+    <div id="s3err" class="err"></div>
+    <div id="s3ok" class="ok"></div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let draftId = null, locks = [];
+
+async function jpost(url, body, isForm) {
+  const opts = { method: "POST", body: isForm ? body : JSON.stringify(body) };
+  const r = await fetch(url, opts);
+  return { ok: r.ok, data: await r.json() };
+}
+
+$("uploadBtn").onclick = async () => {
+  $("s1err").textContent = "";
+  const f = $("pdf").files[0];
+  if (!f) { $("s1err").textContent = "Pick a PDF first."; return; }
+  $("uploadBtn").disabled = true;
+  const fd = new FormData(); fd.append("pdf", f, f.name);
+  const { ok, data } = await jpost("/onboard/upload", fd, true);
+  $("uploadBtn").disabled = false;
+  if (!ok) { $("s1err").textContent = data.error || "upload failed"; return; }
+  draftId = data.draft_id;
+  $("colorPages").value = (data.suggestions.color || []).join(",");
+  $("namePages").value = (data.suggestions.brand_name || []).join(",");
+  $("s1").classList.add("done"); $("s2").style.display = "block";
+};
+
+function pages(id) { return $(id).value.split(",").map(s => parseInt(s.trim(), 10)).filter(n => n >= 1); }
+
+$("extractBtn").onclick = async () => {
+  $("s2err").textContent = ""; $("s2busy").style.display = "block"; $("extractBtn").disabled = true;
+  const { ok, data } = await jpost(`/onboard/${draftId}/extract`,
+    { color: pages("colorPages"), name: pages("namePages") });
+  $("s2busy").style.display = "none"; $("extractBtn").disabled = false;
+  if (!ok) { $("s2err").textContent = data.error || "extract failed"; return; }
+  if (data.block) { $("s2err").textContent = data.block; return; }  // zero colors -> stay on step 2
+  locks = data.locks;
+  renderColors();
+  if (data.names && data.names.cn_candidates && data.names.cn_candidates.length)
+    $("brandCn").value = data.names.cn_candidates[0];
+  if (data.names && data.names.en_candidates && data.names.en_candidates.length)
+    $("brandEn").value = data.names.en_candidates[0];
+  $("s2").classList.add("done"); $("s3").style.display = "block";
+};
+
+function renderColors() {
+  $("colors").innerHTML = "<label>Colors (assign one primary; acknowledge any flag)</label>" +
+    locks.map((c, i) => `<div class="color-row">
+      <span class="swatch" style="background:${c.hex}"></span><code>${c.hex}</code>
+      <select data-role="${i}">
+        <option value="">role...</option><option value="primary">primary</option>
+        <option value="secondary">secondary</option><option value="background">background</option>
+      </select>
+      ${c.needs_review ? `<span class="flag">needs_review</span>
+        <select data-ack="${i}"><option value="">acknowledge...</option>
+        <option value="confirm">confirm</option><option value="edit">edit</option>
+        <option value="keep-flagged">keep-flagged</option></select>` : ""}
+    </div>`).join("");
+}
+
+$("saveBtn").onclick = async () => {
+  $("s3err").textContent = ""; $("s3ok").textContent = "";
+  const verified = {
+    brand: $("brandId").value.trim(), brand_cn: $("brandCn").value.trim(),
+    brand_en: $("brandEn").value.trim(), verified_by: "web",
+    colors: locks.map((c, i) => ({
+      hex: c.hex, rgb: c.rgb, name_cn: "", name_en: "",
+      role: (document.querySelector(`[data-role="${i}"]`) || {}).value || null,
+      needs_review: c.needs_review,
+      _ack: (document.querySelector(`[data-ack="${i}"]`) || {}).value || null,
+    })),
+  };
+  const logoFile = $("logo").files[0];
+  if (!logoFile) { $("s3err").textContent = "A logo file is required."; return; }
+  $("saveBtn").disabled = true;
+  const fd = new FormData();
+  fd.append("verified", JSON.stringify(verified));
+  fd.append("logo", logoFile, logoFile.name);
+  const { ok, data } = await jpost(`/onboard/${draftId}/save`, fd, true);
+  $("saveBtn").disabled = false;
+  if (!ok) { $("s3err").textContent = data.error || "save failed"; return; }
+  $("s3ok").textContent = `Saved ${data.brand}. ${data.message}.`;
+  $("s3").classList.add("done");
+};
+</script>
+</body>
+</html>

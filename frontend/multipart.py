@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""frontend/multipart.py — minimal stdlib multipart/form-data parser (feature 006).
+"""frontend/multipart.py - minimal stdlib multipart/form-data parser (feature 006).
 
 The 004 server reads JSON bodies only; real file upload (a designer picks a PDF + a logo in the
 browser) needs multipart/form-data. Hand-rolled boundary parsing: stdlib only, no `cgi` (deprecated,
