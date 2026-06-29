@@ -1,0 +1,53 @@
+{
+  "brand": "chajiuxingqiu",
+  "brand_en": "BRAND",
+  "logo_path": "/home/alecx/workspace/handyprint-design-tool/brands/chajiuxingqiu/chajiuxingqiu real logo.jpg",
+  "source_pdf": "【茶救星球】vis系统-01-品牌基础-250125.pdf",
+  "verified_by": "verify-test",
+  "verified_date": "2026-06-28",
+  "fields": {
+    "brand_name_cn": {
+      "value": "chajiuxingqiu"
+    },
+    "brand_name_en": {
+      "value": "BRAND"
+    },
+    "colors": {
+      "items": [
+        {
+          "name_cn": "",
+          "name_en": "",
+          "role": "primary",
+          "printed_html": "31B4E7",
+          "rgb": [
+            49,
+            180,
+            231
+          ]
+        },
+        {
+          "name_cn": "",
+          "name_en": "",
+          "role": "secondary",
+          "printed_html": "73C900",
+          "rgb": [
+            115,
+            201,
+            0
+          ]
+        },
+        {
+          "name_cn": "",
+          "name_en": "",
+          "role": "secondary",
+          "printed_html": "94D4EB",
+          "rgb": [
+            148,
+            212,
+            235
+          ]
+        }
+      ]
+    }
+  }
+}
