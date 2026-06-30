@@ -153,6 +153,18 @@ def check9_saved_brand_in_dropdown():
     return (in_dropdown and kept), f"in _brands()={in_dropdown}; keep-flagged persisted needs_review={kept}"
 
 
+def check10_fail_multiple_primaries():
+    # feature 008: exactly ONE primary -> a save with two primaries fails loud, no key written.
+    v = _verified()
+    v["colors"] = [
+        {"hex": "#31B4E7", "rgb": [49, 180, 231], "role": "primary",
+         "name_cn": "", "name_en": "", "needs_review": False},
+        {"hex": "#0033A0", "rgb": [0, 51, 160], "role": "primary",
+         "name_cn": "", "name_en": "", "needs_review": False},
+    ]
+    return _save_should_fail(v, _logo(), "more than one primary")
+
+
 CHECKS = [
     ("US1 start_draft suggests the hex page (1-indexed)", check1_start_draft_suggests_hex_page),
     ("US2 extract_draft returns color locks + names", check2_extract_returns_locks),
@@ -163,6 +175,7 @@ CHECKS = [
     ("US3 save FAILS LOUD: unacknowledged flag", check7_fail_unacknowledged),
     ("US3 save FAILS LOUD: existing brand id (no overwrite)", check8_fail_existing_id),
     ("US3 saved brand in _brands() + keep-flag persists", check9_saved_brand_in_dropdown),
+    ("US3 save FAILS LOUD: more than one primary (008)", check10_fail_multiple_primaries),
 ]
 
 

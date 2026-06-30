@@ -131,28 +131,31 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `007-reference-upload` — BUILT (US1-US3) + structurally green (test_reference_upload
-6/6: save_upload roundtrip+sanitize, /run-assembly points at the saved file, file-input grep, fail-loud
-on missing reference, 002 verbatim invariant, standalone thin-route intact; all prior 001-006 suites
-green). The 004 live-runner now takes the reference image as a real file UPLOAD (file picker) instead of
-a typed absolute server path, mirroring the 006 upload pattern in the SAME `frontend/` app (removes the
-absolute-path footgun). NEW shared `frontend/uploads.py` (`save_upload(file_tuple, dest_dir, name)`) is
-the ONE save-upload home, called by BOTH the `/run` reference-save AND the refactored 006 logo-save
-(DRY). `POST /run` is now multipart (a `form` JSON field + a `reference` file), parsed by two HTTP-free
-helpers in `server.py` (`parse_run_form` fails loud on a missing reference BEFORE any run dir/launch;
-`write_run_inputs` saves the reference into the run dir preserving its extension, e.g.
-`run_*/reference.jpg`, then injects that path as `reference_image`). The conductor / CLI input contract
-is UNCHANGED (`reference_image` is still a path on disk); `inputs_writer` + `multipart.py` reused
-unchanged; the frontend adapts. NO paid call in any test. Pending: the human browser smoke + paid sign
-(T012, folds into 004's pending T016). Spec/plan: `specs/007-reference-upload/`. Run:
-`.venv/bin/python frontend/server.py` then open `/`.
+**Active feature:** `008-palette-role-guidance` — BUILT (US1-US2) + structurally green (test_palette_roles
+6/6: ROLE_GUIDANCE coverage, per-role instruction in the prompt, blank-role fallback, background guard
+both directions, header hard-lock + anchor unchanged, gate-role sync; test_brand_key 10/10 + test_onboard
+10/10 with the new multiple-primary fail-loud cases; all prior 001-007 suites green). Every brand color now
+drives real design behavior on the thin route: `scene_author.ROLE_GUIDANCE` (module constant) maps each
+role to a confirmed instruction (primary=dominant anchor, secondary=supporting, accent=sparing highlights,
+background=backdrop, text=legible type, blank/unknown=generic palette line); `assemble_thin_prompt`'s color
+block emits `name: #hex [role] - <instruction>` (available palette with role GUIDANCE; palette identity
+stays a HARD lock, the header keeps "must read as this brand's"). `background` is guarded by `has_reference`
+(suppressed to the fallback on a chroma/no-reference job, color still listed). Onboarding enforces EXACTLY
+ONE primary in the shared `validate_lean_key` (>=1 -> ==1, named errors; CLI + web inherit) and the gate
+(web `onboard.html` + CLI `intake.py`) offers all 5 roles (added accent + text), kept in sync with the map
+by a structural test. Scope: thin prompt + validator + gate pickers ONLY; kit/tier-3/legacy/typography/
+asset-profile UNCHANGED; `_primary_color_hex` anchor untouched. NO paid call in any test. Pending: the human
+eye-gate (T011, folds into the back-half paid run). Spec/plan: `specs/008-palette-role-guidance/`.
 
 Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
 (the prompt-compose thin route `conductor --thin`, the engine 004 wraps), `004-frontend-live-runner`
 (thin local web live-runner, operator paid run T016 pending), `005-brand-intake-front-half` (fully
-verified, T015 cold-brand chajiuxingqiu onboarded end to end), `006-web-onboarding-gate` (BUILT US1-US3,
-structurally green: multipart 3 + onboard 9 + verify_reuse 6; the designer-facing browser wizard wrapping
-the 005 PURE modules; `frontend/onboard.py` + `frontend/multipart.py` + `brand_intake/persist.py`;
-pending the human browser smoke + paid sign T017).
+verified, T015 cold-brand chajiuxingqiu onboarded end to end), `007-reference-upload` (BUILT US1-US3,
+structurally green test_reference_upload 6/6; the live-runner takes the reference as a file UPLOAD via the
+shared `frontend/uploads.py` `save_upload`, `POST /run` multipart, contract unchanged; plus a follow-on
+fix that surfaces conductor failures in the UI via `run_error.txt`; pending the human browser smoke + paid
+sign T012), `006-web-onboarding-gate` (BUILT US1-US3, structurally green: multipart 3 + onboard 9 +
+verify_reuse 6; the designer-facing browser wizard wrapping the 005 PURE modules; `frontend/onboard.py` +
+`frontend/multipart.py` + `brand_intake/persist.py`; pending the human browser smoke + paid sign T017).
 <!-- SPECKIT END -->

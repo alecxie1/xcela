@@ -1,5 +1,27 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-29._
+_Single source of truth for "what is this whole thing." Updated 2026-06-30._
+
+> **▶ BUILD STATUS — 2026-06-30: feature 008 (role-aware brand palette + exactly-one-primary) is BUILT + structurally green.**
+> Every brand color now drives real design behavior on the thin route, not just the primary. Before, the
+> thin prompt listed all colors with a bare `[role]` label and only the primary was reinforced, so a
+> designer's accent / background / text assignments were silently discarded. New: `scene_author.ROLE_GUIDANCE`
+> (a module constant) maps each role to a CONFIRMED instruction (primary = dominant anchor, secondary =
+> supporting, accent = sparing highlights, background = backdrop, text = legible type), and a blank / unknown
+> role falls back to a generic palette line (honest-null, never dropped). `assemble_thin_prompt`'s color
+> block emits `name: #hex [role] - <instruction>` (available palette with role GUIDANCE; brand identity stays
+> the HARD lock, the header keeps "must read as this brand's"). `background` is guarded by `has_reference`:
+> on a chroma / no-reference job the backdrop instruction is suppressed (color still listed) so it never
+> fights the #00B140 chroma key; today's reference-only live path is unaffected. Onboarding now enforces
+> EXACTLY ONE primary in the shared `validate_lean_key` (>=1 -> ==1; raises a named error on zero AND on
+> two-or-more; CLI + web inherit), and the verify gate (web `onboard.html` + CLI `intake.py`) offers all 5
+> roles (added accent + text), kept in sync with the map by a structural test. `_primary_color_hex` (the
+> anchor) is untouched. Tests: palette_roles 6/6, brand_key 10/10 + onboard 10/10 (new multiple-primary
+> fail-loud), all prior 001-007 suites green; NO paid calls. Scope: thin prompt + validator + gate pickers
+> ONLY (kit / tier-3 / legacy color paths, typography, the asset profile, the conductor contract UNCHANGED).
+> PENDING: the human eye-gate (a sign whose palette uses accent / text / background, judged by eye that the
+> full palette is used per role, T011, folds into the back-half paid run). Spec/plan/tasks:
+> `specs/008-palette-role-guidance/`. The generalize-beyond-flat-vector-signs item (photographic posters) is
+> a SEPARATE deferred feature.
 
 > **▶ BUILD STATUS — 2026-06-29: feature 007 (reference-image upload in the live-runner) is BUILT + structurally green.**
 > The 004 live-runner now takes the reference image as a real file UPLOAD (a file picker) instead of a

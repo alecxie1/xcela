@@ -825,6 +825,22 @@ def _brand_field_value(brand_key: dict, key: str, default: str = "") -> str:
     return v if v else default
 
 
+# Role -> design-usage instruction for the thin prompt (feature 008). Brand-general (no brand/color
+# literals): each extracted, human-roled color gets an OPERATIVE instruction, not a bare label, so the
+# whole palette shapes the output (available palette with role GUIDANCE; brand identity stays the hard
+# lock). The named keys are the canonical role vocabulary the onboarding gate offers (kept in sync by
+# test_palette_roles). A blank / unrecognized role uses ROLE_GUIDANCE_FALLBACK (honest-null: never drop a
+# color the designer left unroled). Wording is the confirmed verbatim text (specs/008 data-model.md).
+ROLE_GUIDANCE = {
+    "primary": "the dominant brand color: use it for the largest, most prominent areas as the main anchor of the design.",
+    "secondary": "a supporting brand color: use it for secondary areas and blocks that support the primary without competing.",
+    "accent": "an accent color: use sparingly for highlights, emphasis, and small attention-drawing details (calls to action).",
+    "background": "the backdrop color: use it to fill the background field behind the content.",
+    "text": "the text color: use it for legible headline and body text where a brand text color is wanted.",
+}
+ROLE_GUIDANCE_FALLBACK = "part of the brand palette: use where appropriate to keep the design on-brand."
+
+
 def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | None = None,
                          dial: str | None = None, mandatory=None, forbidden=None,
                          asset_profile: str = "flat_graphic",
@@ -881,14 +897,25 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
     if dial and has_reference:
         lines.append(f"REFERENCE RELATIONSHIP (dial = {dial}): {_DIAL_HINTS.get(dial, dial)}")
 
-    # 4. brand lock colors (hex) + logo treatment — answer key wins (the HARD locks we keep)
+    # 4. brand lock colors (hex) + per-role usage guidance + logo treatment — answer key wins (the HARD
+    #    lock we keep). Each color carries an OPERATIVE role instruction (008) so the whole palette shapes
+    #    the output, not just the primary; brand identity stays the hard lock, per-role usage is guidance.
     color_items = brand_key.get("fields", {}).get("colors", {}).get("items", [])
     if color_items:
         lines.append("")
-        lines.append("BRAND LOCK COLORS (the design must still read as this brand's):")
+        lines.append("BRAND LOCK COLORS (these are the brand's colors and the design must read as this "
+                     "brand's; each color's role tells you how to use it, as guidance not a rigid rule):")
         for c in color_items:
             h = str(c.get("printed_html", "")).lstrip("#")
-            lines.append(f"  {c.get('name_cn', '')}/{c.get('name_en', '')}: #{h} [{c.get('role', '')}]")
+            role = str(c.get("role", "") or "").strip().lower()
+            # background guidance only when NOT a chroma/no-reference job, so a brand background never
+            # fights the #00B140 chroma key; the color is still listed (via the fallback), never dropped.
+            if role == "background" and not has_reference:
+                guidance = ROLE_GUIDANCE_FALLBACK
+            else:
+                guidance = ROLE_GUIDANCE.get(role, ROLE_GUIDANCE_FALLBACK)
+            lines.append(f"  {c.get('name_cn', '')}/{c.get('name_en', '')}: #{h} "
+                         f"[{c.get('role', '')}] - {guidance}")
     if "logo:omit" in flexed:
         lines.append("LOGO: omitted by this register — do NOT render any logo, wordmark, or brand "
                      "emblem anywhere.")

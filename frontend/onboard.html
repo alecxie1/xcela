@@ -101,12 +101,13 @@ $("extractBtn").onclick = async () => {
 };
 
 function renderColors() {
-  $("colors").innerHTML = "<label>Colors (assign one primary; acknowledge any flag)</label>" +
+  $("colors").innerHTML = "<label>Colors (assign exactly one primary; the others secondary / accent / background / text; acknowledge any flag)</label>" +
     locks.map((c, i) => `<div class="color-row">
       <span class="swatch" style="background:${c.hex}"></span><code>${c.hex}</code>
       <select data-role="${i}">
         <option value="">role...</option><option value="primary">primary</option>
-        <option value="secondary">secondary</option><option value="background">background</option>
+        <option value="secondary">secondary</option><option value="accent">accent</option>
+        <option value="background">background</option><option value="text">text</option>
       </select>
       ${c.needs_review ? `<span class="flag">needs_review</span>
         <select data-ack="${i}"><option value="">acknowledge...</option>

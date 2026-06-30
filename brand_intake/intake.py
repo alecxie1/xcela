@@ -116,7 +116,7 @@ def main():
         brand_en = input("  brand_en: ").strip()
         for it in items:
             print(f"  color {it['hex']} (needs_review={it['needs_review']})")
-            it["role"] = input("    role [primary/secondary/background]: ").strip() or "secondary"
+            it["role"] = input("    role [primary/secondary/accent/background/text]: ").strip() or "secondary"
             if it["needs_review"]:
                 it["_ack"] = (input("    acknowledge [confirm/edit/keep-flagged]: ").strip() or "keep-flagged")
 

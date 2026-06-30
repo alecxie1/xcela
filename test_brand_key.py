@@ -136,6 +136,19 @@ def check9_keep_flagged_writes_needs_review():
     return (none_unack and kept), f"all acknowledged={none_unack}; kept-flag persists in saved item={kept}"
 
 
+def check10_validate_raises_multiple_primaries():
+    # feature 008: exactly ONE primary. Two primaries -> fail loud (the prompt anchors on a single one).
+    logo = Path(tempfile.mkdtemp()) / "logo.png"; logo.write_bytes(b"\x89PNG\r\n")
+    items = [{"name_cn": "红", "name_en": "Red", "role": "primary", "hex": "#D31145"},
+             {"name_cn": "蓝", "name_en": "Blue", "role": "primary", "hex": "#0033A0"}]
+    key = assemble_key.build_lean_key("友邦保险", "AIA", items, str(logo), "x.pdf", "me", "2026-06-26")
+    try:
+        validate_key.validate_lean_key(key)
+    except Exception as exc:  # noqa: BLE001
+        return ("more than one primary" in str(exc).lower()), f"raised: {exc}"
+    return False, "did NOT raise on a key with two primary colors"
+
+
 CHECKS = [
     ("delta_e reconcile (identity 0; garbled > threshold)", check1_delta_e_reconcile),
     ("read_brand_names surfaces text-layer candidates", check2_read_brand_names_from_text_layer),
@@ -146,6 +159,7 @@ CHECKS = [
     ("SC-005(b): styles-absent differs ONLY in the font line", check7_styles_absent_differs_only_font_line),
     ("gate blocks an unacknowledged needs_review flag", check8_gate_blocks_unacknowledged),
     ("keep-flagged acknowledges + persists needs_review in the key", check9_keep_flagged_writes_needs_review),
+    ("validate FAILS LOUD: more than one primary (008)", check10_validate_raises_multiple_primaries),
 ]
 
 
