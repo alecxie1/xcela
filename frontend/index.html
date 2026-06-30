@@ -131,6 +131,11 @@ async function poll() {
   if (!currentRun) return;
   const r = await fetch(`/run/${currentRun}/stages`); const v = await r.json();
   ["brief","register","prompt","image"].forEach(k => renderStage(k, v[k]));
+  if (v.error) {  // the conductor failed loud: surface it instead of hanging silently at 'brief'
+    clearInterval(poller); poller = null; $("run").disabled = false;
+    $("formNote").textContent = "Run failed: " + v.error.split("\n").pop();
+    return;
+  }
   if (v.image.present || (!v.inflight)) {
     clearInterval(poller); poller = null; $("run").disabled = false;
     if (v.image.present) showGate();

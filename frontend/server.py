@@ -78,7 +78,14 @@ def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes):
 
     def _work():
         try:
-            subprocess.run(argv, cwd=str(REPO_ROOT))
+            proc = subprocess.run(argv, cwd=str(REPO_ROOT), capture_output=True, text=True)
+            if proc.returncode != 0:
+                # Surface the conductor's fail-loud to the human (§V) instead of hanging silently at
+                # 'brief': write an error marker run_view + the UI read. (capture_output buffers the
+                # subprocess streams; the conductor still writes its stage artifacts to disk live.)
+                err = (proc.stderr or proc.stdout or "").strip()
+                tail = "\n".join(err.splitlines()[-12:]) or f"conductor exited {proc.returncode}"
+                (run_dir / "run_error.txt").write_text(tail, encoding="utf-8")
         finally:
             _inflight.release()
 

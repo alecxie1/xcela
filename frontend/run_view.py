@@ -43,6 +43,7 @@ def run_view(run_dir, sign_id: str = "s1") -> dict:
     register = _load_json(run_dir / "register_profile.json")
     prompt = _load_text(sign_dir / "final_prompt.txt")
     image_present = (sign_dir / "generated.png").exists()
+    error = _load_text(run_dir / "run_error.txt")  # written by the server if the conductor fails loud
 
     return {
         "run_id": run_dir.name,
@@ -51,4 +52,5 @@ def run_view(run_dir, sign_id: str = "s1") -> dict:
         "prompt": stage(prompt is not None, prompt),
         "image": stage(image_present, f"sign_{sign_id}/generated.png" if image_present else None),
         "manifest_notes": notes,
+        "error": error.strip() if error else None,
     }
