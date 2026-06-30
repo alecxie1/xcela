@@ -52,6 +52,7 @@ def to_inputs(form_state: dict) -> dict:
 
     return {
         "asset_type": str(fs.get("asset_type") or "").strip(),
+        "render_style": str(fs.get("render_style") or "flat vector"),  # 009: user term, mapped downstream
         "format_size": (str(fs.get("format_size")).strip() or None) if fs.get("format_size") else None,
         "reference_image": reference,
         "reference_relationship": fs.get("reference_relationship") or None,

@@ -131,23 +131,30 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `008-palette-role-guidance` — BUILT (US1-US2) + structurally green (test_palette_roles
-6/6: ROLE_GUIDANCE coverage, per-role instruction in the prompt, blank-role fallback, background guard
-both directions, header hard-lock + anchor unchanged, gate-role sync; test_brand_key 10/10 + test_onboard
-10/10 with the new multiple-primary fail-loud cases; all prior 001-007 suites green). Every brand color now
-drives real design behavior on the thin route: `scene_author.ROLE_GUIDANCE` (module constant) maps each
-role to a confirmed instruction (primary=dominant anchor, secondary=supporting, accent=sparing highlights,
-background=backdrop, text=legible type, blank/unknown=generic palette line); `assemble_thin_prompt`'s color
-block emits `name: #hex [role] - <instruction>` (available palette with role GUIDANCE; palette identity
-stays a HARD lock, the header keeps "must read as this brand's"). `background` is guarded by `has_reference`
-(suppressed to the fallback on a chroma/no-reference job, color still listed). Onboarding enforces EXACTLY
-ONE primary in the shared `validate_lean_key` (>=1 -> ==1, named errors; CLI + web inherit) and the gate
-(web `onboard.html` + CLI `intake.py`) offers all 5 roles (added accent + text), kept in sync with the map
-by a structural test. Scope: thin prompt + validator + gate pickers ONLY; kit/tier-3/legacy/typography/
-asset-profile UNCHANGED; `_primary_color_hex` anchor untouched. NO paid call in any test. Pending: the human
-eye-gate (T011, folds into the back-half paid run). Spec/plan: `specs/008-palette-role-guidance/`.
+**Active feature:** `009-asset-render-modes` — BUILT (US1-US3) + structurally green (test_render_modes 4/4:
+ASSET_PROFILES sanity, photo dialect [photographic language, no flat negatives, text guards kept], flat
+framing register-aware [marketing != event sign; event_prop byte-unchanged], plumbing [normalize_render_style
+mapping + thin argv carries the brief profile + inputs round-trip + control]; test_thin_route 7/7 + all prior
+001-008 suites green). THE BIG ONE: the tool used to only render flat-vector die-cut event signs
+(`conductor.py:62` hard-wired `ASSET_PROFILE="flat_graphic"`; `scene_author.py` hard-coded "hand-held event
+sign"). 009 lets the TASK drive render mode + framing on the THIN route: the designer EXPLICITLY picks a
+`render_style` (flat vector / photographic, the new control in `index.html`, carried verbatim by
+`inputs_writer`); `conductor.normalize_render_style` maps it to `asset_profile` and threads it into
+`_scene_author_thin_argv` (stops hard-wiring flat; manifest records render_style + resolved profile);
+`assemble_thin_prompt` is now (asset_profile x register)-aware (flat+event_prop UNCHANGED/byte-identical;
+flat+marketing rewritten to a rectangular poster, no "hand-held event sign"; NEW photo+event_prop and
+photo+marketing openers) and the negatives are split (render-agnostic text guards always; flat-only render
+negatives [no photographic shading/3D] only for flat_graphic, byte-identical flat line). Brand still governs
+color/font/logo HARD; task governs render style + shape SOFT (§VI). Scope: thin route ONLY
+(kit/tier-3/no-ref/cutout/measure-composite UNCHANGED; deliverable final.png, chroma auto-off for non-flat).
+Photographic allowed for ANY register. NO paid call in any test; SC-007 (does it actually look photographic)
+is the LOAD-BEARING human eye-gate (T012), the real proof, pending. Spec/plan: `specs/009-asset-render-modes/`.
+Run: `.venv/bin/python frontend/server.py` then open `/`, set Render style = photographic.
 
-Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
+Prior built features: `008-palette-role-guidance` (BUILT US1-US2, structurally green: palette_roles 6/6 +
+brand_key 10/10 + onboard 10/10; every brand color drives behavior on the thin route via
+`scene_author.ROLE_GUIDANCE` + role-aware color block; exactly-one-primary in the shared `validate_lean_key`;
+the gate offers 5 roles; pending the human eye-gate T011), `001-kit-of-parts-composition` (US3, paid eye gate pending),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
 (the prompt-compose thin route `conductor --thin`, the engine 004 wraps), `004-frontend-live-runner`
 (thin local web live-runner, operator paid run T016 pending), `005-brand-intake-front-half` (fully

@@ -38,6 +38,9 @@
     <label>Asset type</label>
     <input id="asset_type" value="手举牌 hand-held event sign">
 
+    <label>Render style</label>
+    <select id="render_style"><option value="flat vector">flat vector</option><option value="photographic">photographic</option></select>
+
     <label>Format / size</label>
     <input id="format_size" value="60x40cm">
 
@@ -106,7 +109,7 @@ async function loadBrands() {
 function lines(id) { return $(id).value.split("\n").map(s => s.trim()).filter(Boolean); }
 function formState() {
   return {
-    brand: $("brand").value, asset_type: $("asset_type").value, format_size: $("format_size").value,
+    brand: $("brand").value, asset_type: $("asset_type").value, render_style: $("render_style").value, format_size: $("format_size").value,
     reference_relationship: $("reference_relationship").value,
     vibe: { formality: +$("formality").value, playfulness: +$("playfulness").value, warmth: +$("warmth").value },
     logo_treatment: $("logo_treatment").value, brand_strictness: $("brand_strictness").value,

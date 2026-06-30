@@ -870,12 +870,23 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
             "pose with — NOT a corporate sign, NOT a photograph, NOT 3D. Bubbly flat illustration "
             "style, festival energy.")
     elif is_graphic:
+        # flat + marketing/formal (feature 009): a rectangular poster, NOT a hand-held event sign
         lines.append(
-            f"A FLAT VECTOR GRAPHIC DESIGN: a designed hand-held event sign for {brand_cn} "
-            f"({brand_en}). NOT a photograph, NOT 3D — modern flat illustration, advertising "
-            "quality, crisp and clean.")
+            f"A FLAT VECTOR GRAPHIC DESIGN: a rectangular marketing poster for {brand_cn} ({brand_en}). "
+            "NOT a photograph, NOT 3D: modern flat illustration, advertising quality, crisp and clean, "
+            "composed as a full rectangular poster or flyer.")
+    elif is_event_prop:
+        # photo + event_prop (feature 009): a photographic hand-held prop
+        lines.append(
+            f"A PHOTOGRAPHIC hand-held event prop for {brand_cn} ({brand_en}): a real, photographed "
+            "prop people grab and pose with. Photographic realism, natural lighting and depth, "
+            "advertising photography quality.")
     else:
-        lines.append(f"A promotional marketing asset for {brand_cn} ({brand_en}).")
+        # photo + marketing/formal (feature 009): a photographic poster
+        lines.append(
+            f"A PHOTOGRAPHIC marketing poster for {brand_cn} ({brand_en}): a real photographed scene "
+            "composed as a full rectangular poster. Photographic realism, natural lighting, depth of "
+            "field, advertising photography quality. NOT a flat illustration, NOT a cartoon.")
 
     # 2. headline messages VERBATIM (the model paints them — known-temporary debt)
     msgs = [str(m) for m in (messages or []) if str(m).strip()]
@@ -948,10 +959,14 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
     # NOTE: the brand slogan is deliberately NOT injected here. On the thin route gpt paints any
     # Chinese it sees, so passing the slogan as text made it hallucinate a tagline (健康长久好生活)
     # onto every sign. The headline lines above are the ONLY words allowed on the sign.
+    # feature 009: render-agnostic text guards apply in BOTH modes (the thin route paints any Chinese it
+    # sees); the flat-only render negatives (no photographic shading / 3D) apply ONLY to flat_graphic.
+    text_negatives = ("no gibberish or garbled text, no extra Chinese text beyond the headline above, "
+                      "no tagline, no watermark")
     if is_graphic:
-        lines.append("NEGATIVES: no photographic shading, no 3D realism, no gibberish or garbled "
-                     "text, no extra Chinese text beyond the headline above, no tagline, no "
-                     "watermark.")
+        lines.append("NEGATIVES: no photographic shading, no 3D realism, " + text_negatives + ".")
+    else:
+        lines.append("NEGATIVES: " + text_negatives + ".")
     return "\n".join(lines).strip()
 
 

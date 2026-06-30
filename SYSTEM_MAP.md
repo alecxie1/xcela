@@ -1,6 +1,29 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-06-30._
 
+> **▶ BUILD STATUS — 2026-06-30: feature 009 (beyond flat-vector event signs / render modes) is BUILT + structurally green.**
+> The tool no longer renders ONLY flat-vector die-cut event signs. On the thin route the designer now picks a
+> RENDER STYLE (flat vector / photographic) and the TASK drives the render dialect + framing, so a photographic
+> poster and a flat rectangular flyer are possible, not just a die-cut sign. Before, the conductor hard-wired
+> `ASSET_PROFILE="flat_graphic"` and the opener hard-coded "hand-held event sign" in both flat branches. New: a
+> `render_style` control in `index.html` carried verbatim by `inputs_writer`; `conductor.normalize_render_style`
+> maps the user term to the engine `asset_profile` (photographic->photo, else->flat_graphic, honest-null
+> fallback) and threads it into `_scene_author_thin_argv` (the manifest records render_style + the resolved
+> profile); `assemble_thin_prompt` is (asset_profile x register)-aware - flat+event_prop UNCHANGED
+> (byte-identical regression), flat+marketing rewritten to a rectangular poster (drops "hand-held event sign"),
+> and two NEW photographic openers (event prop / marketing poster); the negatives are split so the
+> render-agnostic text guards (no extra Chinese / no gibberish / no tagline / no watermark) apply in BOTH modes
+> while the flat-only render negatives (no photographic shading / 3D) stay flat-only (the flat line is
+> byte-identical). Brand still governs color/font/logo HARD; the task governs render style + shape SOFT (§VI).
+> Photographic is allowed for ANY register; shape is derived from the register, not a second control. Scope:
+> the THIN route ONLY (kit / tier-3 / no-reference-cutout / legacy render-and-scrub / measure-composite
+> UNCHANGED; deliverable final.png, chroma auto-off for non-flat). Tests: render_modes 4/4 + thin_route 7/7;
+> all prior 001-008 suites green; NO paid calls. PENDING + LOAD-BEARING: SC-007, the human eye-gate (T012) -
+> a green structural test proves only that the dialect SWITCHED; only the eye on a real generated photographic
+> poster confirms it actually LOOKS photographic (§II). Spec/plan/tasks: `specs/009-asset-render-modes/`.
+> DEFERRED (a separate later feature): generalizing the kit / no-reference / cutout paths, and asset_type-driven
+> opener specificity.
+
 > **▶ BUILD STATUS — 2026-06-30: feature 008 (role-aware brand palette + exactly-one-primary) is BUILT + structurally green.**
 > Every brand color now drives real design behavior on the thin route, not just the primary. Before, the
 > thin prompt listed all colors with a bare `[role]` label and only the primary was reinforced, so a

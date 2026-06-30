@@ -101,6 +101,17 @@ def normalize_dial(value):
     return DEFAULT_DIAL
 
 
+def normalize_render_style(value) -> str:
+    """Feature 009: map the user's render_style (free text) to the engine asset_profile.
+    'photographic' -> 'photo'; everything else (including 'flat vector', blank, omitted, unrecognized)
+    -> 'flat_graphic' (the safe default, honest-null). Case / whitespace-insensitive. Mirrors
+    normalize_dial. The thin route is the only path that consumes this; kit/legacy stay flat_graphic."""
+    v = str(value or "").strip().lower()
+    if v in ("photographic", "photo"):
+        return "photo"
+    return "flat_graphic"
+
+
 # --------------------------------------------------------------------------- #
 # Pure builders (no I/O, no network): the testable core. dry-run and real mode
 # both construct commands from these, so the plan and the execution never drift.
@@ -227,13 +238,13 @@ def _scene_author_kit_argv(brand: str, out: str, sign_id: str, size=None) -> lis
 
 def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, ref,
                             register_profile, dial, mandatory, forbidden, size=None,
-                            style_notes=None) -> list:
+                            style_notes=None, asset_profile=ASSET_PROFILE) -> list:
     """THIN ROUTE (feature 003): scene_author --thin assembles ONE prompt from the brief and lets
     gpt-image-2 compose the whole sign (STOP at generated.png). No kit, no compose_select, no
     analyzer/aligned-prompt, no measure, no composite. The reference (if any) is fed as a visual
     exemplar via --ref-image and still sets register MAGNITUDE upstream (calibrate); it is NOT
     cloned through the analyzer. mandatory/forbidden are this sign's EFFECTIVE union, verbatim."""
-    argv = [SCENE_AUTHOR, "--brand", brand, "--asset-profile", ASSET_PROFILE, "--thin"]
+    argv = [SCENE_AUTHOR, "--brand", brand, "--asset-profile", asset_profile, "--thin"]
     if register_profile:
         argv += ["--register-profile", register_profile]
     argv += ["--must-include", ";".join(messages), "--out", f"{out}/sign_{sign_id}"]
@@ -320,6 +331,9 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
     dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
+    # Feature 009: the human-picked render_style drives the thin render dialect (photo vs flat_graphic);
+    # the conductor maps the user term to the engine asset_profile here and stops hard-wiring flat.
+    thin_asset_profile = normalize_render_style(inputs.get("render_style"))
     subfields_path = f"{out}/subfields.json"
     profile_path = f"{out}/register_profile.json"
     calibration_path = f"{out}/calibration.json"
@@ -359,7 +373,8 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
                               _scene_author_thin_argv(brand, out, sid, sign.get("messages", []),
                                                       ref if has_ref else None, profile_path, dial,
                                                       eff_mandatory, eff_forbidden, size=size_wh,
-                                                      style_notes=style_notes),
+                                                      style_notes=style_notes,
+                                                      asset_profile=thin_asset_profile),
                               sign_id=sid))
     elif kit_mode:
         # 4b. KIT ROUTE: derive the campaign kit_profile once, then compose each sign bespoke.
@@ -399,8 +414,10 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
                         "config": f"config/{brand}.yaml"},
         "out": out,
         "asset_type": inputs.get("asset_type", ASSET_TYPE_DEFAULT),
-        "asset_profile_v1": ASSET_PROFILE,
-        "asset_type_note": "v1: asset_type is intent-framing only; output is ALWAYS flat_graphic",
+        "render_style": inputs.get("render_style"),
+        "asset_profile_v1": (thin_asset_profile if thin else ASSET_PROFILE),
+        "asset_type_note": ("feature 009: on the thin route the human-picked render_style drives the "
+                            "asset_profile (photo|flat_graphic); kit/legacy paths stay flat_graphic"),
         "format_size": inputs.get("format_size"),
         "size_resolution": size_resolution,
         "mandatory_elements": inputs.get("mandatory_elements") or [],
@@ -967,8 +984,10 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         "inputs_file": str(inputs_path),
         "inputs_sha256_16": _sha16(inputs_path),
         "asset_type": inputs.get("asset_type"),
-        "asset_profile": ASSET_PROFILE,
-        "asset_type_note": "asset_type is intent-framing only in v1; output is ALWAYS flat_graphic",
+        "render_style": inputs.get("render_style"),
+        "asset_profile": plan.get("asset_profile_v1", ASSET_PROFILE),
+        "asset_type_note": ("feature 009: render_style drives the thin asset_profile (photo|flat_graphic); "
+                            "kit/legacy stay flat_graphic"),
         "reference_image": ref,
         "reference_relationship": inputs.get("reference_relationship"),
         "dial": dial,
