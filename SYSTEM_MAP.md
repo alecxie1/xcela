@@ -1,5 +1,25 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-28._
+_Single source of truth for "what is this whole thing." Updated 2026-06-29._
+
+> **▶ BUILD STATUS — 2026-06-29: feature 007 (reference-image upload in the live-runner) is BUILT + structurally green.**
+> The 004 live-runner now takes the reference image as a real file UPLOAD (a file picker) instead of a
+> typed absolute server path. This kills the absolute-path footgun (a typo silently became a
+> file-not-found at the paid step) and makes the live-runner consistent with the 006 onboarding upload,
+> in the SAME `frontend/` local app. New `frontend/uploads.py` (`save_upload(file_tuple, dest_dir,
+> name)`) is the ONE save-upload home, called by BOTH the new `/run` reference-save AND the refactored
+> 006 logo-save (DRY; the inline `_onboard_save` write now goes through it). `POST /run` is now multipart
+> (a `form` JSON field + a `reference` file) parsed by two HTTP-free helpers in `server.py`:
+> `parse_run_form` fails loud (4xx, nothing launched) on a missing reference BEFORE any run dir /
+> single-flight; `write_run_inputs` saves the upload INTO the run dir preserving its extension (e.g.
+> `output/run_*/reference.jpg`) and injects that path as `reference_image`. The conductor / CLI input
+> contract is UNCHANGED (`reference_image` is still a path on disk); `inputs_writer.py` + `multipart.py`
+> are reused unchanged; the frontend adapts (the standing rule). The 002 verbatim invariant holds for the
+> other fields. Tests: reference_upload 6/6 (save_upload roundtrip+traversal-sanitize, /run-assembly
+> points at the saved file with the extension preserved, file-input grep, fail-loud on a missing
+> reference, the 002 verbatim invariant, the standalone thin-route contract intact); all prior 001-006
+> suites green; NO paid calls. PENDING: the human browser smoke (pick a real reference in the UI) + the
+> one paid sign, folded into 004's pending paid eye-gate (T012 / 004 T016). Spec/plan/tasks:
+> `specs/007-reference-upload/`.
 
 > **▶ BUILD STATUS — 2026-06-28: feature 006 (designer-facing web onboarding gate) is BUILT + structurally green.**
 > A designer can now onboard a cold brand entirely in the browser (no terminal): a 3-step wizard in

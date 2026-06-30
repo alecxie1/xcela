@@ -41,8 +41,8 @@
     <label>Format / size</label>
     <input id="format_size" value="60x40cm">
 
-    <label>Reference image path (required)</label>
-    <input id="reference_image" placeholder="/abs/path/to/reference.png">
+    <label>Reference image (required, upload a file)</label>
+    <input type="file" id="reference_image">
 
     <label>Reference relationship</label>
     <input id="reference_relationship" value="template - extend this series">
@@ -107,7 +107,6 @@ function lines(id) { return $(id).value.split("\n").map(s => s.trim()).filter(Bo
 function formState() {
   return {
     brand: $("brand").value, asset_type: $("asset_type").value, format_size: $("format_size").value,
-    reference_image: $("reference_image").value.trim(),
     reference_relationship: $("reference_relationship").value,
     vibe: { formality: +$("formality").value, playfulness: +$("playfulness").value, warmth: +$("warmth").value },
     logo_treatment: $("logo_treatment").value, brand_strictness: $("brand_strictness").value,
@@ -138,10 +137,14 @@ async function poll() {
   }
 }
 async function startRun(style_notes) {
-  const body = Object.assign(formState(), style_notes ? { style_notes } : {});
-  if (!body.reference_image) { $("formNote").textContent = "A reference image path is required."; return; }
+  const refFile = $("reference_image").files[0];
+  if (!refFile) { $("formNote").textContent = "A reference image is required (pick a file)."; return; }
+  const form = Object.assign(formState(), style_notes ? { style_notes } : {});
   $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = "";
-  const r = await fetch("/run", { method: "POST", body: JSON.stringify(body) });
+  const fd = new FormData();
+  fd.append("form", JSON.stringify(form));
+  fd.append("reference", refFile, refFile.name);  // style_notes rides inside the `form` JSON above
+  const r = await fetch("/run", { method: "POST", body: fd });
   const j = await r.json();
   if (!r.ok) { $("formNote").textContent = j.error || "run failed"; $("run").disabled = false; return; }
   currentRun = j.run_id;

@@ -64,11 +64,14 @@ image sets MAGNITUDE (how far, via blind vision score). See `docs/ARCHITECTURE.m
 - `brand_intake/` — (005, stdlib) brand-onboarding FRONT-half over those extractors: `page_finder`
   (suggest 1-indexed spec pages), `extract` (reuse wrappers), `assemble_key` + `validate_key` (lean
   key + fail-loud), `intake.py` (CLI: PDF -> verify gate -> answer_keys/<brand>.json). NOT the v3 scaffold.
-- `frontend/` — (004 + 006, stdlib) THIN local web app over the CLI. 004 live-runner: `inputs_writer`
+- `frontend/` — (004 + 006 + 007, stdlib) THIN local web app over the CLI. 004 live-runner: `inputs_writer`
   (form -> 002 JSON), `run_view` (run dir -> progressive stages), `runner` (build/launch `conductor
   --thin`), `server.py` + `index.html`. 006 onboarding gate: `onboard.py` (3-step wizard over a
   transient draft, wraps the 005 brand_intake modules), `multipart.py` (stdlib upload), `onboard.html`
-  + the `/onboard/*` routes. Shells out + reads artifacts; never reimplements generation/extraction.
+  + the `/onboard/*` routes. 007 reference upload: `uploads.py` (`save_upload`, the ONE save-upload home
+  for the 004 reference + the 006 logo); `POST /run` is multipart (a `form` JSON field + a `reference`
+  file) via `server.parse_run_form` / `write_run_inputs` (the reference saves into the run dir, its path
+  becomes `reference_image`). Shells out + reads artifacts; never reimplements generation/extraction.
 - `brand_intake/persist.py` — (006, shared) the one write home (key_exists/place_logo/write_key) the
   005 CLI and the 006 web gate both call.
 - `answer_keys/<brand>.json` — brand DNA. `config/<brand>.yaml` — thin-spine config.
@@ -128,21 +131,28 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `006-web-onboarding-gate` — BUILT (US1-US3) + structurally green (18 checks:
-multipart 3, onboard 9, verify_reuse 6; all prior 001-005 suites green). The designer-facing WEB gate:
-a 3-step browser wizard (upload PDF -> confirm suggested pages -> extract+verify -> validate-loud +
-save) that wraps the proven 005 `brand_intake/` PURE modules in the 004 local-web pattern (NOT
-`intake.main()`) and writes a lean `answer_keys/<brand>.json` the thin route + the 004 live-runner
-consume unchanged (the `/brands` dropdown lists `answer_keys/*.json`, so onboard->generate is free,
-verified end-to-end over HTTP). `frontend/onboard.py` (wizard over a TRANSIENT draft, discard on
-save/abandon), `frontend/multipart.py` (stdlib upload, no `cgi`), `brand_intake/persist.py` (shared
-write home, CLI + web). Fail-loud on no primary / logo / unacknowledged flag / existing id; zero-color
-blocks; styles honest-null; standalone CLI preserved. Pending: the human browser smoke + paid sign
-(T017). Run: `.venv/bin/python frontend/server.py` then open `/onboard`.
-Prior built: 001-005 (005 fully verified, T015 cold-brand chajiuxingqiu onboarded end to end).
+**Active feature:** `007-reference-upload` — BUILT (US1-US3) + structurally green (test_reference_upload
+6/6: save_upload roundtrip+sanitize, /run-assembly points at the saved file, file-input grep, fail-loud
+on missing reference, 002 verbatim invariant, standalone thin-route intact; all prior 001-006 suites
+green). The 004 live-runner now takes the reference image as a real file UPLOAD (file picker) instead of
+a typed absolute server path, mirroring the 006 upload pattern in the SAME `frontend/` app (removes the
+absolute-path footgun). NEW shared `frontend/uploads.py` (`save_upload(file_tuple, dest_dir, name)`) is
+the ONE save-upload home, called by BOTH the `/run` reference-save AND the refactored 006 logo-save
+(DRY). `POST /run` is now multipart (a `form` JSON field + a `reference` file), parsed by two HTTP-free
+helpers in `server.py` (`parse_run_form` fails loud on a missing reference BEFORE any run dir/launch;
+`write_run_inputs` saves the reference into the run dir preserving its extension, e.g.
+`run_*/reference.jpg`, then injects that path as `reference_image`). The conductor / CLI input contract
+is UNCHANGED (`reference_image` is still a path on disk); `inputs_writer` + `multipart.py` reused
+unchanged; the frontend adapts. NO paid call in any test. Pending: the human browser smoke + paid sign
+(T012, folds into 004's pending T016). Spec/plan: `specs/007-reference-upload/`. Run:
+`.venv/bin/python frontend/server.py` then open `/`.
 
 Prior built features: `001-kit-of-parts-composition` (US3, paid eye gate pending),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
 (the prompt-compose thin route `conductor --thin`, the engine 004 wraps), `004-frontend-live-runner`
-(thin local web live-runner, operator paid run T016 pending).
+(thin local web live-runner, operator paid run T016 pending), `005-brand-intake-front-half` (fully
+verified, T015 cold-brand chajiuxingqiu onboarded end to end), `006-web-onboarding-gate` (BUILT US1-US3,
+structurally green: multipart 3 + onboard 9 + verify_reuse 6; the designer-facing browser wizard wrapping
+the 005 PURE modules; `frontend/onboard.py` + `frontend/multipart.py` + `brand_intake/persist.py`;
+pending the human browser smoke + paid sign T017).
 <!-- SPECKIT END -->

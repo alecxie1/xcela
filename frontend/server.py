@@ -11,6 +11,7 @@ runs fine with this server absent.
 """
 
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -25,6 +26,7 @@ import run_view as run_view_mod  # noqa: E402
 import runner  # noqa: E402
 import onboard as onboard_mod  # noqa: E402  (feature 006: the web onboarding wizard)
 import multipart  # noqa: E402  (feature 006: stdlib multipart upload parsing)
+import uploads  # noqa: E402  (feature 007: the shared save-upload home, 004 reference + 006 logo)
 
 HERE = Path(__file__).resolve().parent
 OUTPUT = REPO_ROOT / "output"
@@ -36,6 +38,36 @@ _inflight = threading.Lock()  # single-flight: one run at a time
 
 def _brands() -> list:
     return sorted(p.stem for p in ANSWER_KEYS.glob("*.json"))
+
+
+def parse_run_form(body: bytes, content_type: str):
+    """Parse a multipart /run body into (form_dict, reference_tuple). HTTP-free, so it is
+    unit-testable without launching a run (feature 007). The brief rides as ONE JSON field `form`
+    (mirroring /onboard/save's `verified` field); the reference is the `reference` file part.
+    Raises ValueError (fail loud) on a missing / empty reference file or invalid form JSON: a missing
+    reference must launch NOTHING (FR-005). `inputs_writer.to_inputs` also raises on an empty
+    reference_image (a backstop); this guard fires FIRST so the user sees this message, not a
+    ValueError surfaced via the generic handler."""
+    parsed = multipart.parse_multipart(body, content_type)
+    try:
+        form = json.loads(parsed["fields"].get("form") or "{}")
+    except json.JSONDecodeError:
+        raise ValueError("invalid 'form' JSON field")
+    ref = parsed["files"].get("reference")
+    if not ref or not ref[1]:
+        raise ValueError("a reference image is required (v1)")
+    return form, ref
+
+
+def write_run_inputs(form: dict, reference, run_dir: Path) -> Path:
+    """Save the uploaded reference INTO run_dir (preserving its extension), inject that saved path as
+    `reference_image`, and write the 002-shape inputs JSON (feature 007). HTTP-free, testable. The
+    conductor / CLI input contract is UNCHANGED: `reference_image` stays a path on disk (only its
+    SOURCE changes, a server-saved upload instead of a designer-typed string)."""
+    ext = os.path.splitext(reference[0])[1]
+    ref_path = uploads.save_upload(reference, run_dir, name="reference" + ext)
+    form["reference_image"] = ref_path
+    return inputs_writer.write_inputs(form, run_dir / "inputs.json")
 
 
 def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes):
@@ -97,13 +129,12 @@ class Handler(BaseHTTPRequestHandler):
         # --- Feature 004: the back-half run ---
         if path != "/run":
             return self._send(404, {"error": "not found"})
-        length = int(self.headers.get("Content-Length") or 0)
+        # Feature 007: the reference is a real file UPLOAD now (multipart), not a typed path. Parse +
+        # require the reference here; a missing reference fails loud BEFORE any run dir / single-flight.
         try:
-            form = json.loads(self.rfile.read(length) or b"{}")
-        except json.JSONDecodeError:
-            return self._send(400, {"error": "invalid JSON body"})
-        if not str(form.get("reference_image") or "").strip():
-            return self._send(400, {"error": "reference_image is required (v1)"})
+            form, reference = parse_run_form(self._read_body(), self.headers.get("Content-Type", ""))
+        except ValueError as exc:
+            return self._send(400, {"error": str(exc)})  # fail loud; no run launched (FR-005)
         brand = str(form.get("brand") or "").strip()
         if brand not in _brands():
             return self._send(400, {"error": f"unknown brand {brand!r}; choose from {_brands()}"})
@@ -113,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
             run_id = f"run_{brand}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             run_dir = OUTPUT / run_id
             run_dir.mkdir(parents=True, exist_ok=True)
-            inputs_path = inputs_writer.write_inputs(form, run_dir / "inputs.json")
+            inputs_path = write_run_inputs(form, reference, run_dir)  # saves the upload into the run dir
             _launch_async(run_dir, brand, inputs_path, form.get("style_notes") or None)
         except Exception as exc:  # noqa: BLE001
             if _inflight.locked():
@@ -153,11 +184,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "invalid 'verified' JSON field"})
         logo = parsed["files"].get("logo")
         logo_src = ""
-        if logo and logo[1]:  # save the uploaded logo to a temp file for persist.place_logo
-            tmp = OUTPUT / ".onboard_tmp"
-            tmp.mkdir(exist_ok=True)
-            logo_src = str(tmp / logo[0])
-            Path(logo_src).write_bytes(logo[1])
+        if logo and logo[1]:  # land the uploaded logo on disk for persist.place_logo (feature 007: the
+            logo_src = uploads.save_upload(logo, OUTPUT / ".onboard_tmp")  # ONE shared save-upload home
         if not _inflight.acquire(blocking=False):
             return self._send(409, {"error": "a job is already in flight (single-flight); wait for it"})
         try:
