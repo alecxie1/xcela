@@ -185,6 +185,22 @@ def check7_marketing_keywords():
                     f"event_keyword_precedence={precedence}")
 
 
+def check8_logo_treatment_traced():
+    """Honest-null fix: an EXPLICIT logo_treatment that is not omit/subtle (e.g. 'faithful')
+    is recorded in the trace with the lock HELD and no logo flex token; an ABSENT
+    logo_treatment stays silent (the byte-identity of check5 already pins that)."""
+    sf = _subfields("photographic")
+    sf["logo_treatment"] = "faithful"
+    p = dr.derive_register(sf, {})
+    held = [t for t in p["_derivation_trace"] if "logo lock HELD" in t]
+    traced = len(held) == 1 and "'faithful'" in held[0]
+    no_flex = not any(f.startswith("logo:") for f in p["brand_locks_flexed"])
+    absent_silent = not any("logo" in t.lower()
+                            for t in dr.derive_register(_subfields(), {})["_derivation_trace"])
+    passed = traced and no_flex and absent_silent
+    return passed, f"faithful_traced={traced}; no_logo_flex={no_flex}; absent_stays_silent={absent_silent}"
+
+
 def check2_normalizer_drift_guard():
     """T003 contract drift guard: the engine's local predicate and the conductor's
     normalize_render_style must agree on the shared input table (research D2)."""
@@ -214,6 +230,8 @@ CHECKS = [
      check6_explicit_event_usage_wins),
     ("US4 marketing usage keywords match explicitly, event keywords keep precedence",
      check7_marketing_keywords),
+    ("explicit logo_treatment=faithful traced as HELD, absent stays silent",
+     check8_logo_treatment_traced),
 ]
 
 

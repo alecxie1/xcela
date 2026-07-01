@@ -180,6 +180,13 @@ def derive_register(subfields: dict, brand_key: dict, calibration: dict | None =
     elif subfields.get("logo_treatment") == "subtle":
         flexed.append("logo:subtle")
         trace.append("logo_treatment=subtle => logo lock relaxed (logo:subtle)")
+    elif subfields.get("logo_treatment"):
+        # honest-null (constitution V): an EXPLICIT human choice ("faithful" or any
+        # unrecognized value) is recorded, not silently defaulted; the logo lock holds
+        # (downstream feeds the logo image + the place-cleanly instruction). An ABSENT
+        # logo_treatment stays silent, the historical default (byte-identity, FR-007).
+        trace.append(f"logo_treatment={subfields.get('logo_treatment')!r} => logo lock HELD "
+                     "(not flexed; logo fed faithfully and placed cleanly)")
     if register == "event_prop":
         flexed += ["font:rounded", "shape:die-cut", "palette:playful-accents"]
         trace.append("register=event_prop => flex font:rounded + shape:die-cut + palette:playful-accents")
