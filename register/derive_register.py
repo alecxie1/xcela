@@ -103,8 +103,20 @@ def derive_register(subfields: dict, brand_key: dict, calibration: dict | None =
             trace.append(f"vibe confirms event_prop (formality={formality} low, playfulness={playfulness} high)")
     elif base == "marketing" and formality is not None and playfulness is not None:
         if formality <= 3 and playfulness >= 7:
-            base = "event_prop"
-            trace.append(f"vibe overrides (formality={formality}<=3, playfulness={playfulness}>=7) => event_prop")
+            # Feature 011: the promotion was written in the flat-vector era, when a playful
+            # vibe reliably meant a grabbable prop. A PHOTOGRAPHIC render is a different
+            # deliverable (a marketing photo, not a die-cut prop), so the vibe alone must
+            # not promote; an explicit event-prop usage phrase (rule table above) still wins
+            # because it never reaches this branch. Flat/absent/unrecognized: unchanged.
+            render_style = subfields.get("render_style")
+            if _render_is_photo(render_style):
+                trace.append(f"vibe would promote to event_prop (formality={formality}<=3, "
+                             f"playfulness={playfulness}>=7) but render_style={render_style!r} "
+                             "is photographic, a marketing photo rather than a flat prop "
+                             "=> promotion SUPPRESSED, register stays marketing")
+            else:
+                base = "event_prop"
+                trace.append(f"vibe overrides (formality={formality}<=3, playfulness={playfulness}>=7) => event_prop")
         elif formality >= 8:
             base = "formal"
             trace.append(f"formality={formality}>=8 => formal")

@@ -52,6 +52,37 @@ def check1_thin_subfields_plumbing():
                     f"kit_legacy_byte_identical={legacy_ok}")
 
 
+def _subfields(render_style=None, formality=2, playfulness=8,
+               usage="wall-posted (read at distance)"):
+    """Engine-facing subfields dict. Default vibe is the PROMOTING combination
+    (formality<=3, playfulness>=7) with marketing usage and NO event language."""
+    sf = {"asset_type": "poster", "usage_context": usage,
+          "vibe": {"formality": formality, "playfulness": playfulness}}
+    if render_style is not None:
+        sf["render_style"] = render_style
+    return sf
+
+
+def check3_photo_gate():
+    """T004/US1 register half: photo suppresses the vibe promotion (contract rows 1, 5, 7)."""
+    # row 1: photo + playful + no event language => marketing, trace names the render choice
+    p = dr.derive_register(_subfields("photographic"), {})
+    row1_reg = p["inferred_register"] == "marketing"
+    supp = [t for t in p["_derivation_trace"] if "SUPPRESSED" in t]
+    row1_trace = (len(supp) == 1 and "'photographic'" in supp[0]
+                  and "event_prop" in supp[0])
+    # row 5: photo + formal vibe => formal (the gate only concerns the playful promotion)
+    row5 = dr.derive_register(_subfields("photographic", formality=8, playfulness=2),
+                              {})["inferred_register"] == "formal"
+    # row 7: non-empty unrecognized value behaves exactly like flat => event_prop, no suppression
+    p7 = dr.derive_register(_subfields("watercolor"), {})
+    row7 = (p7["inferred_register"] == "event_prop"
+            and not any("SUPPRESSED" in t for t in p7["_derivation_trace"]))
+    passed = row1_reg and row1_trace and row5 and row7
+    return passed, (f"photo_playful=marketing:{row1_reg}; suppression_trace_names_render={row1_trace}; "
+                    f"photo_formal=formal:{row5}; unrecognized=flat_event_prop:{row7}")
+
+
 def check2_normalizer_drift_guard():
     """T003 contract drift guard: the engine's local predicate and the conductor's
     normalize_render_style must agree on the shared input table (research D2)."""
@@ -71,6 +102,8 @@ CHECKS = [
      check1_thin_subfields_plumbing),
     ("US-all drift guard: engine predicate agrees with conductor normalize_render_style",
      check2_normalizer_drift_guard),
+    ("US1 photo gate: playful vibe no longer promotes photographic jobs to event_prop",
+     check3_photo_gate),
 ]
 
 
