@@ -247,7 +247,8 @@ def _scene_author_kit_argv(brand: str, out: str, sign_id: str, size=None) -> lis
 
 def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, ref,
                             register_profile, dial, mandatory, forbidden, size=None,
-                            style_notes=None, asset_profile=ASSET_PROFILE) -> list:
+                            style_notes=None, asset_profile=ASSET_PROFILE,
+                            asset_type=None, occasion=None) -> list:
     """THIN ROUTE (feature 003): scene_author --thin assembles ONE prompt from the brief and lets
     gpt-image-2 compose the whole sign (STOP at generated.png). No kit, no compose_select, no
     analyzer/aligned-prompt, no measure, no composite. The reference (if any) is fed as a visual
@@ -267,6 +268,11 @@ def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, 
         argv += ["--size", size]
     if style_notes:
         argv += ["--style-notes", style_notes]
+    # Feature 012: the brief's asset_type + occasion ride to the SCENE/SUBJECT section VERBATIM.
+    if asset_type and str(asset_type).strip():
+        argv += ["--asset-type", str(asset_type)]
+    if occasion and str(occasion).strip():
+        argv += ["--occasion", str(occasion)]
     if ref:
         argv += ["--ref-image", ref]
     return argv
@@ -383,7 +389,9 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
                                                       ref if has_ref else None, profile_path, dial,
                                                       eff_mandatory, eff_forbidden, size=size_wh,
                                                       style_notes=style_notes,
-                                                      asset_profile=thin_asset_profile),
+                                                      asset_profile=thin_asset_profile,
+                                                      asset_type=inputs.get("asset_type"),
+                                                      occasion=(inputs.get("context") or {}).get("occasion")),
                               sign_id=sid))
     elif kit_mode:
         # 4b. KIT ROUTE: derive the campaign kit_profile once, then compose each sign bespoke.
@@ -881,7 +889,9 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
             sa_argv = _scene_author_thin_argv(brand, out, sid, messages, ref if has_ref else None,
                                               register_profile_arg, dial, eff_mandatory,
                                               eff_forbidden, size=size_wh, style_notes=style_notes,
-                                              asset_profile=thin_asset_profile)
+                                              asset_profile=thin_asset_profile,
+                                              asset_type=inputs.get("asset_type"),
+                                              occasion=(inputs.get("context") or {}).get("occasion"))
             sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
             outputs = _collect_sign_outputs(sign_dir)
             srm = {}

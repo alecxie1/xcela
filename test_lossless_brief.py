@@ -56,9 +56,79 @@ def check1_scene_section():
     return passed, f"verbatim+framing={row1}; no_empty_scaffolding={row2}; blank_byte_identical={row3}"
 
 
+def _inputs(asset_type=None, occasion=None):
+    d = {"asset_type": asset_type or "", "format_size": "60x40cm",
+         "reference_image": "/tmp/ref.png", "reference_relationship": "extend",
+         "render_style": "photographic", "mandatory_elements": [], "forbidden_elements": [],
+         "context": {"usage_context": "wall-posted", "occasion": occasion or "",
+                     "vibe": {"formality": 2, "playfulness": 7},
+                     "logo_treatment": "omit", "brand_strictness": "brand + accents"},
+         "signs": [{"id": "s1", "messages": ["新品上市"], "hero_icon": None}]}
+    return d
+
+
+def _flag_vals(argv, flag):
+    return [argv[i + 1] for i, a in enumerate(argv) if a == flag]
+
+
+def check2_conductor_threading():
+    """T003 contract row 4: --asset-type/--occasion in the scene_author argv at BOTH call sites
+    (build_plan AND the stubbed execute), exactly when non-empty. A plan-only build (the 009
+    drift) fails the execute half; a build that threads empties fails the omission half."""
+    import contextlib
+    import io
+    import json as _json
+    import tempfile
+
+    AT, OC = "social media post, fruit tea", "new watermelon line launch"
+
+    def plan_argvs(inputs):
+        with tempfile.TemporaryDirectory() as d:
+            plan = conductor.build_plan(inputs, "aia", Path(d) / "o", no_approve=True, thin=True)
+        return [s["argv"] for s in plan["steps"] if s["label"] == "scene_author"]
+
+    def exec_argvs(inputs):
+        captured = []
+
+        def stub(step):
+            captured.append(step)
+            return {"label": step["label"], "phase": step["phase"], "ok": False, "returncode": 1}
+
+        orig = conductor.run_step
+        conductor.run_step = stub
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / "run"
+                out.mkdir()
+                ip = Path(d) / "inputs.json"
+                ip.write_text(_json.dumps(inputs), encoding="utf-8")
+                plan = conductor.build_plan(inputs, "aia", out, no_approve=True, thin=True)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    conductor.execute(inputs, "aia", out, ip, True, plan, thin=True)
+        finally:
+            conductor.run_step = orig
+        return [s["argv"] for s in captured if s["label"] == "scene_author"]
+
+    full = _inputs(AT, OC)
+    blank = _inputs()
+    ok_parts = []
+    for name, get in (("plan", plan_argvs), ("execute", exec_argvs)):
+        with_argvs, blank_argvs = get(full), get(blank)
+        carried = (bool(with_argvs)
+                   and all(_flag_vals(a, "--asset-type") == [AT] for a in with_argvs)
+                   and all(_flag_vals(a, "--occasion") == [OC] for a in with_argvs))
+        omitted = (bool(blank_argvs)
+                   and all("--asset-type" not in a and "--occasion" not in a for a in blank_argvs))
+        ok_parts.append((name, carried and omitted, f"{name}: carried={carried} omitted={omitted}"))
+    passed = all(ok for _, ok, _ in ok_parts)
+    return passed, "; ".join(msg for _, _, msg in ok_parts)
+
+
 CHECKS = [
     ("US1 scene/subject section (verbatim, context-not-text, blank byte-identical)",
      check1_scene_section),
+    ("US1 conductor threads asset_type+occasion at BOTH call sites (009 drift guard)",
+     check2_conductor_threading),
 ]
 
 
