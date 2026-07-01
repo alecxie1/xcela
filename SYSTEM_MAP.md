@@ -1,6 +1,26 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-06-30._
 
+> **▶ BUILD STATUS — 2026-06-30: feature 010 (connect onboard + live-runner into one app + UI touch-up) is BUILT + structurally green.**
+> The two `frontend/` pages (`/` live-runner + `/onboard` wizard) now read and navigate as ONE app. (A) a
+> shared header/nav on BOTH pages cross-links "Generate a sign" (`/`) and "Onboard a brand" (`/onboard`),
+> the current view marked active (`aria-current`); before, only onboard linked back and the live-runner had
+> a bare header. (C) a post-onboard HANDOFF: the onboard save-success renders a "Generate a sign for this
+> brand" link to `/?brand=<id>` (via `innerHTML`), and the live-runner's `loadBrands()` reads `?brand=` and
+> preselects that brand after `/brands` loads (graceful fallback to the default if the param is absent or the
+> brand is not in the list). Plus a UI touch-up: a shared nav style, focus rings, softer cards, and the
+> live-runner's long flat form grouped into 5 `<fieldset>`s (brand+asset / reference / voice+vibe / context /
+> elements+message). PURE frontend (only `index.html` + `onboard.html` edited); NO new server route, NO
+> back-half change - the nav snippet is duplicated per page (no static-asset route), drift-guarded by a
+> both-pages-carry-both-links test. HONESTY (§II/§III): the value is a HUMAN-EYE judgment (one app, clean,
+> smooth flow); the automated tests (`test_frontend_nav` 3/3) are PRESENCE GREPS (both nav links + active
+> markers, the `/?brand=` handoff, the preselect wiring, no em-dash) + a no-regression run - the weakest
+> gate, so the eye is the real proof. But unlike 009, THIS eye-gate is FREE (nav + flow + look, no
+> generation). Tests: frontend_nav 3/3; all prior 001-009 frontend/thin suites green; NO paid calls.
+> PENDING: T010, the free human eye/flow check (nav both ways; onboard -> preselected generate;
+> `/?brand=unknown` fallback; one consistent polished look). Spec/plan/tasks: `specs/010-unified-frontend/`.
+> DEFERRED: a full single-page merge (in-page tab switching).
+
 > **▶ BUILD STATUS — 2026-06-30: feature 009 (beyond flat-vector event signs / render modes) is BUILT + structurally green.**
 > The tool no longer renders ONLY flat-vector die-cut event signs. On the thin route the designer now picks a
 > RENDER STYLE (flat vector / photographic) and the TASK drives the render dialect + framing, so a photographic

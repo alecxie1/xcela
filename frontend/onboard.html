@@ -5,17 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Brand Onboarding</title>
 <style>
-  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: #1a1a1a; }
-  header { background: #2a2a2e; color: #fff; padding: 12px 20px; font-weight: 600; }
-  header a { color: #9cd; float: right; font-weight: 400; }
-  main { max-width: 760px; margin: 0 auto; padding: 20px; }
-  .step { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 16px; padding: 16px 20px; }
+  :root { --ink:#1a1a1a; --muted:#6b7280; --line:#e3e3e6; --nav:#23232a; --accent:#3b82f6; --ok:#2a6; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: var(--ink); }
+  header.topnav { background: var(--nav); color: #fff; height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 22px; }
+  header.topnav .brandmark { font-weight: 700; letter-spacing: 0.3px; }
+  header.topnav nav { display: flex; gap: 4px; }
+  header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
+  header.topnav nav a:hover { background: #34343d; color: #fff; }
+  header.topnav nav a.active { background: var(--accent); color: #fff; }
+  main { max-width: 760px; margin: 0 auto; padding: 22px 20px; }
+  .step { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 16px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
   .step.done { opacity: 0.6; }
   h3 { margin: 0 0 10px; font-size: 14px; }
   label { display: block; margin: 8px 0 3px; font-weight: 600; font-size: 12px; color: #444; }
-  input, select { box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+  input, select { box-sizing: border-box; padding: 7px 9px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
   input[type=text] { width: 100%; }
-  button { margin-top: 12px; padding: 9px 14px; border: 0; border-radius: 6px; background: #2a6; color: #fff; font-weight: 600; cursor: pointer; }
+  button { margin-top: 12px; padding: 9px 14px; border: 0; border-radius: 6px; background: var(--ok); color: #fff; font-weight: 600; cursor: pointer; }
+  button:hover { filter: brightness(1.05); }
   button:disabled { background: #999; cursor: not-allowed; }
   .swatch { display: inline-block; width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ccc; vertical-align: middle; margin-right: 8px; }
   .color-row { padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
@@ -23,11 +30,18 @@
   .err { color: #c0392b; font-weight: 600; margin-top: 8px; }
   .ok { color: #2a6; font-weight: 600; }
   .pending { color: #999; }
+  .handoff { display: inline-block; margin-top: 10px; font-weight: 600; color: var(--accent); }
   pre { white-space: pre-wrap; background: #fafafa; padding: 8px; border-radius: 4px; }
 </style>
 </head>
 <body>
-<header>Brand Onboarding <a href="/">back to live-runner</a></header>
+<header class="topnav">
+  <span class="brandmark">Handyprint</span>
+  <nav>
+    <a href="/">Generate a sign</a>
+    <a href="/onboard" class="active" aria-current="page">Onboard a brand</a>
+  </nav>
+</header>
 <main>
   <div class="step" id="s1">
     <h3>1. Upload the brand guideline PDF</h3>
@@ -137,7 +151,11 @@ $("saveBtn").onclick = async () => {
   const { ok, data } = await jpost(`/onboard/${draftId}/save`, fd, true);
   $("saveBtn").disabled = false;
   if (!ok) { $("s3err").textContent = data.error || "save failed"; return; }
-  $("s3ok").textContent = `Saved ${data.brand}. ${data.message}.`;
+  // feature 010: handoff - render the saved message PLUS a link to the live-runner with this brand
+  // preselected (innerHTML so the <a> renders as a link, not literal text).
+  const b = data.brand;
+  $("s3ok").innerHTML = `Saved ${b}. ${data.message}. ` +
+    `<a class="handoff" href="/?brand=${encodeURIComponent(b)}">Generate a sign for this brand</a>`;
   $("s3").classList.add("done");
 };
 </script>

@@ -5,19 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live Runner (single sign)</title>
 <style>
-  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: #1a1a1a; }
-  header { background: #2a2a2e; color: #fff; padding: 12px 20px; font-weight: 600; }
-  main { display: grid; grid-template-columns: 360px 1fr; gap: 0; height: calc(100vh - 48px); }
-  .panel { padding: 16px 20px; overflow-y: auto; }
+  :root { --ink:#1a1a1a; --muted:#6b7280; --line:#e3e3e6; --nav:#23232a; --accent:#3b82f6; --paid:#c0392b; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: var(--ink); }
+  header.topnav { background: var(--nav); color: #fff; height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 22px; }
+  header.topnav .brandmark { font-weight: 700; letter-spacing: 0.3px; }
+  header.topnav nav { display: flex; gap: 4px; }
+  header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
+  header.topnav nav a:hover { background: #34343d; color: #fff; }
+  header.topnav nav a.active { background: var(--accent); color: #fff; }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 0; height: calc(100vh - 52px); }
+  .panel { padding: 18px 20px; overflow-y: auto; }
   .form { background: #fff; border-right: 1px solid #ddd; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 14px; padding: 6px 12px 12px; }
+  legend { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); padding: 0 4px; }
   label { display: block; margin: 10px 0 3px; font-weight: 600; font-size: 12px; color: #444; }
-  input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font: inherit; }
+  input, select, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
   .row { display: flex; gap: 8px; }
   .row > div { flex: 1; }
   .slider-val { font-weight: 600; color: #2a6; }
-  button { margin-top: 14px; padding: 10px 14px; border: 0; border-radius: 6px; background: #c0392b; color: #fff; font-weight: 600; cursor: pointer; width: 100%; }
+  button { margin-top: 14px; padding: 10px 14px; border: 0; border-radius: 6px; background: var(--paid); color: #fff; font-weight: 600; cursor: pointer; width: 100%; }
+  button:hover { filter: brightness(1.05); }
   button:disabled { background: #999; cursor: not-allowed; }
-  .stage { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 14px; }
+  .stage { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
   .stage h3 { margin: 0; padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 13px; }
   .stage .body { padding: 12px 14px; }
   .pending { color: #999; }
@@ -29,57 +39,63 @@
 </style>
 </head>
 <body>
-<header>Handyprint Live Runner (single sign, thin route)</header>
+<header class="topnav">
+  <span class="brandmark">Handyprint</span>
+  <nav>
+    <a href="/" class="active" aria-current="page">Generate a sign</a>
+    <a href="/onboard">Onboard a brand</a>
+  </nav>
+</header>
 <main>
   <section class="panel form">
-    <label>Brand</label>
-    <select id="brand"></select>
+    <fieldset><legend>Brand &amp; asset</legend>
+      <label>Brand</label>
+      <select id="brand"></select>
+      <label>Asset type</label>
+      <input id="asset_type" value="手举牌 hand-held event sign">
+      <label>Render style</label>
+      <select id="render_style"><option value="flat vector">flat vector</option><option value="photographic">photographic</option></select>
+      <label>Format / size</label>
+      <input id="format_size" value="60x40cm">
+    </fieldset>
 
-    <label>Asset type</label>
-    <input id="asset_type" value="手举牌 hand-held event sign">
+    <fieldset><legend>Reference</legend>
+      <label>Reference image (required, upload a file)</label>
+      <input type="file" id="reference_image">
+      <label>Reference relationship</label>
+      <input id="reference_relationship" value="template - extend this series">
+    </fieldset>
 
-    <label>Render style</label>
-    <select id="render_style"><option value="flat vector">flat vector</option><option value="photographic">photographic</option></select>
+    <fieldset><legend>Voice &amp; vibe</legend>
+      <div class="row">
+        <div><label>Formality <span class="slider-val" id="fv">2</span></label><input type="range" id="formality" min="0" max="10" value="2"></div>
+        <div><label>Playfulness <span class="slider-val" id="pv">8</span></label><input type="range" id="playfulness" min="0" max="10" value="8"></div>
+        <div><label>Warmth <span class="slider-val" id="wv">7</span></label><input type="range" id="warmth" min="0" max="10" value="7"></div>
+      </div>
+      <label>Logo treatment</label>
+      <select id="logo_treatment"><option>omit</option><option>subtle</option><option>faithful</option></select>
+      <label>Brand strictness</label>
+      <select id="brand_strictness"><option>expressive departure</option><option>brand + accents</option><option>strict VI</option></select>
+    </fieldset>
 
-    <label>Format / size</label>
-    <input id="format_size" value="60x40cm">
+    <fieldset><legend>Context</legend>
+      <label>Occasion</label>
+      <input id="occasion" value="防范非法金融宣传">
+      <label>Usage context</label>
+      <input id="usage_context" value="held for photos / posed with">
+      <label>Audience</label>
+      <input id="audience" value="general public">
+    </fieldset>
 
-    <label>Reference image (required, upload a file)</label>
-    <input type="file" id="reference_image">
-
-    <label>Reference relationship</label>
-    <input id="reference_relationship" value="template - extend this series">
-
-    <div class="row">
-      <div><label>Formality <span class="slider-val" id="fv">2</span></label><input type="range" id="formality" min="0" max="10" value="2"></div>
-      <div><label>Playfulness <span class="slider-val" id="pv">8</span></label><input type="range" id="playfulness" min="0" max="10" value="8"></div>
-      <div><label>Warmth <span class="slider-val" id="wv">7</span></label><input type="range" id="warmth" min="0" max="10" value="7"></div>
-    </div>
-
-    <label>Logo treatment</label>
-    <select id="logo_treatment"><option>omit</option><option>subtle</option><option>faithful</option></select>
-
-    <label>Brand strictness</label>
-    <select id="brand_strictness"><option>expressive departure</option><option>brand + accents</option><option>strict VI</option></select>
-
-    <label>Occasion</label>
-    <input id="occasion" value="防范非法金融宣传">
-
-    <label>Usage context</label>
-    <input id="usage_context" value="held for photos / posed with">
-
-    <label>Audience</label>
-    <input id="audience" value="general public">
-
-    <label>Mandatory elements (one per line, verbatim)</label>
-    <textarea id="mandatory_elements" rows="2">分别画叉</textarea>
-
-    <label>Forbidden elements (one per line)</label>
-    <textarea id="forbidden_elements" rows="1"></textarea>
-
-    <label>Sign message line(s) (one per line, verbatim)</label>
-    <textarea id="messages" rows="2">守住钱袋子
+    <fieldset><legend>Elements &amp; message</legend>
+      <label>Mandatory elements (one per line, verbatim)</label>
+      <textarea id="mandatory_elements" rows="2">分别画叉</textarea>
+      <label>Forbidden elements (one per line)</label>
+      <textarea id="forbidden_elements" rows="1"></textarea>
+      <label>Sign message line(s) (one per line, verbatim)</label>
+      <textarea id="messages" rows="2">守住钱袋子
 护好幸福家</textarea>
+    </fieldset>
 
     <button id="run">Run (paid, about $0.08)</button>
     <div id="formNote" class="note"></div>
@@ -105,6 +121,9 @@ async function loadBrands() {
   const r = await fetch("/brands"); const j = await r.json();
   $("brand").innerHTML = j.brands.map(b => `<option>${b}</option>`).join("");
   $("run").textContent = `Run (paid, about $${j.per_run_cost_usd.toFixed(2)})`;
+  // feature 010: preselect the brand handed off from onboarding (/?brand=<id>); graceful if absent/unknown
+  const want = new URLSearchParams(location.search).get("brand");
+  if (want && j.brands.includes(want)) $("brand").value = want;
 }
 function lines(id) { return $(id).value.split("\n").map(s => s.trim()).filter(Boolean); }
 function formState() {

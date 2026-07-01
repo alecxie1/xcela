@@ -131,27 +131,26 @@ Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/s
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
 
-**Active feature:** `009-asset-render-modes` — BUILT (US1-US3) + structurally green (test_render_modes 4/4:
-ASSET_PROFILES sanity, photo dialect [photographic language, no flat negatives, text guards kept], flat
-framing register-aware [marketing != event sign; event_prop byte-unchanged], plumbing [normalize_render_style
-mapping + thin argv carries the brief profile + inputs round-trip + control]; test_thin_route 7/7 + all prior
-001-008 suites green). THE BIG ONE: the tool used to only render flat-vector die-cut event signs
-(`conductor.py:62` hard-wired `ASSET_PROFILE="flat_graphic"`; `scene_author.py` hard-coded "hand-held event
-sign"). 009 lets the TASK drive render mode + framing on the THIN route: the designer EXPLICITLY picks a
-`render_style` (flat vector / photographic, the new control in `index.html`, carried verbatim by
-`inputs_writer`); `conductor.normalize_render_style` maps it to `asset_profile` and threads it into
-`_scene_author_thin_argv` (stops hard-wiring flat; manifest records render_style + resolved profile);
-`assemble_thin_prompt` is now (asset_profile x register)-aware (flat+event_prop UNCHANGED/byte-identical;
-flat+marketing rewritten to a rectangular poster, no "hand-held event sign"; NEW photo+event_prop and
-photo+marketing openers) and the negatives are split (render-agnostic text guards always; flat-only render
-negatives [no photographic shading/3D] only for flat_graphic, byte-identical flat line). Brand still governs
-color/font/logo HARD; task governs render style + shape SOFT (§VI). Scope: thin route ONLY
-(kit/tier-3/no-ref/cutout/measure-composite UNCHANGED; deliverable final.png, chroma auto-off for non-flat).
-Photographic allowed for ANY register. NO paid call in any test; SC-007 (does it actually look photographic)
-is the LOAD-BEARING human eye-gate (T012), the real proof, pending. Spec/plan: `specs/009-asset-render-modes/`.
-Run: `.venv/bin/python frontend/server.py` then open `/`, set Render style = photographic.
+**Active feature:** `010-unified-frontend` — BUILT (US1-US3) + structurally green (test_frontend_nav 3/3:
+no em-dash both pages, bidirectional nav + active-view marker on both, onboard `/?brand=` handoff + the
+live-runner preselect wiring; all prior 001-009 frontend/thin suites green). The two `frontend/` pages are
+now ONE app: (A) a shared header/nav on BOTH `index.html` + `onboard.html` cross-links "Generate a sign"
+(`/`) and "Onboard a brand" (`/onboard`), current view marked active (`aria-current`); (C) the onboard
+save-success renders a "Generate a sign for this brand" link to `/?brand=<id>` (via `innerHTML`), and the
+live-runner's `loadBrands()` reads `?brand=` and preselects it after `/brands` loads (graceful fallback if
+absent/unknown); plus a UI touch-up (shared nav styling, focus rings, cards; the live-runner's long form
+grouped into 5 `<fieldset>`s). PURE frontend (the two HTML files); NO new server route, NO back-half change
+(nav snippet duplicated per page, drift-guarded by the both-pages-both-links test). HONESTY (§II/§III): the
+value is a HUMAN-EYE judgment (one app, clean, smooth flow); the automated tests are PRESENCE GREPS (the
+weakest gate) + no-regression, so the eye is the real proof - but here the eye-gate is FREE (nav + flow +
+look, no generation). Pending: T010, the free human eye/flow check. Spec/plan: `specs/010-unified-frontend/`.
+Run: `.venv/bin/python frontend/server.py` then open `/`.
 
-Prior built features: `008-palette-role-guidance` (BUILT US1-US2, structurally green: palette_roles 6/6 +
+Prior built features: `009-asset-render-modes` (BUILT US1-US3, structurally green render_modes 4/4 +
+thin_route 7/7; the task drives render mode + framing on the thin route via `render_style` ->
+`normalize_render_style` -> asset_profile + the (asset_profile x register) opener matrix + negatives split;
+flat event-sign path byte-unchanged; pending the LOAD-BEARING eye-gate T012),
+`008-palette-role-guidance` (BUILT US1-US2, structurally green: palette_roles 6/6 +
 brand_key 10/10 + onboard 10/10; every brand color drives behavior on the thin route via
 `scene_author.ROLE_GUIDANCE` + role-aware color block; exactly-one-primary in the shared `validate_lean_key`;
 the gate offers 5 roles; pending the human eye-gate T011), `001-kit-of-parts-composition` (US3, paid eye gate pending),
