@@ -52,9 +52,25 @@ def check1_thin_subfields_plumbing():
                     f"kit_legacy_byte_identical={legacy_ok}")
 
 
+def check2_normalizer_drift_guard():
+    """T003 contract drift guard: the engine's local predicate and the conductor's
+    normalize_render_style must agree on the shared input table (research D2)."""
+    table = ["photographic", "photo", " PHOTOGRAPHIC ", "flat vector", "", None, "watercolor"]
+    disagreements = [v for v in table
+                     if dr._render_is_photo(v) != (conductor.normalize_render_style(v) == "photo")]
+    # value-level spot checks so a both-wrong drift cannot pass silently
+    values_ok = (dr._render_is_photo(" PHOTOGRAPHIC ") is True
+                 and dr._render_is_photo("watercolor") is False
+                 and dr._render_is_photo(None) is False)
+    passed = not disagreements and values_ok
+    return passed, f"disagreements={disagreements}; value_spot_checks={values_ok}"
+
+
 CHECKS = [
     ("US-all plumbing: thin subfields carry raw render_style, kit/legacy untouched",
      check1_thin_subfields_plumbing),
+    ("US-all drift guard: engine predicate agrees with conductor normalize_render_style",
+     check2_normalizer_drift_guard),
 ]
 
 

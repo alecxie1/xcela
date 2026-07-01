@@ -50,6 +50,15 @@ REGISTER_HINTS = {
 }
 
 
+def _render_is_photo(value) -> bool:
+    """Feature 011: does the brief's raw render_style mean a PHOTOGRAPHIC render?
+    Mirrors harness/conductor.normalize_render_style (subprocess boundary, no import
+    path between the packages; drift-guarded by test_register_render_aware.py):
+    'photographic'/'photo' (case/whitespace-insensitive) -> True; everything else,
+    including absent/blank/unrecognized, -> False (the flat historical default)."""
+    return str(value or "").strip().lower() in ("photographic", "photo")
+
+
 # Moderated slider defaults per register, used when NO calibration exists (CALIBRATOR_SPEC
 # Part 2): the old behavior copied the raw subfield vibe (2/8) into the profile, which was
 # hand-anchored on contaminated post-hoc images and OVERSHOT. Subfield vibe still sets
