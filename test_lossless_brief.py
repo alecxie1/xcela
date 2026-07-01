@@ -145,6 +145,25 @@ def check3_design_notes_channel():
                     f"no_notes_byte_identical={row7}; form_control+join={row10}")
 
 
+def check4_retired_controls():
+    """T005 contract rows 8 + 13: no audience/warmth controls in the form; the writer still
+    accepts legacy form states verbatim and produces a valid brief without them."""
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    row8 = 'id="audience"' not in html and 'id="warmth"' not in html
+    legacy = {"reference_image": "/tmp/r.png", "messages": ["m"],
+              "audience": "general public", "vibe": {"formality": 2, "playfulness": 7, "warmth": 9}}
+    li = inputs_writer.to_inputs(legacy)
+    legacy_ok = (li["context"]["audience"] == "general public"
+                 and li["context"]["vibe"]["warmth"] == 9)
+    modern = inputs_writer.to_inputs({"reference_image": "/tmp/r.png", "messages": ["m"],
+                                      "vibe": {"formality": 2, "playfulness": 7}})
+    modern_ok = ("audience" in modern["context"]  # shape unchanged (tolerant defaults)
+                 and isinstance(modern["context"]["vibe"].get("warmth"), int)
+                 and modern["signs"][0]["messages"] == ["m"])
+    passed = row8 and legacy_ok and modern_ok
+    return passed, f"controls_gone={row8}; legacy_verbatim={legacy_ok}; modern_valid={modern_ok}"
+
+
 CHECKS = [
     ("US1 scene/subject section (verbatim, context-not-text, blank byte-identical)",
      check1_scene_section),
@@ -152,6 +171,8 @@ CHECKS = [
      check2_conductor_threading),
     ("US2 design notes: first-run field feeds the binding block, nudges append",
      check3_design_notes_channel),
+    ("US3 dead controls retired from the form; legacy briefs still verbatim",
+     check4_retired_controls),
 ]
 
 

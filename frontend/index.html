@@ -70,7 +70,6 @@
       <div class="row">
         <div><label>Formality <span class="slider-val" id="fv">2</span></label><input type="range" id="formality" min="0" max="10" value="2"></div>
         <div><label>Playfulness <span class="slider-val" id="pv">8</span></label><input type="range" id="playfulness" min="0" max="10" value="8"></div>
-        <div><label>Warmth <span class="slider-val" id="wv">7</span></label><input type="range" id="warmth" min="0" max="10" value="7"></div>
       </div>
       <label>Logo treatment</label>
       <select id="logo_treatment"><option>omit</option><option>subtle</option><option>faithful</option></select>
@@ -83,8 +82,6 @@
       <input id="occasion" value="防范非法金融宣传">
       <label>Usage context</label>
       <input id="usage_context" value="held for photos / posed with">
-      <label>Audience</label>
-      <input id="audience" value="general public">
     </fieldset>
 
     <fieldset><legend>Elements &amp; message</legend>
@@ -114,7 +111,7 @@
 </main>
 <script>
 const $ = id => document.getElementById(id);
-for (const [s, v] of [["formality","fv"],["playfulness","pv"],["warmth","wv"]]) {
+for (const [s, v] of [["formality","fv"],["playfulness","pv"]]) {
   $(s).addEventListener("input", () => $(v).textContent = $(s).value);
 }
 let currentRun = null, poller = null, attempts = [];
@@ -132,9 +129,9 @@ function formState() {
   return {
     brand: $("brand").value, asset_type: $("asset_type").value, render_style: $("render_style").value, format_size: $("format_size").value,
     reference_relationship: $("reference_relationship").value,
-    vibe: { formality: +$("formality").value, playfulness: +$("playfulness").value, warmth: +$("warmth").value },
+    vibe: { formality: +$("formality").value, playfulness: +$("playfulness").value },
     logo_treatment: $("logo_treatment").value, brand_strictness: $("brand_strictness").value,
-    occasion: $("occasion").value, usage_context: $("usage_context").value, audience: $("audience").value,
+    occasion: $("occasion").value, usage_context: $("usage_context").value,
     mandatory_elements: lines("mandatory_elements"), forbidden_elements: lines("forbidden_elements"),
     messages: lines("messages"),
   };
