@@ -166,6 +166,25 @@ def check6_explicit_event_usage_wins():
                     f"usage_rule_matched={usage_matched}; no_suppression_line={no_suppression}")
 
 
+def check7_marketing_keywords():
+    """T009/US4 (contract row 6, FR-006): common marketing words match an explicit usage
+    rule (trace records the keyword, not the unmatched default); precedence guard: an
+    earlier event-prop keyword inside the same phrase still wins."""
+    p = dr.derive_register(_subfields(usage="instagram feed"), {})
+    trace = p["_derivation_trace"]
+    explicit = any("matched 'instagram'" in t and "marketing base" in t for t in trace)
+    no_default = not any("matched no rule" in t for t in trace)
+    # precedence: "instagram photo" contains 'photo', an EVENT-PROP keyword in the first
+    # row, which must still capture the base before the new marketing row is consulted
+    p2 = dr.derive_register(_subfields(usage="instagram photo"), {})
+    precedence = (any("matched 'photo'" in t and "event_prop base" in t
+                      for t in p2["_derivation_trace"])
+                  and p2["inferred_register"] == "event_prop")
+    passed = explicit and no_default and precedence
+    return passed, (f"explicit_keyword_match={explicit}; no_default_fallback={no_default}; "
+                    f"event_keyword_precedence={precedence}")
+
+
 def check2_normalizer_drift_guard():
     """T003 contract drift guard: the engine's local predicate and the conductor's
     normalize_render_style must agree on the shared input table (research D2)."""
@@ -193,6 +212,8 @@ CHECKS = [
      check5_flat_and_absent_unchanged),
     ("US3 explicit event-prop usage beats the render gate (human signal wins)",
      check6_explicit_event_usage_wins),
+    ("US4 marketing usage keywords match explicitly, event keywords keep precedence",
+     check7_marketing_keywords),
 ]
 
 

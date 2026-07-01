@@ -25,6 +25,10 @@ USAGE_RULES = [
     (("wall-posted", "read at distance", "outdoor display", "table-placed"), "marketing"),
     (("handed out", "direct mail"), "formal_leaning"),  # resolved by vibe below
     (("scrolled on phone",), "marketing"),
+    # Feature 011 (FR-006): common marketing words match EXPLICITLY instead of falling
+    # through to the unmatched default. Appended LAST so every earlier row (including the
+    # explicit event-prop phrases, the human's hard signal) keeps its precedence.
+    (("marketing", "social", "instagram", "promotional"), "marketing"),
 ]
 
 # register -> design-language hints (the leap's payload).
