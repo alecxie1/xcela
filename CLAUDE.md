@@ -124,29 +124,36 @@ correct). Spec/plan/tasks: `specs/001-kit-of-parts-composition/`. Details: `docs
   the opposite of matching gpt's painted geometry).
 - VLM vision extraction is non-deterministic (figure/ground inversion, topic↔register).
 
-<!-- SPECKIT START -->
 ## Spec Kit (active workflow)
 Specs live in `specs/`. Slash commands: `/speckit-specify` (write the spec), `/speckit-plan`
 (technical plan), `/speckit-tasks` (break into testable tasks), `/speckit-implement` (build
 one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<feature>/` first.
 `.specify/memory/constitution.md` holds project principles that bind every spec.
+(Everything between the SPECKIT markers below is MACHINE-MANAGED by the agent-context
+extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
+above the markers, never inside them.)
 
-**Active feature:** `010-unified-frontend` — BUILT (US1-US3) + structurally green (test_frontend_nav 3/3:
-no em-dash both pages, bidirectional nav + active-view marker on both, onboard `/?brand=` handoff + the
-live-runner preselect wiring; all prior 001-009 frontend/thin suites green). The two `frontend/` pages are
-now ONE app: (A) a shared header/nav on BOTH `index.html` + `onboard.html` cross-links "Generate a sign"
-(`/`) and "Onboard a brand" (`/onboard`), current view marked active (`aria-current`); (C) the onboard
-save-success renders a "Generate a sign for this brand" link to `/?brand=<id>` (via `innerHTML`), and the
-live-runner's `loadBrands()` reads `?brand=` and preselects it after `/brands` loads (graceful fallback if
-absent/unknown); plus a UI touch-up (shared nav styling, focus rings, cards; the live-runner's long form
-grouped into 5 `<fieldset>`s). PURE frontend (the two HTML files); NO new server route, NO back-half change
-(nav snippet duplicated per page, drift-guarded by the both-pages-both-links test). HONESTY (§II/§III): the
-value is a HUMAN-EYE judgment (one app, clean, smooth flow); the automated tests are PRESENCE GREPS (the
-weakest gate) + no-regression, so the eye is the real proof - but here the eye-gate is FREE (nav + flow +
-look, no generation). Pending: T010, the free human eye/flow check. Spec/plan: `specs/010-unified-frontend/`.
-Run: `.venv/bin/python frontend/server.py` then open `/`.
+**Active feature:** `011-register-render-aware` - BUILT (US1-US4) + structurally green
+(test_register_render_aware 7/7; conductor 7/7 + render_and_scrub 5/5 + render_modes 4/4 no-regression).
+The register engine is RENDER-AWARE on the thin route: `build_subfields(thin=True)` passes the brief's
+`render_style` VERBATIM into subfields.json (kit/legacy never see the key, their subfields byte-identical);
+`derive_register._render_is_photo` (mirrors `normalize_render_style`, drift-guarded) GATES the
+flat-vector-era playful-vibe marketing->event_prop promotion for photographic renders, with the suppression
+traced by name (flat/absent/unrecognized byte-identical to the pre-011 baseline, proven against an inlined
+literal); explicit event-prop usage still WINS (the gate suppresses the machine guess, never the human
+signal); TONE retained per §VI (format follows the task, tone follows the vibe): marketing + promoting vibe
+flexes font:rounded + palette:playful-accents (NEVER shape:die-cut), rounded display font role + playful
+tone_hint, marketing shape hint verbatim; USAGE_RULES gains a LAST row (marketing/social/instagram/
+promotional match explicitly, event keywords keep precedence). Scope: `register/derive_register.py` +
+`conductor.build_subfields` ONLY; the 009 opener matrix, scene_author, kit/legacy paths untouched.
+Pending: T011, the ONE paid eye-gate (a photographic marketing job from a playful brand must READ as a
+playful marketing poster: not a prop, not corporate). Spec/plan/tasks: `specs/011-register-render-aware/`.
 
-Prior built features: `009-asset-render-modes` (BUILT US1-US3, structurally green render_modes 4/4 +
+Prior built features: `010-unified-frontend` (BUILT US1-US3, structurally green test_frontend_nav 3/3;
+the two `frontend/` pages are ONE app: shared header/nav on both with active-view marker, onboard
+save-success -> `/?brand=<id>` handoff + live-runner preselect, UI touch-up with 5 `<fieldset>`s; PURE
+frontend, no server change; pending the FREE human eye/flow check T010),
+`009-asset-render-modes` (BUILT US1-US3, structurally green render_modes 4/4 +
 thin_route 7/7; the task drives render mode + framing on the thin route via `render_style` ->
 `normalize_render_style` -> asset_profile + the (asset_profile x register) opener matrix + negatives split;
 flat event-sign path byte-unchanged; pending the LOAD-BEARING eye-gate T012),
@@ -164,4 +171,9 @@ fix that surfaces conductor failures in the UI via `run_error.txt`; pending the 
 sign T012), `006-web-onboarding-gate` (BUILT US1-US3, structurally green: multipart 3 + onboard 9 +
 verify_reuse 6; the designer-facing browser wizard wrapping the 005 PURE modules; `frontend/onboard.py` +
 `frontend/multipart.py` + `brand_intake/persist.py`; pending the human browser smoke + paid sign T017).
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/011-register-render-aware/plan.md
 <!-- SPECKIT END -->

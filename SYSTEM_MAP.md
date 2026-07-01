@@ -1,5 +1,32 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-06-30._
+_Single source of truth for "what is this whole thing." Updated 2026-07-01._
+
+> **▶ BUILD STATUS 2026-07-01: feature 011 (render-aware register) is BUILT + structurally green.**
+> The register inference no longer mis-frames photographic marketing jobs from playful brands as hand-held
+> event props. The old heuristic was flat-vector-era: "playful+informal vibe" promoted any `marketing` job to
+> `event_prop` regardless of what was being made (observed live: a watermelon-product Instagram post framed
+> as a photo-prop). New, on the THIN route only: `conductor.build_subfields(inputs, thin=)` passes the
+> brief's `render_style` VERBATIM into `subfields.json` (kit/legacy routes never receive the key, their
+> subfields stay byte-identical); `derive_register._render_is_photo` (mirrors `normalize_render_style`
+> across the subprocess boundary, drift-guarded by a both-modules agreement test) GATES the playful-vibe
+> marketing->event_prop promotion when the render is photographic, appending ONE trace line that names the
+> raw render_style; flat / absent / unrecognized values take the historical path with a byte-identical
+> profile (proven against an inlined pre-011 baseline literal). An EXPLICIT event-prop usage phrase ("held
+> for photos") still wins over the gate: the usage-rule table runs upstream, so the human signal is never
+> suppressed, only the machine guess is (§I). The two-axis split (§VI): FORMAT follows the task (no
+> shape:die-cut flex, marketing shape_language_hint verbatim, chroma containment stays off), TONE follows
+> the brand vibe (marketing + formality<=3/playfulness>=7 flexes font:rounded + palette:playful-accents,
+> resolves the rounded display font role, playful tone_hint), so a playful brand's marketing post stays
+> playful WITHOUT becoming a prop or collapsing corporate. Also: USAGE_RULES gains a LAST row
+> (marketing / social / instagram / promotional match explicitly; "instagram photo" still lands on the
+> event row via 'photo', precedence-guarded). Scope: `register/derive_register.py` +
+> `conductor.build_subfields` ONLY; the 009 opener matrix, scene_author, kit/legacy paths byte-untouched.
+> Tests: test_register_render_aware 7/7 (plumbing, drift guard, gate, tone retention, US2 byte-identity,
+> US3 human-wins, US4 keywords); conductor 7/7 + render_and_scrub 5/5 + render_modes 4/4 no-regression;
+> NO paid calls. PENDING + LOAD-BEARING: SC-007, the human eye-gate (T011): one paid photographic marketing
+> run from a playful brand must READ as a playful marketing poster (not a prop, not a stiff corporate
+> poster); structure green proves the register flipped, only the eye proves the pixels.
+> Spec/plan/tasks: `specs/011-register-render-aware/`.
 
 > **▶ BUILD STATUS — 2026-06-30: feature 010 (connect onboard + live-runner into one app + UI touch-up) is BUILT + structurally green.**
 > The two `frontend/` pages (`/` live-runner + `/onboard` wizard) now read and navigate as ONE app. (A) a
