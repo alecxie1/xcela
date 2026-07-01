@@ -829,6 +829,12 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
 
     register_profile_arg = str(profile_path) if have_profile else None
     dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
+    # Feature 009 fix: the EXECUTE path must resolve the brief's render_style exactly like
+    # build_plan does (line ~336). It previously omitted asset_profile at the thin call site,
+    # so every REAL run silently fell back to the flat_graphic default while dry-run plans
+    # (and the plan-only tests) showed photo — the plan/execution drift this module promises
+    # not to have. Caught by the human eye on run_CJXQ_20260701_152554.
+    thin_asset_profile = normalize_render_style(inputs.get("render_style"))
     kit_mode = kitlib.kit_exists(brand) and not thin
     # Feature 002: resolve output size once; flag a mandatory/forbidden contradiction (honest null).
     size_resolution = fmtsize.resolve_size(inputs.get("format_size"))
@@ -874,7 +880,8 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                              "(human must resolve)")
             sa_argv = _scene_author_thin_argv(brand, out, sid, messages, ref if has_ref else None,
                                               register_profile_arg, dial, eff_mandatory,
-                                              eff_forbidden, size=size_wh, style_notes=style_notes)
+                                              eff_forbidden, size=size_wh, style_notes=style_notes,
+                                              asset_profile=thin_asset_profile)
             sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
             outputs = _collect_sign_outputs(sign_dir)
             srm = {}

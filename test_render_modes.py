@@ -8,6 +8,10 @@ No paid calls. Asserts VALUES a wrong build cannot satisfy (constitution §III),
   3. US2: flat marketing opener drops "hand-held event sign" (rectangular); flat event_prop byte-unchanged.
   4. US3: normalize_render_style mapping + fallback; build_plan thin argv carries the brief's profile;
      inputs_writer round-trips render_style; the served page has the control.
+  5. execute-path drift guard: the REAL run's scene_author argv carries the brief's profile too
+     (run_step stubbed, no subprocess). Added after the eye caught run_CJXQ_20260701_152554 rendering
+     flat despite render_style=photographic: execute() omitted asset_profile while build_plan passed
+     it, and checks 1-4 only ever looked at build_plan (plan/execution drift, the gap this closes).
 
 Run:  .venv/bin/python test_render_modes.py
 """
@@ -108,11 +112,55 @@ def check4_plumbing():
                     f"inputs_roundtrip={iw_ok}; control={ctl_ok}")
 
 
+def check5_execute_path_profile_drift_guard():
+    """fix(009): the EXECUTE path must resolve render_style into the scene_author argv
+    exactly like build_plan. run_step is stubbed (nothing spawns, nothing paid); we capture
+    the argv execute() actually constructs. A build that only wires build_plan fails."""
+    import contextlib
+    import io
+    import json as _json
+
+    def run_execute(inputs):
+        captured = []
+
+        def stub(step):
+            captured.append(step)
+            return {"label": step["label"], "phase": step["phase"], "ok": False, "returncode": 1}
+
+        orig = conductor.run_step
+        conductor.run_step = stub
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / "run"
+                out.mkdir()
+                ip = Path(d) / "inputs.json"
+                ip.write_text(_json.dumps(inputs), encoding="utf-8")
+                plan = conductor.build_plan(inputs, "aia", out, no_approve=True, thin=True)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    conductor.execute(inputs, "aia", out, ip, True, plan, thin=True)
+        finally:
+            conductor.run_step = orig
+        profs = []
+        for s in captured:
+            if s["label"] == "scene_author":
+                a = s["argv"]
+                profs.append(a[a.index("--asset-profile") + 1] if "--asset-profile" in a else None)
+        return profs
+
+    photo = run_execute(_inputs("photographic"))
+    flat = run_execute(_inputs())  # no render_style -> flat default, same as before
+    ok = (bool(photo) and all(p == "photo" for p in photo)
+          and bool(flat) and all(p == "flat_graphic" for p in flat))
+    return ok, f"execute_argv photo={photo} flat={flat}"
+
+
 CHECKS = [
     ("ASSET_PROFILES defines both dialects", check1_profiles_exist),
     ("US1 photo dialect (photographic, no flat negatives, text guards kept)", check2_photo_dialect),
     ("US2 flat framing register-aware (marketing != event sign; event_prop unchanged)", check3_flat_framing_register_aware),
     ("US3 plumbing (mapping + thin argv carries the brief profile + inputs + control)", check4_plumbing),
+    ("execute-path drift guard (REAL run argv carries the brief profile, not just the plan)",
+     check5_execute_path_profile_drift_guard),
 ]
 
 
