@@ -844,7 +844,8 @@ ROLE_GUIDANCE_FALLBACK = "part of the brand palette: use where appropriate to ke
 def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | None = None,
                          dial: str | None = None, mandatory=None, forbidden=None,
                          asset_profile: str = "flat_graphic",
-                         has_reference: bool = False, style_notes=None) -> str:
+                         has_reference: bool = False, style_notes=None,
+                         asset_type=None, occasion=None) -> str:
     """Build ONE gpt-image-2 generation prompt directly from the brief (FR-001):
       - the per-sign messages VERBATIM (gpt paints the text for now — tracked debt),
       - the campaign + per-sign mandatory/forbidden via prompt_elements (verbatim, e.g. 分别画叉),
@@ -887,6 +888,22 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
             f"A PHOTOGRAPHIC marketing poster for {brand_cn} ({brand_en}): a real photographed scene "
             "composed as a full rectangular poster. Photographic realism, natural lighting, depth of "
             "field, advertising photography quality. NOT a flat illustration, NOT a cartoon.")
+
+    # 1b. scene/subject context (feature 012): the brief's asset_type + occasion VERBATIM,
+    # so what the human said the asset IS actually reaches generation. Context only, never
+    # renderable text (the slogan lesson: gpt paints Chinese it sees, so the framing forbids
+    # painting and the HEADLINE only-words guard below stays the last word on text). Absent
+    # fields render nothing; both absent renders NO section (byte-identical prompt).
+    _at = str(asset_type or "").strip()
+    _oc = str(occasion or "").strip()
+    if _at or _oc:
+        lines.append("")
+        lines.append("SCENE / SUBJECT (compositional context ONLY, not text: no words from this "
+                     "section may be painted anywhere on the asset):")
+        if _at:
+            lines.append(f"  Asset: {_at}")
+        if _oc:
+            lines.append(f"  Occasion: {_oc}")
 
     # 2. headline messages VERBATIM (the model paints them — known-temporary debt)
     msgs = [str(m) for m in (messages or []) if str(m).strip()]
@@ -1022,7 +1039,9 @@ def run_thin_mode(args) -> None:
     prompt = assemble_thin_prompt(brand_key, messages, register_profile=register_profile,
                                   dial=dial, mandatory=mandatory, forbidden=forbidden,
                                   asset_profile=args.asset_profile, has_reference=has_reference,
-                                  style_notes=style_notes)
+                                  style_notes=style_notes,
+                                  asset_type=getattr(args, "asset_type", "") or None,
+                                  occasion=getattr(args, "occasion", "") or None)
     prompt_path = out_dir / "final_prompt.txt"
     prompt_path.write_text(prompt, encoding="utf-8")
     print(f"  Saved {prompt_path}  ({prompt_path.stat().st_size} bytes)")
@@ -1398,6 +1417,12 @@ def main():
                         "(verbatim text + mandatory/forbidden + palette + dial + ref) and let "
                         "gpt-image-2 compose the WHOLE sign. STOPS at generated.png — no kit, no "
                         "tier-3, no compose_select, no measure, no composite. Moat deferred.")
+    parser.add_argument("--asset-type", default="",
+                        help="(012, thin only) the brief's asset_type VERBATIM; rendered in the "
+                             "SCENE/SUBJECT context section, never as text on the asset")
+    parser.add_argument("--occasion", default="",
+                        help="(012, thin only) the brief's occasion VERBATIM; SCENE/SUBJECT "
+                             "context only, never painted")
     parser.add_argument("--mandatory-elements", default="",
                         help="THIN ROUTE: '；'-separated mandatory elements, passed VERBATIM into "
                         "the prompt via prompt_elements (e.g. 分别画叉). Feature 002 reuse.")
