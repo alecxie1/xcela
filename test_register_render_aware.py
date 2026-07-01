@@ -112,6 +112,46 @@ def check4_tone_retention():
                     f"tone_hint_delta={tone_hint_ok}; trace={trace_ok}; non_playful_control={control_ok}")
 
 
+# T001 pre-feature baseline: json.dumps(profile, ensure_ascii=False, sort_keys=True) of
+# derive_register(_subfields(), {}) captured on the UNMODIFIED engine (commit 63827ee's
+# parent state). FR-007: with render_style ABSENT the profile must stay byte-identical.
+# (The em-dashes below are pre-existing engine trace text quoted verbatim, out of 011 scope.)
+EXPECTED_PREFEATURE_PROFILE = (
+    '{"_derivation_trace": ["usage_context=\'wall-posted (read at distance)\' matched '
+    "'wall-posted' => marketing base\", \"vibe overrides (formality=2<=3, playfulness=8>=7) "
+    '=> event_prop", "MAGNITUDE: no calibration => moderated event_prop defaults formality=5, '
+    'playfulness=7 (raw subfield vibe 2/8 NOT copied — overshoot fix)", "primary_color '
+    'HELD (brand_strictness=None, reference_diff=absent — anchor stands)", '
+    '"register=event_prop => flex font:rounded + shape:die-cut + palette:playful-accents", '
+    '"register=event_prop => font_role_hint=\'rounded display\'", "answer key typography has '
+    "no styles['rounded display'] entry — font resolution left to composite-time role "
+    'lookup"], "_slider_source": "moderated_default", "brand_anchors_held": ["primary_color"], '
+    '"brand_locks_flexed": ["font:rounded", "shape:die-cut", "palette:playful-accents"], '
+    '"font_role_hint": "rounded display", "formality": 5, "icon_style_hint": '
+    '"cartoon/emoji-style, mascots, exaggerated", "inferred_register": "event_prop", '
+    '"playfulness": 7, "shape_language_hint": "die-cut organic (speech bubble / burst / '
+    'cloud), thick white stroke outline", "tone_hint": "playful, energetic, grabbable '
+    'photo-prop"}')
+
+
+def check5_flat_and_absent_unchanged():
+    """T007/US2 (contract rows 2+3): flat still promotes to event_prop with no new trace;
+    render_style ABSENT is byte-identical to the T001 pre-feature baseline. An over-eager
+    gate, a stray trace line, or leaked tone retention all fail."""
+    import json
+    # row 2: explicit flat render, promoting vibe, no event language
+    p = dr.derive_register(_subfields("flat vector"), {})
+    row2 = (p["inferred_register"] == "event_prop"
+            and any("vibe overrides" in t for t in p["_derivation_trace"])
+            and not any("SUPPRESSED" in t for t in p["_derivation_trace"])
+            and not any("TONE retained" in t for t in p["_derivation_trace"]))
+    # row 3: render_style absent => byte-identical profile (sorted-keys JSON equality)
+    absent = json.dumps(dr.derive_register(_subfields(), {}), ensure_ascii=False, sort_keys=True)
+    row3 = absent == EXPECTED_PREFEATURE_PROFILE
+    passed = row2 and row3
+    return passed, f"flat_event_prop_no_new_trace={row2}; absent_byte_identical={row3}"
+
+
 def check2_normalizer_drift_guard():
     """T003 contract drift guard: the engine's local predicate and the conductor's
     normalize_render_style must agree on the shared input table (research D2)."""
@@ -135,6 +175,8 @@ CHECKS = [
      check3_photo_gate),
     ("US1 tone retention: playful tone kept on marketing, die-cut prop format excluded",
      check4_tone_retention),
+    ("US2 no-regression: flat still event_prop; render-absent byte-identical to baseline",
+     check5_flat_and_absent_unchanged),
 ]
 
 
