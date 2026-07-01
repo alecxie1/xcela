@@ -194,7 +194,11 @@ records an explicit keyword match, not the default line.
       is out of scope.
       Commit: `docs(011): CLAUDE.md + SYSTEM_MAP currency (T010)`.
 
-- [ ] T011 DEFERRED HUMAN EYE-GATE (SC-007, quickstart §4): ONE paid thin run for a playful brand
+- [X] T011 DEFERRED HUMAN EYE-GATE (SC-007, quickstart §4) - PASSED 2026-07-01 by the operator on
+      `output/run_CJXQ_20260701_154416` (CJXQ photographic watermelon marketing post): reads as a
+      playful photographic marketing poster, not a prop, not corporate. The FIRST attempt
+      (run_..._152554) rendered FLAT and exposed a 009 plan/execution drift (execute path dropped
+      asset_profile), fixed in 265a524 with render_modes check 5 as the permanent guard.: ONE paid thin run for a playful brand
       with a photographic marketing brief
       (`.venv/bin/python harness/conductor.py --brand <playful-brand> --inputs <photo-marketing-inputs>.json --thin`),
       judged by the HUMAN EYE on `output/run_*/sign_*/final.png`: a playful marketing poster, not

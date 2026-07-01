@@ -146,17 +146,22 @@ flexes font:rounded + palette:playful-accents (NEVER shape:die-cut), rounded dis
 tone_hint, marketing shape hint verbatim; USAGE_RULES gains a LAST row (marketing/social/instagram/
 promotional match explicitly, event keywords keep precedence). Scope: `register/derive_register.py` +
 `conductor.build_subfields` ONLY; the 009 opener matrix, scene_author, kit/legacy paths untouched.
-Pending: T011, the ONE paid eye-gate (a photographic marketing job from a playful brand must READ as a
-playful marketing poster: not a prop, not corporate). Spec/plan/tasks: `specs/011-register-render-aware/`.
+EYE-GATE T011 PASSED 2026-07-01 (`run_CJXQ_20260701_154416`, operator-judged: a playful photographic
+marketing poster, not a prop, not corporate): feature COMPLETE. The first T011 attempt exposed a latent
+009 plan/execution drift (execute() dropped asset_profile on the thin call site, real runs always flat);
+fixed in 265a524, guarded by render_modes check 5 (now 5/5), which also satisfies 009's eye-gate T012.
+Plus fix(register): explicit logo_treatment=faithful now traces "logo lock HELD" (honest null).
+Spec/plan/tasks: `specs/011-register-render-aware/`.
 
 Prior built features: `010-unified-frontend` (BUILT US1-US3, structurally green test_frontend_nav 3/3;
 the two `frontend/` pages are ONE app: shared header/nav on both with active-view marker, onboard
 save-success -> `/?brand=<id>` handoff + live-runner preselect, UI touch-up with 5 `<fieldset>`s; PURE
 frontend, no server change; pending the FREE human eye/flow check T010),
-`009-asset-render-modes` (BUILT US1-US3, structurally green render_modes 4/4 +
+`009-asset-render-modes` (BUILT US1-US3, structurally green render_modes 5/5 +
 thin_route 7/7; the task drives render mode + framing on the thin route via `render_style` ->
 `normalize_render_style` -> asset_profile + the (asset_profile x register) opener matrix + negatives split;
-flat event-sign path byte-unchanged; pending the LOAD-BEARING eye-gate T012),
+flat event-sign path byte-unchanged; eye-gate T012 satisfied 2026-07-01 via the 011 T011 run after the
+execute-path drift fix 265a524),
 `008-palette-role-guidance` (BUILT US1-US2, structurally green: palette_roles 6/6 +
 brand_key 10/10 + onboard 10/10; every brand color drives behavior on the thin route via
 `scene_author.ROLE_GUIDANCE` + role-aware color block; exactly-one-primary in the shared `validate_lean_key`;

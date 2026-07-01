@@ -23,10 +23,18 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-01._
 > `conductor.build_subfields` ONLY; the 009 opener matrix, scene_author, kit/legacy paths byte-untouched.
 > Tests: test_register_render_aware 7/7 (plumbing, drift guard, gate, tone retention, US2 byte-identity,
 > US3 human-wins, US4 keywords); conductor 7/7 + render_and_scrub 5/5 + render_modes 4/4 no-regression;
-> NO paid calls. PENDING + LOAD-BEARING: SC-007, the human eye-gate (T011): one paid photographic marketing
-> run from a playful brand must READ as a playful marketing poster (not a prop, not a stiff corporate
-> poster); structure green proves the register flipped, only the eye proves the pixels.
-> Spec/plan/tasks: `specs/011-register-render-aware/`.
+> NO paid calls. EYE-GATE PASSED (SC-007, T011, 2026-07-01): the operator judged
+> `output/run_CJXQ_20260701_154416` (CJXQ photographic watermelon marketing post): a real photographed
+> scene, rectangular poster, playful tone intact (bubbly type, candy palette, mascots), logo faithful,
+> headline verbatim; not a prop, not corporate. Feature COMPLETE. The FIRST T011 attempt (run_..._152554)
+> rendered FLAT and EXPOSED a latent 009 plan/execution drift: `execute()` omitted asset_profile at the
+> thin scene_author call site, so REAL runs always fell back to flat_graphic while dry-run plans showed
+> photo (the 009 tests only asserted build_plan). Fixed same day (fix(009) 265a524): execute resolves
+> normalize_render_style and passes it; render_modes check 5 now drives execute() itself with run_step
+> stubbed and is the permanent drift guard (verified RED pre-fix). Also fix(register) a8e0934: an explicit
+> logo_treatment that is not omit/subtle (e.g. faithful) now traces "logo lock HELD" (honest null);
+> absent stays silent (byte-identity preserved). The passing run also satisfies 009's pending eye-gate
+> T012 (the output demonstrably LOOKS photographic). Spec/plan/tasks: `specs/011-register-render-aware/`.
 
 > **▶ BUILD STATUS — 2026-06-30: feature 010 (connect onboard + live-runner into one app + UI touch-up) is BUILT + structurally green.**
 > The two `frontend/` pages (`/` live-runner + `/onboard` wizard) now read and navigate as ONE app. (A) a
@@ -64,10 +72,12 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-01._
 > byte-identical). Brand still governs color/font/logo HARD; the task governs render style + shape SOFT (§VI).
 > Photographic is allowed for ANY register; shape is derived from the register, not a second control. Scope:
 > the THIN route ONLY (kit / tier-3 / no-reference-cutout / legacy render-and-scrub / measure-composite
-> UNCHANGED; deliverable final.png, chroma auto-off for non-flat). Tests: render_modes 4/4 + thin_route 7/7;
-> all prior 001-008 suites green; NO paid calls. PENDING + LOAD-BEARING: SC-007, the human eye-gate (T012) -
-> a green structural test proves only that the dialect SWITCHED; only the eye on a real generated photographic
-> poster confirms it actually LOOKS photographic (§II). Spec/plan/tasks: `specs/009-asset-render-modes/`.
+> UNCHANGED; deliverable final.png, chroma auto-off for non-flat). Tests: render_modes 5/5 + thin_route 7/7;
+> all prior 001-008 suites green; NO paid calls. EYE-GATE (T012) SATISFIED 2026-07-01 via the 011 T011 run
+> (`run_CJXQ_20260701_154416`): the generated poster demonstrably LOOKS photographic (§II). That same gate
+> first CAUGHT a latent 009 defect: `execute()` omitted asset_profile at the thin call site, so real runs
+> always rendered flat while dry-run plans showed photo; fixed in 265a524, permanently guarded by
+> render_modes check 5 (drives execute() with run_step stubbed). Spec/plan/tasks: `specs/009-asset-render-modes/`.
 > DEFERRED (a separate later feature): generalizing the kit / no-reference / cutout paths, and asset_type-driven
 > opener specificity.
 
