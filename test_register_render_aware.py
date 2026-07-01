@@ -152,6 +152,20 @@ def check5_flat_and_absent_unchanged():
     return passed, f"flat_event_prop_no_new_trace={row2}; absent_byte_identical={row3}"
 
 
+def check6_explicit_event_usage_wins():
+    """T008/US3 (contract row 4, FR-004): an explicit event-prop usage phrase keeps
+    event_prop even on a photographic render; the gate suppresses the vibe GUESS, never
+    the human's stated usage. A gate-everything refactor fails this."""
+    p = dr.derive_register(_subfields("photographic", usage="held for photos / posed with"), {})
+    reg_ok = p["inferred_register"] == "event_prop"
+    trace = p["_derivation_trace"]
+    usage_matched = any("matched 'held for photos'" in t and "event_prop base" in t for t in trace)
+    no_suppression = not any("SUPPRESSED" in t for t in trace)
+    passed = reg_ok and usage_matched and no_suppression
+    return passed, (f"photo_plus_explicit_usage=event_prop:{reg_ok}; "
+                    f"usage_rule_matched={usage_matched}; no_suppression_line={no_suppression}")
+
+
 def check2_normalizer_drift_guard():
     """T003 contract drift guard: the engine's local predicate and the conductor's
     normalize_render_style must agree on the shared input table (research D2)."""
@@ -177,6 +191,8 @@ CHECKS = [
      check4_tone_retention),
     ("US2 no-regression: flat still event_prop; render-absent byte-identical to baseline",
      check5_flat_and_absent_unchanged),
+    ("US3 explicit event-prop usage beats the render gate (human signal wins)",
+     check6_explicit_event_usage_wins),
 ]
 
 
