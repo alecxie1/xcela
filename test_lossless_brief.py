@@ -164,6 +164,24 @@ def check4_retired_controls():
     return passed, f"controls_gone={row8}; legacy_verbatim={legacy_ok}; modern_valid={modern_ok}"
 
 
+def check5_dial_dropdown():
+    """T006 contract rows 9 + 14: the form's relationship control is a select with exactly the
+    3 lane values and no free-text path; each value maps 1:1 onto the engine lane; legacy free
+    text still normalizes through the keyword fallback (engine untouched)."""
+    import re
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    sel = re.search(r'<select id="reference_relationship">(.*?)</select>', html, re.S)
+    opts = re.findall(r'<option value="([^"]*)"', sel.group(1)) if sel else []
+    row9 = (opts == ["extend", "match style", "mood"]
+            and '<input id="reference_relationship"' not in html)
+    n = conductor.normalize_dial
+    row14 = (n("extend") == "extend" and n("match style") == "match_style" and n("mood") == "mood"
+             and n("template - extend this series") == "extend"  # legacy free text unchanged
+             and n("grab the product hero shots") == "extend")   # unrecognized -> default lane
+    passed = row9 and row14
+    return passed, f"select_exact_3_no_freetext={row9} (opts={opts}); lane_mapping+legacy={row14}"
+
+
 CHECKS = [
     ("US1 scene/subject section (verbatim, context-not-text, blank byte-identical)",
      check1_scene_section),
@@ -173,6 +191,8 @@ CHECKS = [
      check3_design_notes_channel),
     ("US3 dead controls retired from the form; legacy briefs still verbatim",
      check4_retired_controls),
+    ("US4 reference relationship is a 3-lane choice mapping 1:1 onto the dial",
+     check5_dial_dropdown),
 ]
 
 

@@ -63,7 +63,11 @@
       <label>Reference image (required, upload a file)</label>
       <input type="file" id="reference_image">
       <label>Reference relationship</label>
-      <input id="reference_relationship" value="template - extend this series">
+      <select id="reference_relationship">
+        <option value="extend">Extend it: keep this exact look and DNA, change only the message</option>
+        <option value="match style">Match its style: same visual language, fresh layout</option>
+        <option value="mood">Mood only: a loose tone cue, free composition</option>
+      </select>
     </fieldset>
 
     <fieldset><legend>Voice &amp; vibe</legend>
