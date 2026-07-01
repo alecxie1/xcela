@@ -50,7 +50,7 @@ US1 tone retention) read these; nothing story-level can be tested end to end wit
 
 **⚠️ CRITICAL**: Complete before any user story phase.
 
-- [ ] T002 [P] Thread `render_style` into the thin-route subfields in `harness/conductor.py`:
+- [X] T002 [P] Thread `render_style` into the thin-route subfields in `harness/conductor.py`:
       give `build_subfields(inputs, thin=False)` the new keyword; when `thin` is true AND the
       inputs carry the key, include `"render_style": inputs.get("render_style")` VERBATIM (raw,
       no normalization, per research D1); update the single call site in `write_glue_artifacts`
@@ -60,7 +60,7 @@ US1 tone retention) read these; nothing story-level can be tested end to end wit
       return a dict WITHOUT the key and equal to the pre-feature shape (kit/legacy byte-identical
       invariant, data-model §1). Commit: `feat(011): thread render_style into thin subfields (T002)`.
 
-- [ ] T003 [P] Add the local render predicate `_render_is_photo(value)` to
+- [X] T003 [P] Add the local render predicate `_render_is_photo(value)` to
       `register/derive_register.py`: `strip().lower()` in `("photographic", "photo")` means photo;
       everything else (absent, blank, unrecognized) means flat (research D2). NOT yet consulted by
       the derivation (that is T004), so behavior is unchanged. Add the drift-guard check to
@@ -83,7 +83,7 @@ die-cut prop shape (tone follows the vibe; the two are decided independently).
 **Independent Test**: spec US1: run `derive_register` on a photographic + playful/no-event
 subfields dict; assert register `marketing`, the trace suppression line, and the exact cue set.
 
-- [ ] T004 [US1] Gate the vibe promotion in `register/derive_register.py` step 2 (the
+- [X] T004 [US1] Gate the vibe promotion in `register/derive_register.py` step 2 (the
       `formality<=3 and playfulness>=7` branch at lines 96-98): when the branch would fire AND
       `_render_is_photo(subfields.get("render_style"))`, do NOT promote; append ONE trace line
       naming the raw render_style value as the reason (FR-002, FR-005; research D3 wording). When
@@ -95,7 +95,7 @@ subfields dict; assert register `marketing`, the trace suppression line, and the
       (`"watercolor"` behaves exactly like flat: `event_prop`).
       Commit: `feat(011): photo render gates the vibe event_prop promotion (T004)`.
 
-- [ ] T005 [US1] Playful-tone retention in `register/derive_register.py` step 4 region: when the
+- [X] T005 [US1] Playful-tone retention in `register/derive_register.py` step 4 region: when the
       resolved register is `marketing` AND the vibe is the promoting combination
       (`formality<=3 and playfulness>=7`), flex `font:rounded` + `palette:playful-accents` into
       `brand_locks_flexed` (NEVER `shape:die-cut`), set `font_role_hint = "rounded display"` (so
@@ -112,7 +112,7 @@ subfields dict; assert register `marketing`, the trace suppression line, and the
       (unchanged hints INCLUDING the default marketing tone_hint, no trace line).
       Commit: `feat(011): playful tone retained on marketing, prop format excluded (T005)`.
 
-- [ ] T006 [US1] US1 checkpoint sweep: run `.venv/bin/python test_register_render_aware.py` plus
+- [X] T006 [US1] US1 checkpoint sweep: run `.venv/bin/python test_register_render_aware.py` plus
       the three pre-existing suites from T001 (SC-006), then the quickstart §3 dry-run plumbing
       check (`--thin --dry-run` inputs copy with `"render_style": "photographic"`; inspect
       `subfields.json` and the standalone `register/derive_register.py` CLI trace output). Fix
@@ -130,7 +130,7 @@ byte-identical profiles to the pre-feature engine.
 **Independent Test**: spec US2: run `derive_register` on the same playful/no-event subfields with
 a flat render and with no render key; assert `event_prop` both times, the absent case byte-identical.
 
-- [ ] T007 [US2] No-regression assertions in `test_register_render_aware.py`: contract row 2
+- [X] T007 [US2] No-regression assertions in `test_register_render_aware.py`: contract row 2
       (`render_style: "flat vector"` + playful + no event language yields `event_prop`, promotion
       trace line present, NO suppression line, NO retention line) and contract row 3 (render_style
       ABSENT yields a profile whose sorted-keys JSON equals the `EXPECTED_PREFEATURE_PROFILE`
@@ -151,7 +151,7 @@ photographic render; the gate suppresses a machine guess, never a human statemen
 **Independent Test**: spec US3: photographic subfields whose usage_context contains an explicit
 event-prop phrase; assert `event_prop`.
 
-- [ ] T008 [US3] Explicit-signal assertions in `test_register_render_aware.py`: contract row 4
+- [X] T008 [US3] Explicit-signal assertions in `test_register_render_aware.py`: contract row 4
       (`render_style: "photographic"` + `usage_context: "held for photos / posed with"` + playful
       vibe yields `event_prop`; the trace shows the usage-rule match and NO suppression line).
       This holds by construction (the gate wraps only the vibe promotion, research D3), so the
@@ -170,7 +170,7 @@ rule instead of falling through to the unmatched default.
 **Independent Test**: spec US4: usage_context containing a common marketing word; assert the trace
 records an explicit keyword match, not the default line.
 
-- [ ] T009 [US4] Append the LAST row `(("marketing", "social", "instagram", "promotional"),
+- [X] T009 [US4] Append the LAST row `(("marketing", "social", "instagram", "promotional"),
       "marketing")` to `USAGE_RULES` in `register/derive_register.py` (research D4: appending last
       preserves every existing row's precedence, including the event-prop rows). Tests in
       `test_register_render_aware.py`: contract row 6 (usage `"instagram feed"` yields a trace
@@ -186,7 +186,7 @@ records an explicit keyword match, not the default line.
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T010 Repo currency in the SAME commit that closes the feature (constitution VII): update
+- [X] T010 Repo currency in the SAME commit that closes the feature (constitution VII): update
       `CLAUDE.md` (Active feature block: 011 built + structurally green, eye-gate pending; move
       010 to prior features) and `SYSTEM_MAP.md` (status + the new test surface
       `test_register_render_aware.py`). Verify no em-dashes in the NEW text 011 adds (the
