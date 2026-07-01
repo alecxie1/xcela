@@ -182,6 +182,21 @@ def check5_dial_dropdown():
     return passed, f"select_exact_3_no_freetext={row9} (opts={opts}); lane_mapping+legacy={row14}"
 
 
+def check6_message_label():
+    """T007 contract rows 11-12: no sign-era message label; the new label states the
+    verbatim-text contract; no em-dash in the new 012 labels."""
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    row11 = ("Sign message" not in html
+             and "Text on the asset (one per line, rendered exactly as written" in html
+             and "the only words that will appear" in html)
+    new_labels = [l for l in html.splitlines()
+                  if "Text on the asset" in l or "Design notes" in l or "Extend it:" in l
+                  or "Match its style:" in l or "Mood only:" in l]
+    row12 = bool(new_labels) and not any("—" in l for l in new_labels)
+    passed = row11 and row12
+    return passed, f"verbatim_contract_label={row11}; no_emdash_in_new_text={row12}"
+
+
 CHECKS = [
     ("US1 scene/subject section (verbatim, context-not-text, blank byte-identical)",
      check1_scene_section),
@@ -193,6 +208,8 @@ CHECKS = [
      check4_retired_controls),
     ("US4 reference relationship is a 3-lane choice mapping 1:1 onto the dial",
      check5_dial_dropdown),
+    ("US5 message label states the verbatim-text contract, sign-era wording gone",
+     check6_message_label),
 ]
 
 
