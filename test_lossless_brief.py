@@ -124,11 +124,34 @@ def check2_conductor_threading():
     return passed, "; ".join(msg for _, _, msg in ok_parts)
 
 
+def check3_design_notes_channel():
+    """T004 contract rows 5-7 + 10: the ';'-joined notes string splits into MULTIPLE binding
+    rules (append semantics); no notes adds no block (byte-identical); the form carries the
+    design_notes control and the join expression (grep, weakest gate)."""
+    note, nudge = "products realistic", "bolder type"
+    joined = "; ".join([note, nudge])
+    # simulate the channel: scene_author splits --style-notes on ";" into the notes list
+    split = [s.strip() for s in joined.split(";") if s.strip()]
+    p = _assemble(style_notes=split)
+    both = ("BINDING DESIGN RULES" in p and f"  - {note}" in p and f"  - {nudge}" in p)
+    first_only = _assemble(style_notes=[note])
+    row5 = "BINDING DESIGN RULES" in first_only and f"  - {note}" in first_only
+    row7 = _assemble(style_notes=None) == EXPECTED_PREFEATURE_PROMPT
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    row10 = ('id="design_notes"' in html
+             and '$("design_notes").value' in html and '.join("; ")' in html)
+    passed = both and row5 and row7 and row10
+    return passed, (f"joined_renders_both={both}; first_run_note={row5}; "
+                    f"no_notes_byte_identical={row7}; form_control+join={row10}")
+
+
 CHECKS = [
     ("US1 scene/subject section (verbatim, context-not-text, blank byte-identical)",
      check1_scene_section),
     ("US1 conductor threads asset_type+occasion at BOTH call sites (009 drift guard)",
      check2_conductor_threading),
+    ("US2 design notes: first-run field feeds the binding block, nudges append",
+     check3_design_notes_channel),
 ]
 
 

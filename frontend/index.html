@@ -95,6 +95,8 @@
       <label>Sign message line(s) (one per line, verbatim)</label>
       <textarea id="messages" rows="2">守住钱袋子
 护好幸福家</textarea>
+      <label>Design notes (optional; binding instructions the design must obey, e.g. "products realistic, background cartoon")</label>
+      <textarea id="design_notes" rows="2"></textarea>
     </fieldset>
 
     <button id="run">Run (paid, about $0.08)</button>
@@ -166,7 +168,10 @@ async function poll() {
 async function startRun(style_notes) {
   const refFile = $("reference_image").files[0];
   if (!refFile) { $("formNote").textContent = "A reference image is required (pick a file)."; return; }
-  const form = Object.assign(formState(), style_notes ? { style_notes } : {});
+  // 012: binding notes = first-run design notes + any nudge, ";"-joined (the channel's
+  // multi-note contract); a nudge APPENDS to the brief-time notes, never replaces them.
+  const notes = [$("design_notes").value, style_notes || ""].map(s => s.trim()).filter(Boolean).join("; ");
+  const form = Object.assign(formState(), notes ? { style_notes: notes } : {});
   $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = "";
   const fd = new FormData();
   fd.append("form", JSON.stringify(form));
