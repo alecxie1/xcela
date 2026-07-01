@@ -170,12 +170,16 @@ is rendered verbatim and is the only words allowed.
       (012 build-status block; date bump). No em-dashes in new text.
       Commit: `docs(012): CLAUDE.md + SYSTEM_MAP currency (T009)`.
 
-- [ ] T010 DEFERRED HUMAN EYE-GATE (SC-007, quickstart §4): ONE paid re-brief of the CJXQ
-      watermelon post through the form (photographic, asset_type + occasion filled, optional
-      design note), judged by the operator against `output/run_CJXQ_20260701_154416`: subject
-      fidelity improved AND zero scene/occasion words painted on the asset (the slogan-lesson
-      leakage check) AND the design note visibly obeyed. Never run inside automation. Record
-      the verdict in SYSTEM_MAP.
+- [X] T010 DEFERRED HUMAN EYE-GATE (SC-007, quickstart §4) - PASSED 2026-07-01 by the operator
+      on `output/run_CJXQ_20260701_164912` (CJXQ re-brief, photographic, scene section + design
+      note active): subject fidelity clearly improved over run_..._154416 (true photographic
+      hero shots, tropical scene, correct product line); ZERO occasion/scene words painted (the
+      【新品上線】 line stayed context, the slogan-lesson framing held); the design note was
+      obeyed (products realistic). OBSERVED GAP, out of 012 scope: the brand logo did not
+      appear on the cups this run (the model regenerated generic realistic cups instead of
+      carrying the reference's branded cups; the logo WAS fed + the LOGO prompt line present;
+      thin-route logo presence is model-probabilistic, the known deferred licensed/composite
+      moat). Countermeasure today: an approve-gate nudge naming the logo placement.
 
 ---
 

@@ -146,8 +146,10 @@ controls are RETIRED (inputs_writer stays tolerant, legacy JSON verbatim, manife
 free text no longer silently collapses to the default dial); the sign-era message label now states the
 verbatim-text contract. Scope: form + writer + conductor thin argv + one scene section in
 assemble_thin_prompt; register engine / 009 openers / kit / legacy / server / runner untouched.
-Pending: T010, the ONE paid eye-gate (re-brief the CJXQ watermelon post: subject fidelity improved,
-NO scene/occasion words painted). Spec/plan/tasks: `specs/012-lossless-brief/`.
+EYE-GATE T010 PASSED 2026-07-01 (`run_CJXQ_20260701_164912`, operator-judged: subject fidelity improved,
+zero occasion words painted, design note obeyed): feature COMPLETE. Observed gap logged in SYSTEM_MAP,
+out of 012 scope: thin-route logo presence is model-probabilistic (nudge today; composite moat / 013
+product refs are the real fix). Spec/plan/tasks: `specs/012-lossless-brief/`.
 
 Prior feature `011-register-render-aware` - BUILT (US1-US4) + structurally green
 (test_register_render_aware 8/8; conductor 7/7 + render_and_scrub 5/5 + render_modes 5/5 no-regression).

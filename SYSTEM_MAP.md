@@ -23,10 +23,17 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-01._
 > 009 openers, kit/legacy, server/runner byte-untouched. Tests: test_lossless_brief 6/6 (scene values +
 > blank byte-identity, BOTH-call-sites threading, notes channel, retired controls + back-compat, dial
 > mapping, label contract; form checks are greps, the weakest gate, declared per the 010 precedent);
-> all 5 prior suites green; NO paid calls. PENDING + LOAD-BEARING: SC-007, the human eye-gate (T010):
-> ONE paid re-brief of the CJXQ watermelon post judged against `run_CJXQ_20260701_154416`: subject
-> fidelity improved AND zero scene/occasion words painted on the asset (the slogan-lesson leakage
-> check). Spec/plan/tasks: `specs/012-lossless-brief/`.
+> all 5 prior suites green; NO paid calls. EYE-GATE PASSED (SC-007, T010, 2026-07-01): the operator
+> judged `run_CJXQ_20260701_164912` (re-brief of the watermelon post, scene section + design note live)
+> against `run_..._154416`: subject fidelity clearly improved (true photographic hero shots, tropical
+> scene) AND zero occasion/scene words painted (the never-paintable framing held on real Chinese
+> marketing copy) AND the design note obeyed. Feature COMPLETE. OBSERVED GAP (out of 012 scope,
+> logged for the backlog): the brand logo did not appear on the cups this run; the logo file WAS fed and
+> the LOGO prompt line present (pipeline correct, trace shows logo lock HELD), but the thin route's raw
+> gpt output makes logo presence model-probabilistic, especially when a realism note makes the model
+> regenerate products instead of carrying the reference's branded cups. Today's countermeasure: an
+> approve-gate nudge naming the placement. The real fix is the known deferred licensed/composite moat
+> (or 013 role-tagged product references). Spec/plan/tasks: `specs/012-lossless-brief/`.
 
 > **▶ BUILD STATUS 2026-07-01: feature 011 (render-aware register) is BUILT + structurally green.**
 > The register inference no longer mis-frames photographic marketing jobs from playful brands as hand-held
