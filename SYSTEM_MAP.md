@@ -1,6 +1,33 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-01._
 
+> **▶ BUILD STATUS 2026-07-01 (later): feature 012 (lossless brief / field honesty) is BUILT + structurally green.**
+> The INPUT GATE stopped leaking. A field audit of the CJXQ watermelon run found the form collecting
+> intent that never reached generation: `asset_type` + `occasion` stopped in glue artifacts only the
+> unused kit/legacy route reads; audience / warmth / hero_icon were collected and inert; free text in
+> `reference_relationship` was keyword-bucketed and the nuance DISCARDED (a real user's "grab the
+> product hero shots..." survived only as the default dial); and the strongest free-text lever (the
+> binding `--style-notes` block) was unreachable at brief time. New: (1) `assemble_thin_prompt` gains a
+> SCENE/SUBJECT context section carrying asset_type + occasion VERBATIM, framed never-paintable (the
+> slogan lesson), rendered ONLY when non-empty (both-blank = byte-identical prompt, proven against an
+> inlined pre-012 literal); threaded via `--asset-type`/`--occasion` at BOTH conductor call sites
+> (build_plan AND execute), with the execute argv asserted via the stubbed-run_step pattern (the 009
+> drift lesson applied preemptively). (2) a `design_notes` textarea on the first-run form feeds the
+> existing binding channel; a nudge APPENDS via the channel's ";"-join contract (frontend-only;
+> server/runner/conductor untouched). (3) audience + warmth controls RETIRED from the form;
+> `inputs_writer` stays tolerant so legacy JSON passes verbatim (manifest provenance intact).
+> (4) `reference_relationship` is a 3-option select (extend / match style / mood) mapping 1:1 onto
+> `normalize_dial`; the engine keeps its lenient parser for legacy inputs. (5) the sign-era "Sign
+> message line(s)" label now states the verbatim-text contract (asset-generic). Scope: `index.html` +
+> `inputs_writer.py` + conductor thin argv + one scene section in scene_author; register engine (011),
+> 009 openers, kit/legacy, server/runner byte-untouched. Tests: test_lossless_brief 6/6 (scene values +
+> blank byte-identity, BOTH-call-sites threading, notes channel, retired controls + back-compat, dial
+> mapping, label contract; form checks are greps, the weakest gate, declared per the 010 precedent);
+> all 5 prior suites green; NO paid calls. PENDING + LOAD-BEARING: SC-007, the human eye-gate (T010):
+> ONE paid re-brief of the CJXQ watermelon post judged against `run_CJXQ_20260701_154416`: subject
+> fidelity improved AND zero scene/occasion words painted on the asset (the slogan-lesson leakage
+> check). Spec/plan/tasks: `specs/012-lossless-brief/`.
+
 > **▶ BUILD STATUS 2026-07-01: feature 011 (render-aware register) is BUILT + structurally green.**
 > The register inference no longer mis-frames photographic marketing jobs from playful brands as hand-held
 > event props. The old heuristic was flat-vector-era: "playful+informal vibe" promoted any `marketing` job to

@@ -133,8 +133,24 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `011-register-render-aware` - BUILT (US1-US4) + structurally green
-(test_register_render_aware 7/7; conductor 7/7 + render_and_scrub 5/5 + render_modes 4/4 no-regression).
+**Active feature:** `012-lossless-brief` - BUILT (US1-US5) + structurally green
+(test_lossless_brief 6/6; conductor + render_and_scrub + render_modes + register_render_aware +
+frontend_nav all green). The INPUT GATE stopped leaking: `asset_type` + `occasion` now reach the thin
+prompt VERBATIM as a SCENE/SUBJECT context section (never-paintable framing per the slogan lesson;
+absent fields = NO section, byte-identical prompt proven against an inlined pre-012 literal; threaded
+at BOTH conductor call sites with a stubbed-execute drift guard, the 009 lesson); the form gains a
+`design_notes` field feeding the existing `--style-notes` binding channel on the FIRST run (nudges
+APPEND via the ";"-join contract; frontend-only, server/runner untouched); the inert audience + warmth
+controls are RETIRED (inputs_writer stays tolerant, legacy JSON verbatim, manifest provenance intact);
+`reference_relationship` is a 3-option select (extend / match style / mood, 1:1 onto normalize_dial;
+free text no longer silently collapses to the default dial); the sign-era message label now states the
+verbatim-text contract. Scope: form + writer + conductor thin argv + one scene section in
+assemble_thin_prompt; register engine / 009 openers / kit / legacy / server / runner untouched.
+Pending: T010, the ONE paid eye-gate (re-brief the CJXQ watermelon post: subject fidelity improved,
+NO scene/occasion words painted). Spec/plan/tasks: `specs/012-lossless-brief/`.
+
+Prior feature `011-register-render-aware` - BUILT (US1-US4) + structurally green
+(test_register_render_aware 8/8; conductor 7/7 + render_and_scrub 5/5 + render_modes 5/5 no-regression).
 The register engine is RENDER-AWARE on the thin route: `build_subfields(thin=True)` passes the brief's
 `render_style` VERBATIM into subfields.json (kit/legacy never see the key, their subfields byte-identical);
 `derive_register._render_is_photo` (mirrors `normalize_render_style`, drift-guarded) GATES the
@@ -180,5 +196,5 @@ verify_reuse 6; the designer-facing browser wizard wrapping the 005 PURE modules
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/011-register-render-aware/plan.md
+at specs/012-lossless-brief/plan.md
 <!-- SPECKIT END -->
