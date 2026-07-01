@@ -141,12 +141,21 @@ def feeling_phrase(context: dict) -> str:
     return "polished, approachable, on-brand"
 
 
-def build_subfields(inputs: dict) -> dict:
+def build_subfields(inputs: dict, thin: bool = False) -> dict:
     """The reconciliation crux: inputs.context uses brief_schema_v3 field names
     verbatim, so the subfields derive_register consumes are an identity pass-through
-    of context (plus asset_type). No inference, no judgment glue."""
+    of context (plus asset_type). No inference, no judgment glue.
+
+    thin (feature 011): the thin route also passes the brief's render_style through
+    VERBATIM (the raw human term, not the normalized asset_profile) so derive_register
+    can gate the playful-vibe event_prop promotion for photographic renders. Kit and
+    legacy routes never receive the key: their subfields.json stays byte-identical
+    (those paths always render flat, the register gate must not see a render choice)."""
     context = dict(inputs.get("context") or {})
-    return {"asset_type": inputs.get("asset_type", ASSET_TYPE_DEFAULT), **context}
+    subfields = {"asset_type": inputs.get("asset_type", ASSET_TYPE_DEFAULT), **context}
+    if thin and "render_style" in inputs:
+        subfields["render_style"] = inputs.get("render_style")
+    return subfields
 
 
 def build_intent(inputs: dict, sign: dict, brand: str) -> dict:
@@ -1071,7 +1080,7 @@ def print_plan(plan: dict) -> None:
 def write_glue_artifacts(inputs: dict, brand: str, out_dir, thin: bool = False) -> None:
     out_dir = Path(out_dir)
     (out_dir / "subfields.json").write_text(
-        json.dumps(build_subfields(inputs), ensure_ascii=False, indent=2), encoding="utf-8")
+        json.dumps(build_subfields(inputs, thin=thin), ensure_ascii=False, indent=2), encoding="utf-8")
     for sign in inputs["signs"]:
         intent = build_intent(inputs, sign, brand)
         (out_dir / f"intent_{sign['id']}.json").write_text(
