@@ -181,6 +181,22 @@ def derive_register(subfields: dict, brand_key: dict, calibration: dict | None =
         trace.append("register=event_prop => flex font:rounded + shape:die-cut + palette:playful-accents")
 
     hints = dict(REGISTER_HINTS[register])
+    # Feature 011 tone retention: a playful brand's MARKETING job keeps the playful TONE
+    # (rounded font, playful accents) but never the PROP FORMAT (no shape:die-cut flex, the
+    # shape_language_hint stays the marketing default). Keyed on the VIBE, not the render
+    # choice, so it applies wherever marketing meets the promoting vibe (constitution VI:
+    # tone follows the brand vibe, format follows the task, decided independently).
+    if (register == "marketing" and formality is not None and playfulness is not None
+            and formality <= 3 and playfulness >= 7):
+        flexed += ["font:rounded", "palette:playful-accents"]
+        hints["font_role_hint"] = "rounded display"
+        hints["tone_hint"] = ("playful, energetic, candy-bright, yet a polished on-brand "
+                              "marketing piece (a rectangular poster, not a photo-prop)")
+        trace.append(f"register=marketing with playful vibe (formality={formality}<=3, "
+                     f"playfulness={playfulness}>=7) => TONE retained: flex font:rounded + "
+                     "palette:playful-accents, font_role_hint='rounded display', playful "
+                     "tone_hint; FORMAT stays marketing (no shape:die-cut, "
+                     "shape_language_hint unchanged)")
     trace.append(f"register={register} => font_role_hint={hints['font_role_hint']!r}")
 
     # --- 4b. merge calibration style_evidence into the hints (CONCRETE reference evidence) ---

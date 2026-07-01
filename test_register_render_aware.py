@@ -83,6 +83,35 @@ def check3_photo_gate():
                     f"photo_formal=formal:{row5}; unrecognized=flat_event_prop:{row7}")
 
 
+def check4_tone_retention():
+    """T005/US1 cue half (contract row 1): playful TONE retained on marketing, PROP FORMAT
+    excluded; a tone-stripping build fails the presence half, a format-leaking build fails
+    the absence half. Non-playful marketing gains none of it."""
+    mk = dr.REGISTER_HINTS["marketing"]
+    p = dr.derive_register(_subfields("photographic"), {})
+    flexed = p["brand_locks_flexed"]
+    tone_present = "font:rounded" in flexed and "palette:playful-accents" in flexed
+    format_absent = "shape:die-cut" not in flexed
+    font_ok = p["font_role_hint"] == "rounded display"
+    shape_ok = p["shape_language_hint"] == mk["shape_language_hint"]  # verbatim, no die-cut wording
+    tone_hint_ok = (p["tone_hint"] != mk["tone_hint"]
+                    and "playful" in p["tone_hint"] and "not a photo-prop" in p["tone_hint"])
+    retain = [t for t in p["_derivation_trace"] if "TONE retained" in t]
+    trace_ok = len(retain) == 1 and "font:rounded" in retain[0] and "playfulness=8" in retain[0]
+    # control: NON-playful marketing (formality 5) keeps the restrained defaults untouched
+    c = dr.derive_register(_subfields("photographic", formality=5, playfulness=5), {})
+    control_ok = (c["inferred_register"] == "marketing"
+                  and c["brand_locks_flexed"] == []
+                  and c["font_role_hint"] == mk["font_role_hint"]
+                  and c["tone_hint"] == mk["tone_hint"]
+                  and not any("TONE retained" in t for t in c["_derivation_trace"]))
+    passed = (tone_present and format_absent and font_ok and shape_ok
+              and tone_hint_ok and trace_ok and control_ok)
+    return passed, (f"tone_flexed={tone_present}; die_cut_absent={format_absent}; "
+                    f"rounded_font={font_ok}; marketing_shape_verbatim={shape_ok}; "
+                    f"tone_hint_delta={tone_hint_ok}; trace={trace_ok}; non_playful_control={control_ok}")
+
+
 def check2_normalizer_drift_guard():
     """T003 contract drift guard: the engine's local predicate and the conductor's
     normalize_render_style must agree on the shared input table (research D2)."""
@@ -104,6 +133,8 @@ CHECKS = [
      check2_normalizer_drift_guard),
     ("US1 photo gate: playful vibe no longer promotes photographic jobs to event_prop",
      check3_photo_gate),
+    ("US1 tone retention: playful tone kept on marketing, die-cut prop format excluded",
+     check4_tone_retention),
 ]
 
 
