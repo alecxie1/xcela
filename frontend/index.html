@@ -60,8 +60,10 @@
     </fieldset>
 
     <fieldset><legend>Reference</legend>
-      <label>Reference image (required, upload a file)</label>
+      <label>Style reference (required, upload a file): how the asset should feel</label>
       <input type="file" id="reference_image">
+      <label>Product shots (optional, up to 6): photos of the real products that must appear in the design</label>
+      <input type="file" id="product_images" multiple>
       <label>Reference relationship</label>
       <select id="reference_relationship">
         <option value="extend">Extend it: keep this exact look and DNA, change only the message</option>
@@ -168,7 +170,11 @@ async function poll() {
 }
 async function startRun(style_notes) {
   const refFile = $("reference_image").files[0];
-  if (!refFile) { $("formNote").textContent = "A reference image is required (pick a file)."; return; }
+  if (!refFile) { $("formNote").textContent = "A style reference image is required (pick a file)."; return; }
+  // 013: product shots ride as DISTINCT parts product_1..N (the server parser is
+  // last-wins per part name); client-side cap check mirrors the server's visible error.
+  const prodFiles = Array.from($("product_images").files);
+  if (prodFiles.length > 6) { $("formNote").textContent = "At most 6 product shots are supported; remove some."; return; }
   // 012: binding notes = first-run design notes + any nudge, ";"-joined (the channel's
   // multi-note contract); a nudge APPENDS to the brief-time notes, never replaces them.
   const notes = [$("design_notes").value, style_notes || ""].map(s => s.trim()).filter(Boolean).join("; ");
@@ -177,6 +183,7 @@ async function startRun(style_notes) {
   const fd = new FormData();
   fd.append("form", JSON.stringify(form));
   fd.append("reference", refFile, refFile.name);  // style_notes rides inside the `form` JSON above
+  prodFiles.forEach((f, i) => fd.append("product_" + (i + 1), f, f.name));
   const r = await fetch("/run", { method: "POST", body: fd });
   const j = await r.json();
   if (!r.ok) { $("formNote").textContent = j.error || "run failed"; $("run").disabled = false; return; }

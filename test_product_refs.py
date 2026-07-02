@@ -269,6 +269,25 @@ def check8_server_multipart_products():
                     f"saved+injected={write_ok}; zero_no_key={no_key}; cap_drift_guard={cap_guard}")
 
 
+def check9_form_controls():
+    """T006 contract rows 11-12 (greps, the weakest gate): style-reference label on the old
+    upload; an optional multiple-file product control capped client-side; the JS appends
+    DISTINCT part names product_1..N; no em-dash in the new labels."""
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    style_label = "Style reference (required" in html and "how the asset should feel" in html
+    control = ('id="product_images" multiple' in html
+               and "Product shots (optional, up to 6)" in html
+               and "must appear in the design" in html)
+    distinct = ('fd.append("product_" + (i + 1), f, f.name)' in html
+                and "prodFiles.length > 6" in html)
+    new_lines = [l for l in html.splitlines()
+                 if "Style reference" in l or "Product shots" in l or "product shots are supported" in l]
+    no_emdash = bool(new_lines) and not any("—" in l for l in new_lines)
+    passed = style_label and control and distinct and no_emdash
+    return passed, (f"style_label={style_label}; multi_control={control}; "
+                    f"distinct_parts+client_cap={distinct}; no_emdash={no_emdash}")
+
+
 CHECKS = [
     ("US1 product fidelity section (values, byte-identity, no em-dash)", check1_fidelity_section),
     ("US1 generation refs list ([style, logo] + products; prefix byte-stable)", check2_refs_list),
@@ -278,6 +297,7 @@ CHECKS = [
     ("US1 calibration isolation (calibrate/derive argv identical with products)", check6_calibration_isolation),
     ("US2 style-only brief byte-identical end to end (legacy shape untouched)", check7_style_only_end_to_end),
     ("US3 multipart product uploads (0/2/7 parts, shared save home, cap guard)", check8_server_multipart_products),
+    ("US3 form: style-reference label + multi-file product control + distinct parts", check9_form_controls),
 ]
 
 
