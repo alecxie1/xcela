@@ -60,6 +60,10 @@ KIT = "harness/kit.py"
 
 # v1: the only rendering dialect the conductor drives.
 ASSET_PROFILE = "flat_graphic"
+# Feature 013: cap on per-run product reference images. 1 style + 1 logo + 6 products = 8
+# input images, comfortably inside images.edit's documented 16-image limit. Over-cap fails
+# LOUD at the gate (form + validate_inputs), never silently truncates.
+MAX_PRODUCT_IMAGES = 6
 ASSET_TYPE_DEFAULT = "手举牌 hand-held event sign"
 
 # Per-phase subprocess timeouts (seconds). Each step sets its OWN internal API timeout
@@ -248,7 +252,7 @@ def _scene_author_kit_argv(brand: str, out: str, sign_id: str, size=None) -> lis
 def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, ref,
                             register_profile, dial, mandatory, forbidden, size=None,
                             style_notes=None, asset_profile=ASSET_PROFILE,
-                            asset_type=None, occasion=None) -> list:
+                            asset_type=None, occasion=None, product_images=None) -> list:
     """THIN ROUTE (feature 003): scene_author --thin assembles ONE prompt from the brief and lets
     gpt-image-2 compose the whole sign (STOP at generated.png). No kit, no compose_select, no
     analyzer/aligned-prompt, no measure, no composite. The reference (if any) is fed as a visual
@@ -273,6 +277,9 @@ def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, 
         argv += ["--asset-type", str(asset_type)]
     if occasion and str(occasion).strip():
         argv += ["--occasion", str(occasion)]
+    # Feature 013: product refs (brand-HARD content), one repeatable flag per image, in order.
+    for p in (product_images or []):
+        argv += ["--product-image", str(p)]
     if ref:
         argv += ["--ref-image", ref]
     return argv
@@ -391,7 +398,8 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
                                                       style_notes=style_notes,
                                                       asset_profile=thin_asset_profile,
                                                       asset_type=inputs.get("asset_type"),
-                                                      occasion=(inputs.get("context") or {}).get("occasion")),
+                                                      occasion=(inputs.get("context") or {}).get("occasion"),
+                                                      product_images=inputs.get("product_images")),
                               sign_id=sid))
     elif kit_mode:
         # 4b. KIT ROUTE: derive the campaign kit_profile once, then compose each sign bespoke.
@@ -588,6 +596,19 @@ def validate_inputs(inputs: dict) -> dict:
                 raise SystemExit(
                     f"ERROR: sign {sign['id']!r} {key} must be a list of strings.")
     inputs.setdefault("asset_type", ASSET_TYPE_DEFAULT)
+    # Feature 013: product refs are OPTIONAL (absent = pre-013 behavior). When present they MUST
+    # be a list of existing image paths, at most MAX_PRODUCT_IMAGES. Fail LOUD, never truncate:
+    # a silently dropped product shot is the silent-input-loss class 012 killed.
+    prods = inputs.get("product_images")
+    if prods is not None:
+        if not isinstance(prods, list) or not all(isinstance(p, str) for p in prods):
+            raise SystemExit("ERROR: product_images must be a list of image paths.")
+        if len(prods) > MAX_PRODUCT_IMAGES:
+            raise SystemExit(f"ERROR: at most {MAX_PRODUCT_IMAGES} product_images are supported "
+                             f"(got {len(prods)}); remove some rather than have them dropped.")
+        missing = [p for p in prods if not Path(p).is_file()]
+        if missing:
+            raise SystemExit(f"ERROR: product_images not found on disk: {missing}")
     # Feature 002: the previously-dropped bucket-A/C fields. OPTIONAL (back-compat): absent ->
     # empty/None, never invented. Lists pass through verbatim; a bare string is kept as one item
     # (faithful, not rephrased). No agent inference.
@@ -891,7 +912,8 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                                               eff_forbidden, size=size_wh, style_notes=style_notes,
                                               asset_profile=thin_asset_profile,
                                               asset_type=inputs.get("asset_type"),
-                                              occasion=(inputs.get("context") or {}).get("occasion"))
+                                              occasion=(inputs.get("context") or {}).get("occasion"),
+                                              product_images=inputs.get("product_images"))
             sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
             outputs = _collect_sign_outputs(sign_dir)
             srm = {}
@@ -1015,6 +1037,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
         "asset_type_note": ("feature 009: render_style drives the thin asset_profile (photo|flat_graphic); "
                             "kit/legacy stay flat_graphic"),
         "reference_image": ref,
+        "product_images": inputs.get("product_images") or [],
         "reference_relationship": inputs.get("reference_relationship"),
         "dial": dial,
         # Feature 002: the previously-dropped fields, recorded VERBATIM, plus a lossless echo of the

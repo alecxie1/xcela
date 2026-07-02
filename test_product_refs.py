@@ -78,10 +78,128 @@ def check3_argparse_append():
     return passed, f"ordered_append={got == ['a.png', 'b.png']}; default_none={none_case}"
 
 
+def _inputs(product_images=None, ref="/tmp/ref.png"):
+    d = {"asset_type": "poster", "format_size": "60x40cm", "reference_image": ref,
+         "reference_relationship": "extend", "render_style": "photographic",
+         "mandatory_elements": [], "forbidden_elements": [],
+         "context": {"usage_context": "wall-posted", "occasion": "",
+                     "vibe": {"formality": 2, "playfulness": 7},
+                     "logo_treatment": "omit", "brand_strictness": "brand + accents"},
+         "signs": [{"id": "s1", "messages": ["新品上市"], "hero_icon": None}]}
+    if product_images is not None:
+        d["product_images"] = product_images
+    return d
+
+
+def _plan_argvs(inputs, label):
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        plan = conductor.build_plan(inputs, "aia", Path(d) / "o", no_approve=True, thin=True)
+    return [s["argv"] for s in plan["steps"] if s["label"] == label]
+
+
+def _exec_argvs(inputs, label):
+    import contextlib
+    import io
+    import json as _json
+    import tempfile
+    captured = []
+
+    def stub(step):
+        captured.append(step)
+        return {"label": step["label"], "phase": step["phase"], "ok": False, "returncode": 1}
+
+    orig = conductor.run_step
+    conductor.run_step = stub
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "run"
+            out.mkdir()
+            ip = Path(d) / "inputs.json"
+            ip.write_text(_json.dumps(inputs), encoding="utf-8")
+            plan = conductor.build_plan(inputs, "aia", out, no_approve=True, thin=True)
+            with contextlib.redirect_stdout(io.StringIO()):
+                conductor.execute(inputs, "aia", out, ip, True, plan, thin=True)
+    finally:
+        conductor.run_step = orig
+    return [s["argv"] for s in captured if s["label"] == label]
+
+
+def _prod_flags(argv):
+    return [argv[i + 1] for i, a in enumerate(argv) if a == "--product-image"]
+
+
+def check4_conductor_threading():
+    """T003 contract rows 3 + 14: ordered --product-image at BOTH call sites when the brief
+    carries them; absent entirely for a legacy brief without the key (byte-compat)."""
+    prods = ["/tmp/pr_a.png", "/tmp/pr_b.png"]
+    with_p, legacy = _inputs(prods), _inputs()
+    parts = []
+    for name, get in (("plan", _plan_argvs), ("execute", _exec_argvs)):
+        wa, la = get(with_p, "scene_author"), get(legacy, "scene_author")
+        carried = bool(wa) and all(_prod_flags(a) == prods for a in wa)
+        absent = bool(la) and all("--product-image" not in a for a in la)
+        parts.append((carried and absent, f"{name}: carried_ordered={carried} legacy_absent={absent}"))
+    passed = all(ok for ok, _ in parts)
+    return passed, "; ".join(msg for _, msg in parts)
+
+
+def check5_cap_and_missing_fail_loud():
+    """T003 contract row 5: validate_inputs fail-louds (named error) on >6 products and on a
+    listed file missing from disk; <=6 existing files pass."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        real = []
+        for i in range(7):
+            p = Path(d) / f"p{i}.png"
+            p.write_bytes(b"x")
+            real.append(str(p))
+        over = _inputs(real)  # 7 files > cap
+        try:
+            conductor.validate_inputs(over)
+            over_ok = False
+        except SystemExit as e:
+            over_ok = "6" in str(e) and "product_images" in str(e)
+        missing = _inputs([str(Path(d) / "nope.png")])
+        try:
+            conductor.validate_inputs(missing)
+            missing_ok = False
+        except SystemExit as e:
+            missing_ok = "not found" in str(e)
+        good = _inputs(real[:6])
+        good_ok = conductor.validate_inputs(good) is good
+    passed = over_ok and missing_ok and good_ok
+    return passed, f"over_cap_named={over_ok}; missing_named={missing_ok}; six_pass={good_ok}"
+
+
+def check6_calibration_isolation():
+    """T003 contract row 8 (SC-003): the calibrate step argv is IDENTICAL for the same brief
+    with and without product_images; product truth never reaches magnitude/register."""
+    import tempfile
+    prods = ["/tmp/pr_a.png"]
+    with tempfile.TemporaryDirectory() as d:  # SAME out dir so only the brief differs
+        out = Path(d) / "o"
+        pw = conductor.build_plan(_inputs(prods), "aia", out, no_approve=True, thin=True)
+        po = conductor.build_plan(_inputs(), "aia", out, no_approve=True, thin=True)
+
+    def argvs(plan, label):
+        return [s["argv"] for s in plan["steps"] if s["label"] == label]
+
+    cal_with, cal_without = argvs(pw, "calibrate"), argvs(po, "calibrate")
+    derive_with, derive_without = argvs(pw, "derive_register"), argvs(po, "derive_register")
+    passed = (cal_with == cal_without and bool(cal_with)
+              and derive_with == derive_without and bool(derive_with))
+    return passed, (f"calibrate_identical={cal_with == cal_without}; "
+                    f"derive_identical={derive_with == derive_without}")
+
+
 CHECKS = [
     ("US1 product fidelity section (values, byte-identity, no em-dash)", check1_fidelity_section),
     ("US1 generation refs list ([style, logo] + products; prefix byte-stable)", check2_refs_list),
     ("US1 repeatable --product-image collects in order", check3_argparse_append),
+    ("US1 conductor threads product_images at BOTH call sites; legacy absent", check4_conductor_threading),
+    ("US1 cap + missing-file fail LOUD (never truncate)", check5_cap_and_missing_fail_loud),
+    ("US1 calibration isolation (calibrate/derive argv identical with products)", check6_calibration_isolation),
 ]
 
 
