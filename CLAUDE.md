@@ -133,7 +133,31 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `012-lossless-brief` - BUILT (US1-US5) + structurally green
+**Active feature:** `013-role-tagged-references` - BUILT (US1-US3) + structurally green
+(test_product_refs 9/9; conductor + render_and_scrub + render_modes + register_render_aware +
+frontend_nav + lossless_brief + reference_upload + frontend_runner/stages + thin_route all green).
+References now carry ROLES: the STYLE reference keeps its exact semantics (required; calibration
+magnitude + dial + exemplar, refs[0]); PRODUCT references (0..MAX_PRODUCT_IMAGES=6, NEW) are
+brand-HARD content, per-run campaign assets: uploaded as distinct multipart parts product_1..N
+(the parser is last-wins per name), saved via the ONE shared save_upload as product_<i>.<ext>,
+threaded as repeatable --product-image at BOTH conductor call sites (stubbed-execute drift guard),
+APPENDED to the generation refs after the byte-stable [style, logo] prefix
+(scene_author._thin_generation_refs, pure; generate.py untouched, images.edit already takes a
+list), and bound by a conditional PRODUCT FIDELITY prompt section (same shapes/printed branding/
+label text/colors, no generic redraws, backgrounds discardable). Zero products = prompt AND refs
+byte-identical (proven against the pre-013 literal); calibrate/derive argv provably identical with
+and without products (calibration isolation); over-cap or missing files fail LOUD (never
+truncated); manifests record the product list. The brand-asset seam is deliberate: logo stays
+BRAND-level (onboarding places brands/<brand>/, fed every run); products are CAMPAIGN-level
+(run-dir uploads); a durable brand-level product library is DEFERRED to 015 brand-key enrichment
+(would reuse this feed path, only changing where paths come from). Scope: scene_author thin prompt
++ refs, conductor threading/validation, server multipart + writer, form controls; register engine,
+calibration, kit/legacy, generate.py, multipart.py untouched. Pending: T009, the ONE paid eye-gate
+(rerun the CJXQ watermelon brief WITH the branded cup shots as product refs: the real 茶救星球
+cups appear, printed logos visible, 012 style retained). Spec/plan/tasks:
+`specs/013-role-tagged-references/`.
+
+Prior feature `012-lossless-brief` - BUILT (US1-US5) + structurally green
 (test_lossless_brief 6/6; conductor + render_and_scrub + render_modes + register_render_aware +
 frontend_nav all green). The INPUT GATE stopped leaking: `asset_type` + `occasion` now reach the thin
 prompt VERBATIM as a SCENE/SUBJECT context section (never-paintable framing per the slogan lesson;
@@ -198,5 +222,5 @@ verify_reuse 6; the designer-facing browser wizard wrapping the 005 PURE modules
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/012-lossless-brief/plan.md
+at specs/013-role-tagged-references/plan.md
 <!-- SPECKIT END -->

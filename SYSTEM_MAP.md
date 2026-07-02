@@ -1,6 +1,40 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-01._
 
+> **▶ BUILD STATUS 2026-07-01 (latest): feature 013 (role-tagged references: style + product) is BUILT + structurally green.**
+> The single do-everything reference is SPLIT INTO ROLES. Motivation: the 012 eye-gate run
+> (`run_CJXQ_20260701_164912`) lost the printed cup logos because product fidelity was a requested favor
+> (a prompt line + the logo file) rather than a supplied fact; a realism note made the model regenerate
+> generic photoreal cups instead of carrying the reference's branded ones. New: the STYLE reference keeps
+> today's exact semantics (required; calibration magnitude + relationship dial + visual exemplar; refs[0]);
+> PRODUCT references (0..6, `conductor.MAX_PRODUCT_IMAGES`, mirrored in server.py with a drift-guard test)
+> are per-run photos of the REAL products: uploaded on the form as an optional multi-file control whose
+> files ride as DISTINCT multipart parts product_1..N (frontend/multipart.py is last-wins per part name,
+> so same-named parts would silently drop files, the loss class 012 killed), saved through the ONE shared
+> `uploads.save_upload` home as product_<i>.<ext> in the run dir, passed VERBATIM through
+> `inputs_writer` -> `inputs.product_images` -> repeatable `--product-image` at BOTH conductor call sites
+> (build_plan AND execute, asserted with the stubbed-run_step pattern), APPENDED to the generation input
+> list after the byte-stable [style, logo] prefix (the new pure `scene_author._thin_generation_refs`;
+> `harness/generate.py` untouched, images.edit already accepts a list, 8 total inputs max vs the API's 16),
+> and bound by a conditional PRODUCT FIDELITY prompt section (the N supplied images are the brand's REAL
+> products: same shapes, printed branding, label text, colors; no generic redraws; only backgrounds
+> discardable). HONEST NULLS + ISOLATION: zero products = prompt AND refs list byte-identical to pre-013
+> (proven against inlined literals); over-cap or missing files fail LOUD at both gates (form error +
+> validate_inputs named error), never truncated; calibrate/derive argv provably IDENTICAL with and without
+> products (product truth never reaches magnitude/register, so 011 is untouched); both manifests record the
+> product list. THE BRAND-ASSET SEAM (per the operator's direction): the logo stays a BRAND-level asset
+> (onboarding's persist.place_logo -> brands/<brand>/, fed on every run); product shots are CAMPAIGN-level
+> (per-run uploads); both meet only in the generation refs list. A durable brand-level PRODUCT LIBRARY
+> (evergreen hero shots chosen at onboarding) is DEFERRED to 015 brand-key enrichment and would reuse this
+> exact feed path. Tests: test_product_refs 9/9 (fidelity section + byte-identity, refs prefix equality,
+> argparse append, BOTH-call-sites threading, cap + missing fail-loud, calibration isolation, legacy shape,
+> multipart 0/2/7 + shared-home saves + cap drift guard, form greps); all prior suites green incl.
+> reference_upload 6/6 updated to the extended parse_run_form 3-tuple; NO paid calls. PENDING +
+> LOAD-BEARING: SC-006, the human eye-gate (T009): ONE paid rerun of the CJXQ watermelon brief WITH the
+> branded cup shots as product refs, judged against run_..._164912: the actual 茶救星球 JO'S CHA cups
+> (printed logos visible) instead of generic look-alikes, 012's style/scene quality retained.
+> Spec/plan/tasks: `specs/013-role-tagged-references/`.
+
 > **▶ BUILD STATUS 2026-07-01 (later): feature 012 (lossless brief / field honesty) is BUILT + structurally green.**
 > The INPUT GATE stopped leaking. A field audit of the CJXQ watermelon run found the form collecting
 > intent that never reached generation: `asset_type` + `occasion` stopped in glue artifacts only the
