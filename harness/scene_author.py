@@ -808,6 +808,23 @@ def assemble_final_prompt(brand_key: dict, tier3: dict, asset_profile: str = "ph
 # Stdlib-only (no model call) so it is import-and-assert testable.
 # --------------------------------------------------------------------------- #
 
+def _thin_generation_refs(ref_image, logo_path, logo_omit: bool, product_images=None) -> list:
+    """Feature 013: the ordered input-image list for the ONE thin generation call.
+    Products are APPENDED after the pre-013 [style_ref, logo] prefix, so the zero-products
+    list is byte-identical to the historical one. Pure function (testable without a paid call).
+    Fallback (unchanged): images.edit needs at least one input image, so an empty list becomes
+    [logo] even under logo:omit (the prompt forbids rendering it; the caller prints the note)."""
+    refs = []
+    if ref_image:
+        refs.append(ref_image)
+    if not logo_omit:
+        refs.append(logo_path)
+    refs += [str(p) for p in (product_images or [])]
+    if not refs:
+        refs = [logo_path]
+    return refs
+
+
 _DIAL_HINTS = {
     "extend": "treat the supplied reference as a visual-style TEMPLATE to extend — keep its look "
               "and DNA, change only the message.",
@@ -845,7 +862,7 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
                          dial: str | None = None, mandatory=None, forbidden=None,
                          asset_profile: str = "flat_graphic",
                          has_reference: bool = False, style_notes=None,
-                         asset_type=None, occasion=None) -> str:
+                         asset_type=None, occasion=None, product_images=None) -> str:
     """Build ONE gpt-image-2 generation prompt directly from the brief (FR-001):
       - the per-sign messages VERBATIM (gpt paints the text for now — tracked debt),
       - the campaign + per-sign mandatory/forbidden via prompt_elements (verbatim, e.g. 分别画叉),
@@ -973,6 +990,19 @@ def assemble_thin_prompt(brand_key: dict, messages, register_profile: dict | Non
         lines.append("A reference image is provided as a visual exemplar — use it as designed-in "
                      "guidance for style and composition (reference + prompt), not to copy verbatim.")
 
+    # 6b. product fidelity (feature 013): the supplied product shots are brand-HARD content,
+    # carried into the composition as facts (like the logo), never regenerated as generic
+    # stand-ins. Style stays the task-SOFT exemplar above; the two roles never blur. Absent
+    # products = NO section (byte-identical prompt).
+    n_products = len(product_images or [])
+    if n_products:
+        lines.append("")
+        lines.append(f"PRODUCT FIDELITY (the {n_products} additional supplied image(s) are the "
+                     "brand's REAL products): carry these exact products into the composition "
+                     "faithfully. Same shapes, same printed branding and label text, same colors. "
+                     "Do NOT redraw them as generic products, do NOT invent replacements. Only "
+                     "their backgrounds may be discarded.")
+
     # NOTE: the brand slogan is deliberately NOT injected here. On the thin route gpt paints any
     # Chinese it sees, so passing the slogan as text made it hallucinate a tagline (健康长久好生活)
     # onto every sign. The headline lines above are the ONLY words allowed on the sign.
@@ -1009,6 +1039,7 @@ def run_thin_mode(args) -> None:
     dial = getattr(args, "dial", "") or None
     has_reference = bool(args.ref_image)
     style_notes = [s.strip() for s in str(getattr(args, "style_notes", "")).split(";") if s.strip()] or None
+    product_images = list(getattr(args, "product_image", None) or [])
 
     if args.explain:
         print(json.dumps({
@@ -1041,7 +1072,8 @@ def run_thin_mode(args) -> None:
                                   asset_profile=args.asset_profile, has_reference=has_reference,
                                   style_notes=style_notes,
                                   asset_type=getattr(args, "asset_type", "") or None,
-                                  occasion=getattr(args, "occasion", "") or None)
+                                  occasion=getattr(args, "occasion", "") or None,
+                                  product_images=product_images)
     prompt_path = out_dir / "final_prompt.txt"
     prompt_path.write_text(prompt, encoding="utf-8")
     print(f"  Saved {prompt_path}  ({prompt_path.stat().st_size} bytes)")
@@ -1052,15 +1084,8 @@ def run_thin_mode(args) -> None:
     out_png = str(out_dir / "generated.png")
     logo_omit = "logo:omit" in (register_profile or {}).get("brand_locks_flexed", [])
     logo_path = brand_key.get("logo_path", LOGO_PATH)
-    refs = []
-    if args.ref_image:
-        refs.append(args.ref_image)
-    if not logo_omit:
-        refs.append(logo_path)
-    if not refs:
-        # generate_variant (images.edit) needs at least one reference image; pass the logo file
-        # even though the prompt forbids rendering it (logo:omit). Honest note.
-        refs = [logo_path]
+    refs = _thin_generation_refs(args.ref_image, logo_path, logo_omit, product_images)
+    if refs == [logo_path] and logo_omit and not args.ref_image:
         print("  [note] logo:omit + no --ref-image — logo file passed as the required reference; "
               "the prompt forbids rendering it", file=sys.stderr)
     gen_meta = generate_variant(prompt, refs, out_png,
@@ -1081,6 +1106,7 @@ def run_thin_mode(args) -> None:
         "messages": messages,
         "dial": dial,
         "reference_fed": has_reference,
+        "product_images": product_images,
         "mandatory_elements": mandatory,
         "forbidden_elements": forbidden,
         "size": f"{canvas_wh[0]}x{canvas_wh[1]}",
@@ -1417,6 +1443,10 @@ def main():
                         "(verbatim text + mandatory/forbidden + palette + dial + ref) and let "
                         "gpt-image-2 compose the WHOLE sign. STOPS at generated.png — no kit, no "
                         "tier-3, no compose_select, no measure, no composite. Moat deferred.")
+    parser.add_argument("--product-image", action="append", default=None,
+                        help="(013, thin only, repeatable) a REAL product shot fed to generation "
+                             "as an additional input image and bound by the PRODUCT FIDELITY "
+                             "section; order preserved")
     parser.add_argument("--asset-type", default="",
                         help="(012, thin only) the brief's asset_type VERBATIM; rendered in the "
                              "SCENE/SUBJECT context section, never as text on the asset")
