@@ -50,7 +50,7 @@ def to_inputs(form_state: dict) -> dict:
     if fs.get("sign_forbidden_elements"):
         sign["forbidden_elements"] = _str_list(fs.get("sign_forbidden_elements"))
 
-    return {
+    out = {
         "asset_type": str(fs.get("asset_type") or "").strip(),
         "render_style": str(fs.get("render_style") or "flat vector"),  # 009: user term, mapped downstream
         "format_size": (str(fs.get("format_size")).strip() or None) if fs.get("format_size") else None,
@@ -72,6 +72,11 @@ def to_inputs(form_state: dict) -> dict:
         },
         "signs": [sign],
     }
+    # Feature 013: product shots (server-saved paths) pass through VERBATIM when present;
+    # absent = key absent (pre-013 inputs byte-identical, honest null).
+    if fs.get("product_images"):
+        out["product_images"] = [str(p) for p in fs["product_images"]]
+    return out
 
 
 def write_inputs(form_state: dict, path) -> Path:

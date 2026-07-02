@@ -209,6 +209,66 @@ def check7_style_only_end_to_end():
     return passed, f"legacy_validates_without_key={no_key}; plan_clean={clean}"
 
 
+def _multipart_body(files, form_json='{"brand":"aia"}'):
+    """Build a multipart body: one `form` field + the given {part_name: (filename, bytes)}."""
+    B = "testboundary42"
+    parts = [f'--{B}\r\nContent-Disposition: form-data; name="form"\r\n\r\n{form_json}\r\n']
+    for part_name, (fn, data) in files.items():
+        parts.append(f'--{B}\r\nContent-Disposition: form-data; name="{part_name}"; '
+                     f'filename="{fn}"\r\nContent-Type: image/png\r\n\r\n')
+        parts.append(data)
+        parts.append("\r\n")
+    parts.append(f"--{B}--\r\n")
+    body = b"".join(p if isinstance(p, bytes) else p.encode("utf-8") for p in parts)
+    return body, f"multipart/form-data; boundary={B}"
+
+
+def check8_server_multipart_products():
+    """T005 contract rows 9-10: parse_run_form 0/2/7 product parts (7 rejects naming the cap);
+    write_run_inputs saves product_<i>.<ext> via the shared home and injects the paths in
+    order; the 0-product case stays a pre-013 inputs file (no key). Plus a cap drift guard
+    (server constant == conductor constant)."""
+    import json as _json
+    import tempfile
+    import server
+
+    ref = {"reference": ("style.jpg", b"REF")}
+    # 0 products: today's behavior, 3-tuple with an empty list
+    b0, ct = _multipart_body(dict(ref))
+    f0, r0, p0 = server.parse_run_form(b0, ct)
+    zero_ok = p0 == [] and r0[0] == "style.jpg"
+    # 2 products, distinct part names, order by numeric suffix
+    b2, ct = _multipart_body(dict(ref, product_2=("cupB.png", b"B"), product_1=("cupA.png", b"A")))
+    _, _, p2 = server.parse_run_form(b2, ct)
+    two_ok = [t[0] for t in p2] == ["cupA.png", "cupB.png"]
+    # 7 products: ValueError naming the cap, never truncation
+    seven = {f"product_{i}": (f"c{i}.png", b"x") for i in range(1, 8)}
+    b7, ct = _multipart_body(dict(ref, **seven))
+    try:
+        server.parse_run_form(b7, ct)
+        seven_ok = False
+    except ValueError as e:
+        seven_ok = "6" in str(e)
+    # write_run_inputs: saved names + injected ordered paths; 0-product file has no key
+    with tempfile.TemporaryDirectory() as d:
+        run_dir = Path(d) / "run"
+        form = {"reference_image": "", "messages": ["m"], "product_images": None}
+        ip = server.write_run_inputs({"messages": ["m"]}, ("style.jpg", b"REF"), run_dir,
+                                     products=[("cupA.png", b"A"), ("cupB.png", b"B")])
+        inputs = _json.loads(Path(ip).read_text("utf-8"))
+        saved = inputs.get("product_images") or []
+        write_ok = ([Path(p).name for p in saved] == ["product_1.png", "product_2.png"]
+                    and all(Path(p).is_file() for p in saved)
+                    and Path(p2 := saved[0]).read_bytes() == b"A")
+        ip0 = server.write_run_inputs({"messages": ["m"]}, ("style.jpg", b"REF"),
+                                      Path(d) / "run0", products=[])
+        no_key = "product_images" not in _json.loads(Path(ip0).read_text("utf-8"))
+    cap_guard = server.MAX_PRODUCT_IMAGES == conductor.MAX_PRODUCT_IMAGES
+    passed = zero_ok and two_ok and seven_ok and write_ok and no_key and cap_guard
+    return passed, (f"zero={zero_ok}; two_ordered={two_ok}; seven_named_cap={seven_ok}; "
+                    f"saved+injected={write_ok}; zero_no_key={no_key}; cap_drift_guard={cap_guard}")
+
+
 CHECKS = [
     ("US1 product fidelity section (values, byte-identity, no em-dash)", check1_fidelity_section),
     ("US1 generation refs list ([style, logo] + products; prefix byte-stable)", check2_refs_list),
@@ -217,6 +277,7 @@ CHECKS = [
     ("US1 cap + missing-file fail LOUD (never truncate)", check5_cap_and_missing_fail_loud),
     ("US1 calibration isolation (calibrate/derive argv identical with products)", check6_calibration_isolation),
     ("US2 style-only brief byte-identical end to end (legacy shape untouched)", check7_style_only_end_to_end),
+    ("US3 multipart product uploads (0/2/7 parts, shared save home, cap guard)", check8_server_multipart_products),
 ]
 
 

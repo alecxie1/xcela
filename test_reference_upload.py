@@ -71,7 +71,7 @@ def check2_run_assembly_points_at_saved_file():
     body = _run_body(form_in, ref_name="myref.jpg")
     with tempfile.TemporaryDirectory() as d:
         run_dir = Path(d) / "run_test"
-        form, ref = server.parse_run_form(body, CT)
+        form, ref, _prods = server.parse_run_form(body, CT)
         inputs_path = server.write_run_inputs(form, ref, run_dir)
         inputs = json.loads(Path(inputs_path).read_text(encoding="utf-8"))
         ref_path = inputs.get("reference_image")
@@ -108,7 +108,7 @@ def check5_verbatim_other_fields():
     mand = ["分别画叉"]
     body = _run_body({"brand": "aia", "messages": msgs, "mandatory_elements": mand})
     with tempfile.TemporaryDirectory() as d:
-        form, ref = server.parse_run_form(body, CT)
+        form, ref, _prods = server.parse_run_form(body, CT)
         inputs = json.loads(Path(server.write_run_inputs(form, ref, Path(d) / "run")).read_text("utf-8"))
         msgs_ok = inputs["signs"][0]["messages"] == msgs
         mand_ok = inputs["mandatory_elements"] == mand

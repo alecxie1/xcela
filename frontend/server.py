@@ -12,6 +12,7 @@ runs fine with this server absent.
 
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -32,6 +33,7 @@ HERE = Path(__file__).resolve().parent
 OUTPUT = REPO_ROOT / "output"
 ANSWER_KEYS = REPO_ROOT / "answer_keys"
 PER_RUN_COST_USD = 0.08  # single-sign gpt-image-2; labeled on the Run button (FR-009)
+MAX_PRODUCT_IMAGES = 6   # feature 013: mirrors conductor.MAX_PRODUCT_IMAGES (drift-guarded by test)
 
 _inflight = threading.Lock()  # single-flight: one run at a time
 
@@ -41,13 +43,13 @@ def _brands() -> list:
 
 
 def parse_run_form(body: bytes, content_type: str):
-    """Parse a multipart /run body into (form_dict, reference_tuple). HTTP-free, so it is
-    unit-testable without launching a run (feature 007). The brief rides as ONE JSON field `form`
-    (mirroring /onboard/save's `verified` field); the reference is the `reference` file part.
-    Raises ValueError (fail loud) on a missing / empty reference file or invalid form JSON: a missing
-    reference must launch NOTHING (FR-005). `inputs_writer.to_inputs` also raises on an empty
-    reference_image (a backstop); this guard fires FIRST so the user sees this message, not a
-    ValueError surfaced via the generic handler."""
+    """Parse a multipart /run body into (form_dict, reference_tuple, product_tuples). HTTP-free, so
+    it is unit-testable without launching a run (feature 007). The brief rides as ONE JSON field
+    `form` (mirroring /onboard/save's `verified` field); the STYLE reference is the `reference` file
+    part; product shots (feature 013, optional) ride as DISTINCT parts product_1..product_N (the
+    parser is last-wins per part name, so same-named parts would silently drop files). Raises
+    ValueError (fail loud) on a missing / empty reference file, invalid form JSON, or more than
+    MAX_PRODUCT_IMAGES product parts (over-cap is a visible error, never a silent truncation)."""
     parsed = multipart.parse_multipart(body, content_type)
     try:
         form = json.loads(parsed["fields"].get("form") or "{}")
@@ -56,17 +58,29 @@ def parse_run_form(body: bytes, content_type: str):
     ref = parsed["files"].get("reference")
     if not ref or not ref[1]:
         raise ValueError("a reference image is required (v1)")
-    return form, ref
+    prod_keys = sorted((k for k in parsed["files"] if re.fullmatch(r"product_\d+", k)),
+                       key=lambda k: int(k.split("_")[1]))
+    products = [parsed["files"][k] for k in prod_keys if parsed["files"][k][1]]
+    if len(products) > MAX_PRODUCT_IMAGES:
+        raise ValueError(f"at most {MAX_PRODUCT_IMAGES} product shots are supported "
+                         f"(got {len(products)}); remove some and rerun")
+    return form, ref, products
 
 
-def write_run_inputs(form: dict, reference, run_dir: Path) -> Path:
+def write_run_inputs(form: dict, reference, run_dir: Path, products=None) -> Path:
     """Save the uploaded reference INTO run_dir (preserving its extension), inject that saved path as
     `reference_image`, and write the 002-shape inputs JSON (feature 007). HTTP-free, testable. The
     conductor / CLI input contract is UNCHANGED: `reference_image` stays a path on disk (only its
-    SOURCE changes, a server-saved upload instead of a designer-typed string)."""
+    SOURCE changes, a server-saved upload instead of a designer-typed string). Feature 013: product
+    shots (optional) save through the SAME shared upload home as product_<i>.<ext> and their paths
+    ride as form["product_images"]; zero products = no key (pre-013 inputs byte-identical)."""
     ext = os.path.splitext(reference[0])[1]
     ref_path = uploads.save_upload(reference, run_dir, name="reference" + ext)
     form["reference_image"] = ref_path
+    saved = [uploads.save_upload(p, run_dir, name=f"product_{i}{os.path.splitext(p[0])[1]}")
+             for i, p in enumerate(products or [], 1)]
+    if saved:
+        form["product_images"] = saved
     return inputs_writer.write_inputs(form, run_dir / "inputs.json")
 
 
@@ -139,7 +153,8 @@ class Handler(BaseHTTPRequestHandler):
         # Feature 007: the reference is a real file UPLOAD now (multipart), not a typed path. Parse +
         # require the reference here; a missing reference fails loud BEFORE any run dir / single-flight.
         try:
-            form, reference = parse_run_form(self._read_body(), self.headers.get("Content-Type", ""))
+            form, reference, products = parse_run_form(self._read_body(),
+                                                       self.headers.get("Content-Type", ""))
         except ValueError as exc:
             return self._send(400, {"error": str(exc)})  # fail loud; no run launched (FR-005)
         brand = str(form.get("brand") or "").strip()
@@ -151,7 +166,8 @@ class Handler(BaseHTTPRequestHandler):
             run_id = f"run_{brand}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             run_dir = OUTPUT / run_id
             run_dir.mkdir(parents=True, exist_ok=True)
-            inputs_path = write_run_inputs(form, reference, run_dir)  # saves the upload into the run dir
+            inputs_path = write_run_inputs(form, reference, run_dir,  # saves the uploads into the run dir
+                                           products=products)
             _launch_async(run_dir, brand, inputs_path, form.get("style_notes") or None)
         except Exception as exc:  # noqa: BLE001
             if _inflight.locked():
