@@ -193,6 +193,22 @@ def check6_calibration_isolation():
                     f"derive_identical={derive_with == derive_without}")
 
 
+def check7_style_only_end_to_end():
+    """T004/US2 (contract rows 7, 13, 14 consolidation): a verbatim pre-013 brief (no
+    product_images key) yields a plan whose scene_author argv has NO --product-image and whose
+    calibrate argv is unchanged; validate_inputs passes it untouched; the zero-products refs
+    equality is already pinned by check2. A build that invents a default product list fails."""
+    legacy = _inputs()  # no product_images key at all (the pre-013 shape)
+    validated = conductor.validate_inputs(dict(legacy, signs=[dict(s) for s in legacy["signs"]]))
+    no_key = "product_images" not in validated
+    sa = _plan_argvs(legacy, "scene_author")
+    cal = _plan_argvs(legacy, "calibrate")
+    clean = (bool(sa) and all("--product-image" not in a for a in sa)
+             and bool(cal) and all("product" not in " ".join(a) for a in cal))
+    passed = no_key and clean
+    return passed, f"legacy_validates_without_key={no_key}; plan_clean={clean}"
+
+
 CHECKS = [
     ("US1 product fidelity section (values, byte-identity, no em-dash)", check1_fidelity_section),
     ("US1 generation refs list ([style, logo] + products; prefix byte-stable)", check2_refs_list),
@@ -200,6 +216,7 @@ CHECKS = [
     ("US1 conductor threads product_images at BOTH call sites; legacy absent", check4_conductor_threading),
     ("US1 cap + missing-file fail LOUD (never truncate)", check5_cap_and_missing_fail_loud),
     ("US1 calibration isolation (calibrate/derive argv identical with products)", check6_calibration_isolation),
+    ("US2 style-only brief byte-identical end to end (legacy shape untouched)", check7_style_only_end_to_end),
 ]
 
 
