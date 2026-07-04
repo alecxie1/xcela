@@ -19,6 +19,11 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# Feature 014: the marketing-keywords row is NAMED so the vibe promotion below can recognize
+# by IDENTITY that the base came from an explicit human marketing statement (this exact tuple
+# object is the row in USAGE_RULES; identity comparison cannot drift from the matching logic).
+MARKETING_USAGE_KEYWORDS = ("marketing", "social", "instagram", "promotional")
+
 # usage_context keywords -> base register (first matching row wins; checked in order).
 USAGE_RULES = [
     (("held for photos", "posed with", "photo", "worn / carried"), "event_prop"),
@@ -28,7 +33,7 @@ USAGE_RULES = [
     # Feature 011 (FR-006): common marketing words match EXPLICITLY instead of falling
     # through to the unmatched default. Appended LAST so every earlier row (including the
     # explicit event-prop phrases, the human's hard signal) keeps its precedence.
-    (("marketing", "social", "instagram", "promotional"), "marketing"),
+    (MARKETING_USAGE_KEYWORDS, "marketing"),
 ]
 
 # register -> design-language hints (the leap's payload).
@@ -84,10 +89,13 @@ def derive_register(subfields: dict, brand_key: dict, calibration: dict | None =
 
     # --- 1. base register from usage_context (rule table) ---
     base = None
+    base_row = None  # feature 014: WHICH row matched (identity), so the promotion can tell
+    base_hit = None  # an explicit human statement from a default guess; keyword kept for trace
     for keywords, reg in USAGE_RULES:
         hit = next((k for k in keywords if k in usage), None)
         if hit:
             base = reg
+            base_row, base_hit = keywords, hit
             trace.append(f"usage_context={subfields.get('usage_context')!r} matched {hit!r} => {reg} base")
             break
     if base is None:
@@ -117,6 +125,16 @@ def derive_register(subfields: dict, brand_key: dict, calibration: dict | None =
                 trace.append(f"vibe would promote to event_prop (formality={formality}<=3, "
                              f"playfulness={playfulness}>=7) but render_style={render_style!r} "
                              "is photographic, a marketing photo rather than a flat prop "
+                             "=> promotion SUPPRESSED, register stays marketing")
+            elif base_row is MARKETING_USAGE_KEYWORDS:
+                # Feature 014: the base came from an EXPLICIT human marketing statement (the
+                # named keywords row), not a default guess; a vibe heuristic must not override
+                # a human signal (constitution I, the same principle as the 011 photo gate).
+                # Photo gate first keeps the 011 trace byte-identical and yields exactly ONE
+                # suppression line when both gates apply.
+                trace.append(f"vibe would promote to event_prop (formality={formality}<=3, "
+                             f"playfulness={playfulness}>=7) but usage_context explicitly "
+                             f"matched {base_hit!r} (a human marketing statement, not a guess) "
                              "=> promotion SUPPRESSED, register stays marketing")
             else:
                 base = "event_prop"
