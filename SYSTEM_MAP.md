@@ -1,5 +1,32 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-07-01._
+_Single source of truth for "what is this whole thing." Updated 2026-07-04._
+
+> **▶ BUILD STATUS 2026-07-04: feature 014 (explicit usage wins over the vibe guess) is BUILT + structurally green.**
+> The register engine's LAST known leak between stated intent and register is closed. Observed on
+> `run_CJXQ_20260701_173925`: a flat-vector "promotional social media post" from the playful CJXQ brand
+> matched the explicit marketing keyword 'social' (the 011 US4 row), then the flat-vector-era vibe
+> promotion (formality<=3 + playfulness>=7 promotes marketing->event_prop) OVERRODE that explicit human
+> match and the post rendered as a hand-held die-cut sign. 011's gate was render-keyed only (photo lane);
+> on the flat lane a machine guess still beat a human statement (constitution I violation, the same class
+> 011 killed). New, in `register/derive_register.py` ONLY (~14 lines): the marketing row is hoisted to the
+> named `MARKETING_USAGE_KEYWORDS` constant used AS the row in USAGE_RULES (identity comparison, cannot
+> drift from the matcher); the match loop records which row + keyword produced the base; ONE elif between
+> the 011 photo gate and the promotion suppresses when the base came from that row, tracing "usage_context
+> explicitly matched 'social' (a human marketing statement, not a guess) => promotion SUPPRESSED". Photo
+> gate stays FIRST: exactly one suppression line when both gates apply (FR-006), the 011 photo trace
+> byte-unchanged. BLAST RADIUS PINNED: wall-posted + playful stays event_prop BYTE-IDENTICAL on both the
+> flat and absent lanes (asserted against the imported 011 baseline literal, so over-suppression cannot
+> ship); the unmatched default still promotes (a vibe guess on top of a default guess is legitimate);
+> event rows keep absolute precedence ("instagram photo" -> event_prop via 'photo', zero suppressions,
+> both lanes). Tone retention (011) applies to the newly suppressed cases automatically (keys on
+> register+vibe): the result is a playful flat MARKETING poster, not a corporate one, not a prop. VERIFIED
+> LIVE free: the exact 173925 subfields.json now derives marketing + the keyword suppression + tone flexes,
+> no die-cut. Tests: test_explicit_usage_wins 4/4 (all four keywords x three non-photo renders; double
+> gate single-entry; byte-identity both lanes; default promotion; precedence both lanes; 011 photo lane
+> pinned); seven-suite sweep green (register_render_aware 8/8 survives, its check7 never asserted the
+> final register). EYE (SC-005, cheap path): the register value is fully proven by the free trace; the
+> operator confirms on the next natural FLAT paid run (T007, can share a session with 013's pending T009
+> branded-cups gate). Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
 
 > **▶ BUILD STATUS 2026-07-01 (latest): feature 013 (role-tagged references: style + product) is BUILT + structurally green.**
 > The single do-everything reference is SPLIT INTO ROLES. Motivation: the 012 eye-gate run

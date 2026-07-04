@@ -133,7 +133,25 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `013-role-tagged-references` - BUILT (US1-US3) + structurally green
+**Active feature:** `014-explicit-usage-wins` - BUILT (US1-US3) + structurally green
+(test_explicit_usage_wins 4/4; the seven-suite sweep incl. register_render_aware 8/8 green).
+The LAST register leak is closed: the flat-vector-era vibe promotion (playful+informal promotes
+marketing->event_prop) no longer overrides an EXPLICIT match on the marketing-keywords row.
+`MARKETING_USAGE_KEYWORDS` is a named constant used AS the row in USAGE_RULES (identity-comparable,
+cannot drift from the matcher); the match loop records base_row + keyword; ONE elif between the 011
+photo gate and the promotion suppresses with a trace line naming the keyword ("a human marketing
+statement, not a guess"). Photo gate FIRST: exactly one suppression line in the double-gate case,
+011 photo trace byte-unchanged. Wall-posted + playful stays event_prop BYTE-IDENTICAL on both flat
+and absent lanes (pinned against the imported 011 literal); the unmatched default still promotes
+(a vibe guess on a default guess is legitimate); event rows keep absolute precedence ("instagram
+photo" -> event_prop, zero suppressions). Tone retention applies automatically (keys on
+register+vibe). Fixes run_CJXQ_20260701_173925 (a flat "promotional social media post" rendered as
+a hand-held sign); the exact defect subfields now derive marketing + tone, verified live. Scope:
+`register/derive_register.py` ONLY (~14 lines). Eye: SC-005 cheap path (the free trace proves the
+register; the eye confirms on the next natural flat run, T007 pending alongside 013's T009).
+Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
+
+Prior feature `013-role-tagged-references` - BUILT (US1-US3) + structurally green
 (test_product_refs 9/9; conductor + render_and_scrub + render_modes + register_render_aware +
 frontend_nav + lossless_brief + reference_upload + frontend_runner/stages + thin_route all green).
 References now carry ROLES: the STYLE reference keeps its exact semantics (required; calibration
@@ -222,5 +240,5 @@ verify_reuse 6; the designer-facing browser wizard wrapping the 005 PURE modules
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/013-role-tagged-references/plan.md
+at specs/014-explicit-usage-wins/plan.md
 <!-- SPECKIT END -->
