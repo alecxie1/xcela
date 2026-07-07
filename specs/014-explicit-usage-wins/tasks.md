@@ -134,11 +134,13 @@ one phrase) resolves `event_prop` via the event row with zero suppression entrie
       single-entry trace rule, the cheap SC-005 eye path). No em-dashes in new text.
       Commit: `docs(014): CLAUDE.md + SYSTEM_MAP currency (T006)`.
 
-- [ ] T007 DEFERRED EYE CONFIRMATION (SC-005, cheap path; quickstart §4): no dedicated paid run.
-      On the next natural FLAT paid run from a playful brand with marketing usage (or a rerun of
-      the 173925 brief whenever convenient, possibly the same session as 013's pending T009
-      product-refs gate), the operator confirms by eye: a flat rectangular marketing poster with
-      playful tone, NOT a hand-held die-cut sign. Record the verdict in SYSTEM_MAP.
+- [X] T007 DEFERRED EYE CONFIRMATION (SC-005) - PASSED 2026-07-07 by the operator on
+      `output/run_CJXQ_20260707_141245` (the 173925 re-brief: flat vector, "promotional social
+      media post", vibe 2/8, plus one product shot): register=marketing via the 'social'
+      suppression line (exactly one), no die-cut flex, flat+marketing rectangular opener; the
+      image reads as a playful flat rectangular marketing poster (bubbly type, candy palette,
+      mascots), NOT a hand-held sign. The same run also demonstrates 013 product fidelity on
+      the flat lane: the branded JO'S CHA cups appear with printed logos. Feature COMPLETE.
 
 ---
 

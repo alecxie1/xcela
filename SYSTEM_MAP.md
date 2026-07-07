@@ -24,9 +24,17 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-04._
 > no die-cut. Tests: test_explicit_usage_wins 4/4 (all four keywords x three non-photo renders; double
 > gate single-entry; byte-identity both lanes; default promotion; precedence both lanes; 011 photo lane
 > pinned); seven-suite sweep green (register_render_aware 8/8 survives, its check7 never asserted the
-> final register). EYE (SC-005, cheap path): the register value is fully proven by the free trace; the
-> operator confirms on the next natural FLAT paid run (T007, can share a session with 013's pending T009
-> branded-cups gate). Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
+> final register). EYE-GATE PASSED (SC-005, T007, 2026-07-07): the operator judged
+> `run_CJXQ_20260707_141245`, the exact 173925 re-brief (flat vector, "promotional social media post",
+> vibe 2/8): register=marketing via ONE 'social' suppression line, no die-cut flex, the flat+marketing
+> rectangular opener, and the image reads as a playful flat rectangular marketing poster (bubbly type,
+> candy palette, mascots on flat scenery), NOT a hand-held sign. Feature COMPLETE. BONUS: the run carried
+> one product shot and the output composes the REAL branded JO'S CHA cups (printed 茶救星球 logos visible,
+> photoreal cups over flat-vector scenery), demonstrating 013's product fidelity on the flat lane; 013's
+> formal T009 (photographic rerun judged against run_..._164912) remains open at the operator's option.
+> Minor taste note for the finishing human: the top logo lockup rendered with a stray character
+> ("JO'S CHA蔬"), the known thin-route logo-paint softness, a nudge or composite-moat item, not a gate
+> failure. Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
 
 > **▶ BUILD STATUS 2026-07-01 (latest): feature 013 (role-tagged references: style + product) is BUILT + structurally green.**
 > The single do-everything reference is SPLIT INTO ROLES. Motivation: the 012 eye-gate run

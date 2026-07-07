@@ -147,9 +147,11 @@ and absent lanes (pinned against the imported 011 literal); the unmatched defaul
 photo" -> event_prop, zero suppressions). Tone retention applies automatically (keys on
 register+vibe). Fixes run_CJXQ_20260701_173925 (a flat "promotional social media post" rendered as
 a hand-held sign); the exact defect subfields now derive marketing + tone, verified live. Scope:
-`register/derive_register.py` ONLY (~14 lines). Eye: SC-005 cheap path (the free trace proves the
-register; the eye confirms on the next natural flat run, T007 pending alongside 013's T009).
-Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
+`register/derive_register.py` ONLY (~14 lines). EYE-GATE T007 PASSED 2026-07-07
+(`run_CJXQ_20260707_141245`, the exact 173925 re-brief, operator-judged: a playful flat rectangular
+marketing poster, not a sign): feature COMPLETE. The run also demonstrated 013 product fidelity on the
+flat lane (real branded cups, printed logos); 013's formal photographic T009 stays open at the
+operator's option. Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
 
 Prior feature `013-role-tagged-references` - BUILT (US1-US3) + structurally green
 (test_product_refs 9/9; conductor + render_and_scrub + render_modes + register_render_aware +
