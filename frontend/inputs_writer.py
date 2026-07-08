@@ -85,3 +85,21 @@ def write_inputs(form_state: dict, path) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(to_inputs(form_state), ensure_ascii=False, indent=2), encoding="utf-8")
     return out
+
+
+def apply_answer(inputs: dict, field: str, value):
+    """Feature 015 (pre-spend gate): apply ONE gate write-back into an inputs dict. `field`
+    is a dotted path into the 002-shape inputs ("context.usage_context", "context.vibe",
+    "render_style", "format_size", "reference_relationship"). Dict values MERGE into an
+    existing dict leaf (context.vibe keeps warmth); everything else is set verbatim.
+    Mutates and returns `inputs` (the caller persists)."""
+    parts = str(field).split(".")
+    node = inputs
+    for p in parts[:-1]:
+        node = node.setdefault(p, {})
+    leaf = parts[-1]
+    if isinstance(value, dict) and isinstance(node.get(leaf), dict):
+        node[leaf].update(value)
+    else:
+        node[leaf] = value
+    return inputs

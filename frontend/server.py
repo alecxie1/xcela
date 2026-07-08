@@ -128,6 +128,75 @@ def decide_confirm(run_dir: Path, cost_label: str):
     return 200, {"ok": True, "state": "confirmed", "cost_stated": cost_label}, launch
 
 
+def _resolve_option_writes(option: dict, provided):
+    """015 (US2): an option's writes, with slider-template values ('<int 0-10>') filled from
+    the request. Raises ValueError (fail loud, US2 scenario 3) on missing/out-of-range
+    numbers; a plain option ignores `provided` entirely (only shipped values are writable)."""
+    w = option["writes"]
+    val = w["value"]
+    if isinstance(val, dict) and any(isinstance(v, str) and v.startswith("<int") for v in val.values()):
+        if not isinstance(provided, dict):
+            raise ValueError('this answer needs numeric values, e.g. {"formality": 4, "playfulness": 6}')
+        filled = {}
+        for k in val:
+            v = provided.get(k)
+            if not isinstance(v, int) or isinstance(v, bool) or not 0 <= v <= 10:
+                raise ValueError(f"{k} must be an integer 0-10 (got {v!r})")
+            filled[k] = v
+        return {"field": w["field"], "value": filled}
+    return {"field": w["field"], "value": val}
+
+
+def decide_answer(run_dir: Path, payload: dict):
+    """HTTP-free answer decision (feature 015, contracts/server-routes.md; unit-testable).
+    Returns (status_code, body, relaunch): `relaunch` is None or {brand, inputs_path,
+    style_notes} for the FREE --phase derive re-run. On success the write-back has been
+    applied to the run dir's inputs.json and the provenance appended to gate_state.json;
+    every refusal leaves both files untouched (the previous derivation stands)."""
+    run_dir = Path(run_dir)
+    gs_path = run_dir / "gate_state.json"
+    if not gs_path.exists():
+        return 404, {"error": "no gated run here (pre-015 runs have no pre-spend gate)"}, None
+    try:
+        gs = json.loads(gs_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return 409, {"error": "gate_state.json unreadable; re-run the derive phase"}, None
+    if gs.get("state") != "awaiting_confirmation":
+        return 409, {"error": f"gate state {gs.get('state')!r} does not accept answers"}, None
+    try:
+        assumptions = json.loads((run_dir / "assumptions.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return 409, {"error": "assumptions.json missing/unreadable; re-run the derive phase"}, None
+    rec = next((r for r in assumptions if r.get("id") == payload.get("assumption_id")), None)
+    if rec is None:
+        return 400, {"error": f"unknown assumption_id {payload.get('assumption_id')!r}; "
+                              f"this gate has: {[r.get('id') for r in assumptions]}"}, None
+    opt = next((o for o in rec.get("options", []) if o.get("label") == payload.get("label")), None)
+    if opt is None:
+        return 400, {"error": f"unknown option {payload.get('label')!r} for "
+                              f"{rec['id']}; offered: {[o.get('label') for o in rec.get('options', [])]}"}, None
+    try:
+        writes = _resolve_option_writes(opt, payload.get("value"))
+    except ValueError as exc:
+        return 400, {"error": str(exc)}, None
+    inputs_path = run_dir / "inputs.json"
+    try:
+        inputs = json.loads(inputs_path.read_text(encoding="utf-8"))
+        meta = json.loads((run_dir / "run_meta.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return 409, {"error": "inputs.json/run_meta.json missing; cannot apply the answer"}, None
+    inputs_writer.apply_answer(inputs, writes["field"], writes["value"])
+    inputs_path.write_text(json.dumps(inputs, ensure_ascii=False, indent=2), encoding="utf-8")
+    now = datetime.now().isoformat(timespec="seconds")
+    gs.setdefault("answers_applied", []).append({
+        "assumption_id": rec["id"], "chosen_label": opt["label"], "written": writes, "at": now})
+    gs["updated"] = now
+    gs_path.write_text(json.dumps(gs, ensure_ascii=False, indent=2), encoding="utf-8")
+    return 200, {"ok": True, "applied": writes}, {
+        "brand": meta["brand"], "inputs_path": inputs_path,
+        "style_notes": meta.get("style_notes")}
+
+
 def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes, phase=None):
     """Run the conductor in a background thread so /stages can poll progressively. We append
     --out <run_dir> so the server can address the run while it runs; build_conductor_argv
@@ -194,9 +263,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._onboard_extract(path[len("/onboard/"):-len("/extract")])
         if path.startswith("/onboard/") and path.endswith("/save"):
             return self._onboard_save(path[len("/onboard/"):-len("/save")])
-        # --- Feature 015: the pre-spend gate's confirm (the ONLY route that spends) ---
+        # --- Feature 015: the pre-spend gate's routes ---
         if path.startswith("/run/") and path.endswith("/confirm"):
             return self._run_confirm(path[len("/run/"):-len("/confirm")])
+        if path.startswith("/run/") and path.endswith("/answer"):
+            return self._run_answer(path[len("/run/"):-len("/answer")])
         # --- Feature 004: the back-half run ---
         if path != "/run":
             return self._send(404, {"error": "not found"})
@@ -233,6 +304,30 @@ class Handler(BaseHTTPRequestHandler):
                 _inflight.release()
             return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
         return self._send(200, {"run_id": run_id, "per_run_cost_usd": PER_RUN_COST_USD})
+
+    def _run_answer(self, run_id):
+        """Feature 015 (US2): apply ONE gate answer, then re-derive FREE (--phase derive on
+        the SAME run dir: calibration.json present means the vision calls are skipped)."""
+        try:
+            payload = json.loads(self._read_body() or b"{}")
+        except json.JSONDecodeError:
+            return self._send(400, {"error": "invalid JSON body"})
+        run_dir = OUTPUT / run_id
+        if not _inflight.acquire(blocking=False):
+            return self._send(409, {"error": "a run is already in flight (single-flight); wait"})
+        launched = False
+        try:
+            code, body, relaunch = decide_answer(run_dir, payload)
+            if relaunch:
+                _launch_async(run_dir, relaunch["brand"], relaunch["inputs_path"],
+                              relaunch["style_notes"], phase="derive")
+                launched = True  # the worker releases the lock
+            return self._send(code, body)
+        except Exception as exc:  # noqa: BLE001
+            return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
+        finally:
+            if not launched and _inflight.locked():
+                _inflight.release()
 
     def _run_confirm(self, run_id):
         """Feature 015 (FR-012): idempotent, cost-stated confirm. State is written BEFORE the

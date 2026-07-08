@@ -551,6 +551,82 @@ def check9_formal_hard_row():
     return passed, f"formal_hard_despite_vibe={a} (failures={failures[:2]}); event_precedence={b}; pinned_inert={c}; option_shipped={d}"
 
 
+def check10_answer_route():
+    """T010: decide_answer applies EXACTLY the shipped option (never raw client fields),
+    appends provenance, returns the free derive relaunch, and every refusal (unknown id,
+    unknown label, invalid slider values, wrong state) leaves inputs.json AND gate_state
+    byte-untouched (US2 scenario 3). Slider options merge into context.vibe (warmth kept)."""
+    import tempfile
+    sys.path.insert(0, str(REPO / "frontend"))
+    import server as server_mod
+
+    def make_gate(td):
+        (Path(td) / "assumptions.json").write_text(json.dumps([
+            {"id": "register_lane", "dimension": "d", "assumed_value": "v",
+             "cause": {"input": "context.usage_context", "value": "x", "reason": "unmatched"},
+             "options": [{"label": "marketing piece",
+                          "writes": {"field": "context.usage_context", "value": "marketing"}}],
+             "source": "derive_register"},
+            {"id": "magnitude", "dimension": "m", "assumed_value": "v",
+             "cause": {"input": "reference_image", "value": None, "reason": "fallback"},
+             "options": [{"label": "set directly",
+                          "writes": {"field": "context.vibe",
+                                     "value": {"formality": "<int 0-10>",
+                                               "playfulness": "<int 0-10>"}}}],
+             "source": "derive_register"}]), encoding="utf-8")
+        (Path(td) / "inputs.json").write_text(json.dumps(
+            {"context": {"usage_context": "x", "vibe": {"formality": 2, "playfulness": 8,
+                                                        "warmth": 5}}}), encoding="utf-8")
+        (Path(td) / "run_meta.json").write_text(
+            json.dumps({"brand": "aia", "style_notes": "note"}), encoding="utf-8")
+        conductor.write_gate_state(td, "awaiting_confirmation")
+
+    with tempfile.TemporaryDirectory() as td:
+        make_gate(td)
+        code, body, relaunch = server_mod.decide_answer(
+            Path(td), {"assumption_id": "register_lane", "label": "marketing piece"})
+        inputs = _load(Path(td) / "inputs.json")
+        gs = _load(Path(td) / "gate_state.json")
+        a = (code == 200 and relaunch and relaunch["brand"] == "aia"
+             and relaunch["style_notes"] == "note"
+             and inputs["context"]["usage_context"] == "marketing"
+             and gs["state"] == "awaiting_confirmation"
+             and gs["answers_applied"][0]["chosen_label"] == "marketing piece")
+
+        code2, _, _ = server_mod.decide_answer(
+            Path(td), {"assumption_id": "magnitude", "label": "set directly",
+                       "value": {"formality": 4, "playfulness": 6}})
+        vibe = _load(Path(td) / "inputs.json")["context"]["vibe"]
+        b = code2 == 200 and vibe == {"formality": 4, "playfulness": 6, "warmth": 5}
+
+    with tempfile.TemporaryDirectory() as td:
+        make_gate(td)
+        before_inputs = (Path(td) / "inputs.json").read_text(encoding="utf-8")
+        before_gate = (Path(td) / "gate_state.json").read_text(encoding="utf-8")
+        refusals = [
+            server_mod.decide_answer(Path(td), {"assumption_id": "nope", "label": "x"})[0],
+            server_mod.decide_answer(Path(td), {"assumption_id": "register_lane",
+                                                "label": "nope"})[0],
+            server_mod.decide_answer(Path(td), {"assumption_id": "magnitude",
+                                                "label": "set directly",
+                                                "value": {"formality": 99}})[0],
+            server_mod.decide_answer(Path(td), {"assumption_id": "magnitude",
+                                                "label": "set directly"})[0],
+        ]
+        untouched = ((Path(td) / "inputs.json").read_text(encoding="utf-8") == before_inputs
+                     and (Path(td) / "gate_state.json").read_text(encoding="utf-8") == before_gate)
+        c = refusals == [400, 400, 400, 400] and untouched
+        conductor.write_gate_state(td, "confirmed")
+        d = server_mod.decide_answer(Path(td), {"assumption_id": "register_lane",
+                                                "label": "marketing piece"})[0] == 409
+
+    with tempfile.TemporaryDirectory() as td:
+        e = server_mod.decide_answer(Path(td), {})[0] == 404
+
+    passed = all([a, b, c, d, e])
+    return passed, f"apply_and_provenance={a}; slider_merge_keeps_warmth={b}; refusals_leave_untouched={c}; confirmed_rejects_answers={d}; pre015_404={e}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
@@ -570,6 +646,8 @@ CHECKS = [
      check8_us1_end_to_end_free),
     ("T009 formal lane hard row: deterministic despite vibe, inert for pinned inputs",
      check9_formal_hard_row),
+    ("T010 answer route: shipped options only, provenance, refusals leave files untouched",
+     check10_answer_route),
 ]
 
 
