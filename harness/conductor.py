@@ -655,6 +655,40 @@ def run_step(step: dict) -> dict:
     return {"label": label, "phase": step["phase"], "ok": ok, "returncode": proc.returncode}
 
 
+def _gate_now() -> str:
+    import datetime
+    return datetime.datetime.now().isoformat(timespec="seconds")
+
+
+def read_gate_state(out_dir) -> dict | None:
+    """015 gate: the on-disk gate state, or None (pre-015 run dirs, honest null)."""
+    p = Path(out_dir) / "gate_state.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def write_gate_state(out_dir, state: str, prior: dict | None = None,
+                     confirmation=None, note=None) -> dict:
+    """015 gate: persist the state machine transition (data-model.md). answers_applied
+    provenance survives every transition; `created` is set once."""
+    gs = {
+        "state": state,
+        "created": (prior or {}).get("created") or _gate_now(),
+        "updated": _gate_now(),
+        "answers_applied": (prior or {}).get("answers_applied") or [],
+        "confirmation": confirmation if confirmation is not None else (prior or {}).get("confirmation"),
+    }
+    if note:
+        gs["note"] = note
+    (Path(out_dir) / "gate_state.json").write_text(
+        json.dumps(gs, ensure_ascii=False, indent=2), encoding="utf-8")
+    return gs
+
+
 def print_register_profile_plain(profile_path) -> None:
     """The calibration gate: show the derived register in plain language for an
     eyeball BEFORE generation (brief_schema_v3 calibration_gate). No model call."""
@@ -817,7 +851,7 @@ def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_pr
 # --------------------------------------------------------------------------- #
 
 def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, plan: dict,
-            thin: bool = False, style_notes=None) -> dict:
+            thin: bool = False, style_notes=None, phase: str = "full") -> dict:
     out = str(out_dir)
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
@@ -828,33 +862,64 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
     calibration_path = Path(out) / "calibration.json"
     profile_path = Path(out) / "register_profile.json"
 
+    # 015 gate, generate phase preflight: only a CONFIRMED derive-phase run dir may spend.
+    prior_gate = read_gate_state(out)
+    if phase == "generate":
+        if not prior_gate or prior_gate.get("state") != "confirmed":
+            sys.exit(f"ERROR: --phase generate requires gate_state.json in state 'confirmed' "
+                     f"(found: {(prior_gate or {}).get('state')!r} in {out}); run --phase derive "
+                     "and confirm at the gate first")
+        missing = [s["id"] for s in inputs["signs"]
+                   if not (Path(out) / f"sign_{s['id']}" / "final_prompt.txt").exists()]
+        if missing:
+            sys.exit(f"ERROR: --phase generate: no confirmed final_prompt.txt for sign(s) "
+                     f"{missing} in {out}; nothing was confirmed")
+        prior_gate = write_gate_state(out, "generating", prior=prior_gate)
+
     # --- 4. register prep, with honest-null fallbacks ---
     used_calibration = False
     calibration_outcome = "skipped (no reference supplied)"
-    if has_ref:
-        if not Path(ref).exists():
-            calibration_outcome = f"reference not found on disk: {ref}"
-            notes.append(f"reference_image set but missing ({ref}); calibration skipped, "
-                         "magnitude falls back to moderated defaults")
-        else:
-            result = run_step(_cmd("register", "calibrate", _calibrate_argv(ref, brand, out)))
-            if result["ok"] and calibration_path.exists():
-                used_calibration = True
-                calibration_outcome = "calibrated from reference (magnitude = blind score)"
-            else:
-                calibration_outcome = "calibration failed; magnitude from moderated defaults"
-                notes.append("calibrate_from_reference failed or wrote no calibration.json; "
-                             "derive_register run WITHOUT --calibration")
-
-    derive = run_step(_cmd("register", "derive_register",
-                           _derive_argv(brand, out, subfields_path,
-                                        str(calibration_path) if used_calibration else None)))
-    have_profile = derive["ok"] and profile_path.exists()
-    if have_profile:
-        print_register_profile_plain(profile_path)
+    if phase == "generate":
+        # Derivation already ran (and was confirmed) in the derive phase; reuse the disk
+        # artifacts, never re-run the steps between confirm and spend (FR-007).
+        used_calibration = calibration_path.exists()
+        calibration_outcome = ("calibrated in the derive phase (reused)" if used_calibration
+                               else "no calibration from the derive phase (moderated defaults)")
+        have_profile = profile_path.exists()
+        if not have_profile:
+            notes.append("generate phase: no register_profile.json from the derive phase; "
+                         "scene_author runs WITHOUT --register-profile (a supported path)")
     else:
-        notes.append("derive_register failed or wrote no register_profile.json; "
-                     "scene_author will run WITHOUT --register-profile (a supported path)")
+        if has_ref and phase == "derive" and calibration_path.exists():
+            # 015 gate re-derive (an answer changed inputs): the reference is unchanged, so the
+            # blind score stands; the vision calls are never repeated in the answer loop.
+            used_calibration = True
+            calibration_outcome = ("reused existing calibration.json (015 gate re-derive; "
+                                   "vision calls not repeated)")
+        elif has_ref:
+            if not Path(ref).exists():
+                calibration_outcome = f"reference not found on disk: {ref}"
+                notes.append(f"reference_image set but missing ({ref}); calibration skipped, "
+                             "magnitude falls back to moderated defaults")
+            else:
+                result = run_step(_cmd("register", "calibrate", _calibrate_argv(ref, brand, out)))
+                if result["ok"] and calibration_path.exists():
+                    used_calibration = True
+                    calibration_outcome = "calibrated from reference (magnitude = blind score)"
+                else:
+                    calibration_outcome = "calibration failed; magnitude from moderated defaults"
+                    notes.append("calibrate_from_reference failed or wrote no calibration.json; "
+                                 "derive_register run WITHOUT --calibration")
+
+        derive = run_step(_cmd("register", "derive_register",
+                               _derive_argv(brand, out, subfields_path,
+                                            str(calibration_path) if used_calibration else None)))
+        have_profile = derive["ok"] and profile_path.exists()
+        if have_profile:
+            print_register_profile_plain(profile_path)
+        else:
+            notes.append("derive_register failed or wrote no register_profile.json; "
+                         "scene_author will run WITHOUT --register-profile (a supported path)")
 
     register_profile_arg = str(profile_path) if have_profile else None
     dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
@@ -914,6 +979,13 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                                               asset_type=inputs.get("asset_type"),
                                               occasion=(inputs.get("context") or {}).get("occasion"),
                                               product_images=inputs.get("product_images"))
+            # 015 gate: the phase decides where the scene_author step stops. The executed argv is
+            # the PLAN argv plus exactly one flag (asserted by the drift-guard test): derive stops
+            # at the prompt (zero spend), generate verifies the confirmed prompt then spends.
+            if phase == "derive":
+                sa_argv = sa_argv + ["--prompt-only"]
+            elif phase == "generate":
+                sa_argv = sa_argv + ["--verify-prompt"]
             sr = run_step(_cmd(f"sign:{sid}", "scene_author", sa_argv, sign_id=sid))
             outputs = _collect_sign_outputs(sign_dir)
             srm = {}
@@ -924,7 +996,8 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                 except Exception:  # noqa: BLE001
                     pass
             sign_results.append({
-                "sign_id": sid, "ok": sr["ok"], "messages": messages,
+                "sign_id": sid, "ok": sr["ok"], "returncode": sr.get("returncode"),
+                "messages": messages,
                 "scene_author_cmd": [PY] + sa_argv, "outputs": outputs,
                 "route": "thin", "licensed_type": srm.get("licensed_type", "deferred (raw gpt text)"),
                 "mandatory_elements": eff_mandatory, "forbidden_elements": eff_forbidden,
@@ -1018,9 +1091,30 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
 
     # --- 6. approve gate ---
     approve_status = "skipped (--no-approve)"
-    if not no_approve:
+    if phase == "derive":
+        # 015: the taste gate cannot run yet (nothing generated); the PRE-SPEND gate is the stop.
+        approve_status = "deferred (015 pre-spend gate: awaiting operator confirmation)"
+    elif not no_approve:
         approve_status = run_approve_gate(state, inputs, brand, out_dir, register_profile_arg,
                                           kit_mode=kit_mode, thin=thin)
+
+    # --- 6b. 015 gate state transitions (data-model.md state machine) ---
+    if phase == "derive":
+        keep = prior_gate if (prior_gate or {}).get("state") == "awaiting_confirmation" else None
+        write_gate_state(out, "awaiting_confirmation", prior=keep)
+        notes.append("derived, awaiting confirmation; no image spend")
+    elif phase == "generate":
+        if all(s["ok"] for s in sign_results):
+            write_gate_state(out, "done", prior=prior_gate)
+        else:
+            drift = any(s.get("returncode") == 3 for s in sign_results)
+            reason = ("prompt drift detected between confirm and generate; nothing spent for the "
+                      "drifted sign(s), re-derive shown, confirm again" if drift else
+                      "generation failed after confirm; confirm again to retry (no deliverable)")
+            reset_prior = dict(prior_gate or {})
+            reset_prior["confirmation"] = None
+            write_gate_state(out, "awaiting_confirmation", prior=reset_prior, note=reason)
+            notes.append(f"015 gate: {reason}")
 
     # --- 7. manifest (the provenance record) ---
     context = inputs.get("context") or {}
@@ -1068,6 +1162,7 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
             "calibration_outcome": calibration_outcome,
             "used_calibration": used_calibration,
         },
+        "phase": phase,
         "route": "thin" if thin else ("kit" if kit_mode else "legacy"),
         # Feature 003: the licensed-font MOAT is DEFERRED on the thin route — the deliverable is
         # the raw gpt-painted generated.png. Tracked here, not silent (constitution §V honest null).
@@ -1167,10 +1262,21 @@ def main() -> None:
                              "composes the whole sign, STOP at generated.png. No kit, no "
                              "compose_select, no measure, no composite. The kit code stays in the "
                              "repo but is NOT selected. Moat (licensed font) deferred.")
+    parser.add_argument("--phase", choices=["full", "derive", "generate"], default="full",
+                        help="015 pre-spend gate (thin route only). full: today's one-shot run "
+                             "(default, byte-identical). derive: stop after register + prompt "
+                             "(zero image spend; writes assumptions.json + gate_state.json). "
+                             "generate: resume a CONFIRMED derive run dir and spend.")
     args = parser.parse_args()
 
     if args.dry_run and not args.inputs:
         parser.error("--dry-run requires --inputs (there is no interactive gate in a dry run).")
+    if args.phase != "full" and not args.thin:
+        parser.error("--phase derive/generate is a thin-route feature (015 pre-spend gate); "
+                     "the kit/legacy routes keep their one-shot flow. Add --thin.")
+    if args.phase == "generate" and not (args.out and args.inputs):
+        parser.error("--phase generate resumes an existing derive run dir: requires --out "
+                     "(that run dir) and --inputs (its inputs.json).")
 
     # 2. LOAD BRAND — fail loudly if the brand has no answer key.
     answer_key = REPO_ROOT / "answer_keys" / f"{args.brand}.json"
@@ -1209,7 +1315,7 @@ def main() -> None:
         return
 
     execute(inputs, args.brand, out_dir, inputs_path, args.no_approve, plan, thin=args.thin,
-            style_notes=style_notes)
+            style_notes=style_notes, phase=args.phase)
 
 
 if __name__ == "__main__":

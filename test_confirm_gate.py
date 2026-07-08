@@ -132,11 +132,126 @@ def check2_prompt_only_and_drift_guard():
     return passed, f"prompt_only_stops={a}; verify_match_generates_once={b}; drift_fails_loud={c}; missing_prompt_fails_loud={d}"
 
 
+def _gate_inputs(ref=None):
+    return {
+        "asset_type": "marketing post", "render_style": "flat vector",
+        "format_size": "60x40cm", "reference_image": ref,
+        "reference_relationship": "extend these",
+        "mandatory_elements": [], "forbidden_elements": [],
+        "context": {"usage_context": "wall-posted",
+                    "vibe": {"formality": 2, "playfulness": 8, "warmth": 5}},
+        "signs": [{"id": "s1", "messages": ["测试标语"]}],
+    }
+
+
+def _run_execute(td, inputs, phase, stub):
+    """Call conductor.execute with run_step stubbed; returns (recorded_steps, manifest).
+    A minimal register_profile.json is pre-created so the stubbed derive step counts as
+    have_profile=True and the executed scene_author argv keeps --register-profile (the
+    honest-null drop lane is not what these checks target)."""
+    (Path(td) / "register_profile.json").write_text(json.dumps(
+        {"inferred_register": "marketing", "brand_anchors_held": [],
+         "brand_locks_flexed": [], "_derivation_trace": []}), encoding="utf-8")
+    inputs_path = Path(td) / "inputs.json"
+    inputs_path.write_text(json.dumps(inputs, ensure_ascii=False), encoding="utf-8")
+    plan = conductor.build_plan(inputs, "aia", td, no_approve=True, thin=True)
+    recorded = []
+
+    def fake_run_step(step):
+        recorded.append(step)
+        return {"label": step["label"], "phase": step["phase"], **stub(step)}
+
+    real = conductor.run_step
+    conductor.run_step = fake_run_step
+    try:
+        manifest = conductor.execute(inputs, "aia", td, inputs_path, True, plan,
+                                     thin=True, phase=phase)
+    finally:
+        conductor.run_step = real
+    return recorded, manifest, plan
+
+
+def check3_conductor_phases():
+    """T003 (contracts/cli-phases.md, conductor rows): (a) derive phase executes the PLAN argv
+    plus exactly --prompt-only on the sign step, writes gate_state awaiting_confirmation + the
+    honest no-spend note, defers the approve gate; (b) a derive re-run with calibration.json
+    present records NO calibrate step and PRESERVES answers_applied; (c) generate refuses an
+    unconfirmed dir (SystemExit); (d) a confirmed generate runs the sign step with exactly
+    --verify-prompt, no register steps, and lands state=done; (e) a drift exit (rc 3) resets
+    the gate to awaiting_confirmation with the confirmation cleared."""
+    import tempfile
+    ok_stub = lambda step: {"ok": True, "returncode": 0}  # noqa: E731
+
+    with tempfile.TemporaryDirectory() as td:
+        rec, manifest, plan = _run_execute(td, _gate_inputs(), "derive", ok_stub)
+        plan_sa = next(s for s in plan["steps"] if s["label"] == "scene_author")
+        exec_sa = next(s for s in rec if s["label"] == "scene_author")
+        gs = _load(Path(td) / "gate_state.json")
+        a = (exec_sa["argv"] == plan_sa["argv"] + ["--prompt-only"]
+             and gs["state"] == "awaiting_confirmation"
+             and "derived, awaiting confirmation; no image spend" in manifest["notes"]
+             and manifest["approve_status"].startswith("deferred")
+             and manifest["phase"] == "derive")
+
+    with tempfile.TemporaryDirectory() as td:
+        ref = Path(td) / "ref.png"
+        ref.write_bytes(b"\x89PNGfake")
+        (Path(td) / "calibration.json").write_text("{}", encoding="utf-8")
+        conductor.write_gate_state(td, "awaiting_confirmation")
+        prior = conductor.read_gate_state(td)
+        prior["answers_applied"] = [{"assumption_id": "register_lane"}]
+        (Path(td) / "gate_state.json").write_text(json.dumps(prior), encoding="utf-8")
+        rec, manifest, _ = _run_execute(td, _gate_inputs(str(ref)), "derive", ok_stub)
+        gs = _load(Path(td) / "gate_state.json")
+        b = (not any(s["label"] == "calibrate" for s in rec)
+             and any(s["label"] == "derive_register" for s in rec)
+             and gs["answers_applied"] == [{"assumption_id": "register_lane"}]
+             and "reused existing calibration.json" in manifest["register"]["calibration_outcome"])
+
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            _run_execute(td, _gate_inputs(), "generate", ok_stub)
+            c = False
+        except SystemExit as exc:
+            c = "confirmed" in str(exc.code)
+
+    with tempfile.TemporaryDirectory() as td:
+        sign_dir = Path(td) / "sign_s1"
+        sign_dir.mkdir(parents=True)
+        (sign_dir / "final_prompt.txt").write_text("the confirmed prompt", encoding="utf-8")
+        conductor.write_gate_state(td, "confirmed",
+                                   confirmation={"confirmed_prompt_sha": "x", "cost_stated": "$0.08"})
+        rec, manifest, plan = _run_execute(td, _gate_inputs(), "generate", ok_stub)
+        plan_sa = next(s for s in plan["steps"] if s["label"] == "scene_author")
+        exec_sa = next(s for s in rec if s["label"] == "scene_author")
+        gs = _load(Path(td) / "gate_state.json")
+        d = (exec_sa["argv"] == plan_sa["argv"] + ["--verify-prompt"]
+             and not any(s["label"] in ("calibrate", "derive_register") for s in rec)
+             and gs["state"] == "done" and manifest["phase"] == "generate")
+
+    with tempfile.TemporaryDirectory() as td:
+        sign_dir = Path(td) / "sign_s1"
+        sign_dir.mkdir(parents=True)
+        (sign_dir / "final_prompt.txt").write_text("the confirmed prompt", encoding="utf-8")
+        conductor.write_gate_state(td, "confirmed",
+                                   confirmation={"confirmed_prompt_sha": "x"})
+        rec, manifest, _ = _run_execute(td, _gate_inputs(), "generate",
+                                        lambda step: {"ok": False, "returncode": 3})
+        gs = _load(Path(td) / "gate_state.json")
+        e = (gs["state"] == "awaiting_confirmation" and gs["confirmation"] is None
+             and "drift" in gs.get("note", ""))
+
+    passed = a and b and c and d and e
+    return passed, f"derive_argv_and_state={a}; rederive_skips_calibrate_keeps_answers={b}; unconfirmed_refused={c}; generate_argv_and_done={d}; drift_resets={e}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
     ("T002 scene_author --prompt-only stops pre-spend; --verify-prompt drift guard",
      check2_prompt_only_and_drift_guard),
+    ("T003 conductor --phase derive/generate/full: seam, resume, refusal, drift reset",
+     check3_conductor_phases),
 ]
 
 
