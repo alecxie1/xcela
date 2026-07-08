@@ -162,12 +162,12 @@ part naming.
       seam, the two asset homes, the cap, the test surface). No em-dashes in new text.
       Commit: `docs(013): CLAUDE.md + SYSTEM_MAP currency (T008)`.
 
-- [ ] T009 DEFERRED HUMAN EYE-GATE (SC-006, quickstart §4): ONE paid rerun of the CJXQ
-      watermelon brief WITH the branded cup shots uploaded as product references, judged by
-      the operator against `run_CJXQ_20260701_164912`: the actual 茶救星球 JO'S CHA cups
-      (printed logos visible) appear instead of generic look-alikes; the 012 run's style/scene
-      quality retained; no new text leakage. Never run inside automation. Record the verdict
-      in SYSTEM_MAP.
+- [x] T009 DEFERRED HUMAN EYE-GATE (SC-006, quickstart §4): PASSED 2026-07-08 on
+      `run_CJXQ_20260708_151506` (render_style=photographic, one branded cup shot as
+      product_1.jpg, launched through the 015 gate and confirmed): the operator judged the
+      photographic output with the real 茶救星球 JO'S CHA cups. Both lanes are now
+      eye-verified (flat: the 014 T007 run carried a product shot; photographic: this run).
+      Verdict recorded in SYSTEM_MAP. Feature 013 fully CLOSED.
 
 ---
 

@@ -112,9 +112,13 @@ brand once via the `/onboard` wizard (005/006), fill the guided run form (004/01
 reference + optional product photos (007/013), `conductor --phase derive` composes the plan (003)
 with render modes (009), a render-aware + explicit-usage register (011/014), and role-aware palette
 (008), then STOPS at the 015 pre-spend gate (derived plan + every recorded assumption, answers
-re-derive free); the operator confirms (the only spend) and judges final.png. Three paid eye-gates
-passed on CJXQ (011/012/014).
-Next named feature: **015 brand-key enrichment** (brand-level product library). Known taste gap:
+re-derive free); the operator confirms (the only spend) and judges final.png. Paid eye-gates passed
+on CJXQ (011/012/014/015, plus the 013 T009 photographic product run 2026-07-08: 013 fully closed).
+Next named feature: **016-layered-export** (Richard's ask: each design element as a separate layer
+in a zip; gpt-image-2 CANNOT output layers or transparency natively, so layers = per-element chroma
+repaint keyed by the existing `strip_chroma`, opt-in + paid per the 015 gate philosophy). Brand-key
+enrichment (the brand-level product library) is DEFERRED 2026-07-08: zero pixel change, convenience
+only, products so far are campaign-specific (rationale in the SYSTEM_MAP housekeeping block). Known taste gap:
 thin-route logo lockups are model-probabilistic (nudge today; the licensed/composite moat is the
 real fix). The KIT path (001, per-message icon + layout + reserved-zone compositing) is BUILT but
 DORMANT since the 6/23 regroup (its T020 eye test was confounded; a clean kit eye-PASS is owed if
@@ -181,8 +185,8 @@ a hand-held sign); the exact defect subfields now derive marketing + tone, verif
 `register/derive_register.py` ONLY (~14 lines). EYE-GATE T007 PASSED 2026-07-07
 (`run_CJXQ_20260707_141245`, the exact 173925 re-brief, operator-judged: a playful flat rectangular
 marketing poster, not a sign): feature COMPLETE. The run also demonstrated 013 product fidelity on the
-flat lane (real branded cups, printed logos); 013's formal photographic T009 stays open at the
-operator's option. Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
+flat lane (real branded cups, printed logos); 013's formal photographic T009 later PASSED 2026-07-08
+(see the 013 block). Spec/plan/tasks: `specs/014-explicit-usage-wins/`.
 
 Prior feature `013-role-tagged-references` - BUILT (US1-US3) + structurally green
 (test_product_refs 9/9; conductor + render_and_scrub + render_modes + register_render_aware +
@@ -200,12 +204,13 @@ byte-identical (proven against the pre-013 literal); calibrate/derive argv prova
 and without products (calibration isolation); over-cap or missing files fail LOUD (never
 truncated); manifests record the product list. The brand-asset seam is deliberate: logo stays
 BRAND-level (onboarding places brands/<brand>/, fed every run); products are CAMPAIGN-level
-(run-dir uploads); a durable brand-level product library is DEFERRED to 015 brand-key enrichment
-(would reuse this feed path, only changing where paths come from). Scope: scene_author thin prompt
-+ refs, conductor threading/validation, server multipart + writer, form controls; register engine,
-calibration, kit/legacy, generate.py, multipart.py untouched. Pending: T009, the ONE paid eye-gate
-(rerun the CJXQ watermelon brief WITH the branded cup shots as product refs: the real 茶救星球
-cups appear, printed logos visible, 012 style retained). Spec/plan/tasks:
+(run-dir uploads); a durable brand-level product library is DEFERRED to brand-key enrichment
+(would reuse this feed path, only changing where paths come from; deferral reaffirmed 2026-07-08).
+Scope: scene_author thin prompt + refs, conductor threading/validation, server multipart + writer,
+form controls; register engine, calibration, kit/legacy, generate.py, multipart.py untouched.
+EYE-GATE T009 PASSED 2026-07-08 (`run_CJXQ_20260708_151506`, photographic render + one branded cup
+shot, launched through the 015 gate, operator-judged): both product-fidelity lanes are eye-verified
+(flat via the 014 T007 run, photographic via this run). Feature fully CLOSED. Spec/plan/tasks:
 `specs/013-role-tagged-references/`.
 
 Prior feature `012-lossless-brief` - BUILT (US1-US5) + structurally green

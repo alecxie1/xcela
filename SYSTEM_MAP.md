@@ -46,9 +46,18 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 > through real work). 001 T020 is closed as RAN-BUT-NOT-PASSED: the kit run happened 2026-06-23
 > (`run_aia_20260623_110905`, structurally clean; the eye comparison was CONFOUNDED, see the 6/23 regroup)
 > and the effort pivoted to the intake fix + the thin route; the kit path is DORMANT, a clean kit eye-PASS
-> is still owed IF that path is revived. STILL OPEN: **013 T009** (photographic product-refs rerun, at the
-> operator's option). NEXT NAMED
-> FEATURE: **015 brand-key enrichment** (durable brand-level product library reusing the 013 feed path).
+> is still owed IF that path is revived. 013 T009 CLOSED 2026-07-08: PASSED on
+> `run_CJXQ_20260708_151506` (photographic render, one branded cup shot as product_1.jpg, launched
+> through the 015 gate; operator-judged). Both product-fidelity lanes are now eye-verified; 013 is
+> fully closed. BRAND-KEY ENRICHMENT (the durable brand-level product library, formerly "015" on the
+> roadmap before that number went to the confirm gate) is DEFERRED by operator decision 2026-07-08:
+> it changes zero pixels (it reuses the 013 feed path verbatim, only where paths come from), its whole
+> value is skipping re-upload of evergreen shots, and observed usage so far is campaign-specific
+> products ("this launch's watermelon cups are not next month's mooncakes", the 013 plan's own seam
+> note). Revisit when re-upload friction is actually felt. NEXT NAMED FEATURE: **016-layered-export**
+> (Richard's ask: at the final step, each design element as a separate layer, zipped; gpt-image-2 has
+> NO native layer output and no transparent background, so layers are built via per-element chroma
+> repaint + the existing strip_chroma keying, opt-in and paid per the 015 gate philosophy).
 > Known taste backlog: thin-route logo LOCKUP softness (stray character in the 014 run; nudge today, the
 > licensed/composite moat is the real fix).
 
