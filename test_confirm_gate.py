@@ -363,6 +363,49 @@ def check5_conductor_assumptions():
     return passed, f"triggers_exact={a}; dial_mirror_guard={b}; size_reasons={c}; union_and_argv={d}; zero_guesses_empty_file={e}; no_emdash={f}"
 
 
+def check7_gate_stage_and_panel():
+    """T007: (a) run_view over a derive-phase run dir returns the gate stage per contract
+    (present, state, assumptions, answers_applied); (b) a pre-015 run dir (no gate_state)
+    returns present=false with the honest note AND its other stages render exactly as
+    before; (c) presence greps (the weakest gate, declared per the 010 precedent): the
+    panel, the confirm handler, the cost-stated confirm label, and NO em-dash in the new
+    user-facing strings; the run/nudge controls no longer claim the run itself spends."""
+    import tempfile
+    sys.path.insert(0, str(REPO / "frontend"))
+    import run_view as rv
+
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / "sign_s1").mkdir(parents=True)
+        (Path(td) / "sign_s1" / "final_prompt.txt").write_text("p", encoding="utf-8")
+        (Path(td) / "assumptions.json").write_text(
+            json.dumps([{"id": "register_lane", "dimension": "d", "assumed_value": "v",
+                         "cause": {"input": "context.usage_context", "value": None,
+                                   "reason": "blank"}, "options": [], "source": "x"}]),
+            encoding="utf-8")
+        conductor.write_gate_state(td, "awaiting_confirmation")
+        v = rv.run_view(td)
+        a = (v["gate"]["present"] is True
+             and v["gate"]["content"]["state"] == "awaiting_confirmation"
+             and v["gate"]["content"]["assumptions"][0]["id"] == "register_lane"
+             and v["gate"]["content"]["answers_applied"] == []
+             and v["prompt"]["present"] is True and v["image"]["present"] is False)
+
+    with tempfile.TemporaryDirectory() as td:
+        v = rv.run_view(td)
+        b = (v["gate"]["present"] is False and "pre-015" in (v["gate"]["note"] or "")
+             and v["brief"]["present"] is False and "gate" not in v["brief"])
+
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    new_bits = ["renderPreGate", "confirmRun", "Confirm and generate (paid",
+                'id="pregate"', "free preview"]
+    c = (all(s in html for s in new_bits)
+         and "Run (paid" not in html
+         and "Nudge and rerun" not in html)
+
+    passed = a and b and c
+    return passed, f"gate_stage_shape={a}; pre015_honest_null={b}; panel_greps={c}"
+
+
 def check6_server_confirm_flow():
     """T006 (contracts/server-routes.md): (a) runner argv legacy shape byte-identical with
     phase=None, --phase appended otherwise; (b) decide_confirm: pre-015 dir -> 404 no launch;
@@ -431,6 +474,8 @@ CHECKS = [
      check5_conductor_assumptions),
     ("T006 server: derive-first launch, idempotent cost-stated confirm (decide_confirm)",
      check6_server_confirm_flow),
+    ("T007 gate stage in run_view + gate panel present in index.html",
+     check7_gate_stage_and_panel),
 ]
 
 

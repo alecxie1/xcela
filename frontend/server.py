@@ -172,7 +172,8 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/run/") and path.endswith("/stages"):
             run_id = path[len("/run/"):-len("/stages")]
             return self._send(200, {**run_view_mod.run_view(OUTPUT / run_id),
-                                    "inflight": _inflight.locked()})
+                                    "inflight": _inflight.locked(),
+                                    "per_run_cost_usd": PER_RUN_COST_USD})
         if path.startswith("/run/") and path.endswith("/image"):
             run_id = path[len("/run/"):-len("/image")]
             img = OUTPUT / run_id / "sign_s1" / "generated.png"

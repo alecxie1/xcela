@@ -102,7 +102,7 @@
       <textarea id="design_notes" rows="2"></textarea>
     </fieldset>
 
-    <button id="run">Run (paid, about $0.08)</button>
+    <button id="run">Run (free preview: derive the plan, confirm before any spend)</button>
     <div id="formNote" class="note"></div>
   </section>
 
@@ -111,7 +111,8 @@
     <div class="stage"><h3><span class="dot wait" id="d_brief"></span>1. Brief (what the pipeline received)</h3><div class="body" id="brief"><span class="pending">waiting for a run...</span></div></div>
     <div class="stage"><h3><span class="dot wait" id="d_register"></span>2. Register / dial</h3><div class="body" id="register"><span class="pending">not yet</span></div></div>
     <div class="stage"><h3><span class="dot wait" id="d_prompt"></span>3. Assembled prompt</h3><div class="body" id="prompt"><span class="pending">not yet</span></div></div>
-    <div class="stage"><h3><span class="dot wait" id="d_image"></span>4. Generated sign</h3><div class="body" id="image"><span class="pending">not yet (appears after the dial and prompt)</span></div></div>
+    <div id="pregate"></div>
+    <div class="stage"><h3><span class="dot wait" id="d_image"></span>4. Generated sign</h3><div class="body" id="image"><span class="pending">not yet (appears only after you confirm the plan)</span></div></div>
     <div id="gate"></div>
   </section>
 </main>
@@ -125,7 +126,7 @@ let currentRun = null, poller = null, attempts = [];
 async function loadBrands() {
   const r = await fetch("/brands"); const j = await r.json();
   $("brand").innerHTML = j.brands.map(b => `<option>${b}</option>`).join("");
-  $("run").textContent = `Run (paid, about $${j.per_run_cost_usd.toFixed(2)})`;
+  $("run").textContent = `Run (free preview; confirming the plan pays about $${j.per_run_cost_usd.toFixed(2)})`;
   // feature 010: preselect the brand handed off from onboarding (/?brand=<id>); graceful if absent/unknown
   const want = new URLSearchParams(location.search).get("brand");
   if (want && j.brands.includes(want)) $("brand").value = want;
@@ -154,10 +155,49 @@ function renderStage(key, st) {
   const c = st.content;
   body.innerHTML = `<pre>${typeof c === "string" ? c : JSON.stringify(c, null, 2)}</pre>`;
 }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function renderPreGate(g, cost) {
+  // 015: the pre-spend confirm panel. Zero assumption rows = a plain summary + confirm
+  // (never manufactured questions); the derived plan itself is stages 2-3 above.
+  if (!g || !g.content || g.content.state === "done") { $("pregate").innerHTML = ""; return; }
+  const c = g.content;
+  if (c.state === "confirmed" || c.state === "generating") {
+    $("pregate").innerHTML = `<div class="stage"><h3>3b. Plan confirmed</h3><div class="body"><span class="pending">generating the image (paid)...</span></div></div>`;
+    return;
+  }
+  if (c.state !== "awaiting_confirmation") { $("pregate").innerHTML = ""; return; }
+  const rows = (c.assumptions || []).map((a, i) =>
+    `<div style="margin:6px 0;padding:6px;border:1px solid #b84;border-radius:4px">
+       <b>${esc(a.dimension)}</b>: the tool assumed <i>${esc(a.assumed_value)}</i>
+       <div class="note">because <code>${esc(a.cause.input)}</code> was ${esc(a.cause.reason)}${a.cause.value ? ` (you gave: "${esc(a.cause.value)}")` : ""}</div>
+       <div id="assumpctl_${i}">${renderAssumptionControl(a, i)}</div>
+     </div>`).join("");
+  const applied = (c.answers_applied || []).length
+    ? `<div class="note">answers applied so far: ${c.answers_applied.map(x => esc(x.chosen_label || x.assumption_id)).join(", ")}</div>` : "";
+  $("pregate").innerHTML = `<div class="stage"><h3>3b. Confirm before paying</h3><div class="body">
+    ${rows.length ? `<div>The tool made ${rows.length} assumption(s) on your behalf; confirm or change them:</div>${rows}`
+                  : `<div>No assumptions were needed: every field was explicit and recognized. Review the register (2) and prompt (3) above.</div>`}
+    ${applied}
+    ${c.state_note ? `<div class="note">${esc(c.state_note)}</div>` : ""}
+    <button id="confirm" style="background:#2a6">Confirm and generate (paid, about $${(cost ?? 0.08).toFixed(2)})</button>
+    <div class="note">Nothing is spent until you confirm. Walking away keeps this draft on disk, unspent.</div>
+    <div id="pregateNote" class="note"></div></div></div>`;
+  $("confirm").onclick = confirmRun;
+}
+function renderAssumptionControl(a, i) { return ""; }  // controls arrive with the answer route (US2)
+async function confirmRun() {
+  const r = await fetch(`/run/${currentRun}/confirm`, { method: "POST" });
+  const j = await r.json();
+  if (!r.ok) { $("pregateNote").textContent = j.error || "confirm failed"; return; }
+  $("run").disabled = true;
+  if (poller) clearInterval(poller);
+  poller = setInterval(poll, 1000); poll();
+}
 async function poll() {
   if (!currentRun) return;
   const r = await fetch(`/run/${currentRun}/stages`); const v = await r.json();
   ["brief","register","prompt","image"].forEach(k => renderStage(k, v[k]));
+  renderPreGate(v.gate, v.per_run_cost_usd);
   if (v.error) {  // the conductor failed loud: surface it instead of hanging silently at 'brief'
     clearInterval(poller); poller = null; $("run").disabled = false;
     $("formNote").textContent = "Run failed: " + v.error.split("\n").pop();
@@ -179,7 +219,7 @@ async function startRun(style_notes) {
   // multi-note contract); a nudge APPENDS to the brief-time notes, never replaces them.
   const notes = [$("design_notes").value, style_notes || ""].map(s => s.trim()).filter(Boolean).join("; ");
   const form = Object.assign(formState(), notes ? { style_notes: notes } : {});
-  $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = "";
+  $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = ""; $("pregate").innerHTML = "";
   const fd = new FormData();
   fd.append("form", JSON.stringify(form));
   fd.append("reference", refFile, refFile.name);  // style_notes rides inside the `form` JSON above
@@ -207,9 +247,9 @@ $("run").addEventListener("click", () => startRun(null));
 function showGate() {
   $("gate").innerHTML = `<div class="stage"><h3>5. Your taste call (two actions)</h3><div class="body">
     <button id="approve" style="background:#2a6">Approve (good, stop)</button>
-    <label>Nudge: a binding note that regenerates a new attempt (paid, about $0.08)</label>
+    <label>Nudge: a binding note that re-derives a new plan; you confirm its ~$0.08 spend at its own gate</label>
     <textarea id="note" rows="2" placeholder="e.g. make the money bag bigger and bolder"></textarea>
-    <button id="nudge">Nudge and rerun</button>
+    <button id="nudge">Nudge and re-derive (free preview)</button>
     <div id="gateNote" class="note"></div></div></div>`;
   $("approve").onclick = () => {
     $("gate").innerHTML = `<div class="stage"><div class="body">Approved. Sign <b>${currentRun}</b> is the deliverable. Prior attempts stay available above to compare.</div></div>`;

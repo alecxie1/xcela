@@ -45,12 +45,17 @@ Behavior:
 Existing stages (brief, register, prompt, image) unchanged. New stage `gate`:
 
 ```json
-{"gate": {"present": true,
-           "state": "awaiting_confirmation",
-           "assumptions": [ ...assumptions.json content... ],
-           "answers_applied": [ ... ],
-           "cost_label": "$0.08"}}
+{"gate": {"present": true, "note": null,
+           "content": {"state": "awaiting_confirmation",
+                        "assumptions": [ ...assumptions.json content... ],
+                        "answers_applied": [ ... ],
+                        "state_note": null}},
+ "per_run_cost_usd": 0.08}
 ```
+
+(Amended during T007: the cost rides once at the top level of the stages response, matching
+the existing `/brands` convention, instead of inside the gate stage; the gate stage follows
+the `{present, content, note}` shape every other stage uses.)
 
 `present: false` with a note for pre-015 run dirs (honest null; old runs render as today).
 

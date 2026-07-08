@@ -45,12 +45,29 @@ def run_view(run_dir, sign_id: str = "s1") -> dict:
     image_present = (sign_dir / "generated.png").exists()
     error = _load_text(run_dir / "run_error.txt")  # written by the server if the conductor fails loud
 
+    # Feature 015: the pre-spend gate stage. present=false is the honest null for pre-015
+    # run dirs (they render exactly as before) and for a derive phase still in flight.
+    gate_state = _load_json(run_dir / "gate_state.json")
+    assumptions = _load_json(run_dir / "assumptions.json")
+    if gate_state is None:
+        gate = {"present": False, "content": None,
+                "note": "no pre-spend gate (a pre-015 run dir, or the derive phase has not "
+                        "written its state yet)"}
+    else:
+        gate = {"present": True, "note": None, "content": {
+            "state": gate_state.get("state"),
+            "assumptions": assumptions if isinstance(assumptions, list) else [],
+            "answers_applied": gate_state.get("answers_applied") or [],
+            "state_note": gate_state.get("note"),
+        }}
+
     return {
         "run_id": run_dir.name,
         "brief": stage(brief is not None, brief),
         "register": stage(register is not None, register),
         "prompt": stage(prompt is not None, prompt),
         "image": stage(image_present, f"sign_{sign_id}/generated.png" if image_present else None),
+        "gate": gate,
         "manifest_notes": notes,
         "error": error.strip() if error else None,
     }
