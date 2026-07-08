@@ -14,7 +14,7 @@
 
 ## Phase 1: Setup (baselines the whole feature pins against)
 
-- [ ] T001 Create `test_confirm_gate.py` scaffold + pre-015 baselines: capture (a) the thin-route register profile + trace baseline as inlined literals (reuse the 014 pinning pattern from `test_explicit_usage_wins.py`), (b) a `build_plan` full-run thin argv baseline (the `--phase full` byte-identity reference), (c) the archived `run_CJXQ_20260701_173925` defect subfields as a committed fixture in `tests_support/fixtures/subfields_173925.json` (the SC-003 replay input). Scaffold runs green with zero feature code (baselines only assert today's behavior).
+- [x] T001 Create `test_confirm_gate.py` scaffold + pre-015 baselines: capture (a) the thin-route register profile + trace baseline as inlined literals (reuse the 014 pinning pattern from `test_explicit_usage_wins.py`), (b) a `build_plan` full-run thin argv baseline (the `--phase full` byte-identity reference), (c) the archived `run_CJXQ_20260701_173925` defect subfields as a committed fixture in `tests_support/fixtures/subfields_173925.json` (the SC-003 replay input). Scaffold runs green with zero feature code (baselines only assert today's behavior).
 
 ---
 
