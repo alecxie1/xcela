@@ -23,10 +23,17 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 > byte-identity everywhere: `--phase full` default, kit/legacy untouched, runner argv without phase,
 > pre-015 run dirs render as before. Tests: test_confirm_gate 14/14 incl. a REAL free subprocess
 > end-to-end (derive stops pre-spend; tampered generate blocked free); the full 26-suite prior sweep
-> passes UNCHANGED. PENDING + LOAD-BEARING: T017, the human gates: (a) the FREE browser dry pass
-> (ambiguous brief -> two rows -> a pick refreshes the plan in seconds -> walk away leaves the draft);
-> (b) the ONE paid eye-gate (SC-006: change an answer, confirm once, the image matches the confirmed
-> framing; nudge lands on a new gate before any second spend). Spec: `specs/015-pre-spend-confirm-gate/`.
+> passes UNCHANGED. EYE-GATE T017 PASSED 2026-07-08 (operator-judged): the FREE dry pass
+> (`run_CJXQ_20260708_143643`) LIVE-CAUGHT the 173925 defect class pre-spend (unmatched usage -> vibe
+> promotion -> event_prop, visible as a gate row instead of a wrong image; the marketing pick re-derived
+> free with the 014 suppression trace, calibration reused, answers survived a server restart, the draft
+> abandoned honestly unspent); the PAID leg (`run_CJXQ_20260708_144718` zero-row confirm, then the nudge
+> landing on its OWN gate as `run_CJXQ_20260708_145952`) produced an image matching the confirmed framing:
+> flat rectangular 60x40 marketing poster, three verbatim message lines, real branded cups with printed
+> JO'S CHA labels, mascots + tree + cabin per the binding note, and a CLEAN brand lockup (the 014
+> stray-character softness did not recur). Feature COMPLETE. Minor taste note: a doubled opening quote
+> before "WATERMELON COCONUT" (the brief's own curly quotes; a canvas touch-up, not a tool defect).
+> Spec: `specs/015-pre-spend-confirm-gate/`.
 
 > **▶ HOUSEKEEPING 2026-07-08 (post-014 sweep):** `answer_keys/CJXQ.json` is now COMMITTED: it is the
 > PRODUCTION key for 茶救星球 / JO'S CHA (web-onboarded via the 006 wizard, verified 2026-06-30, the key

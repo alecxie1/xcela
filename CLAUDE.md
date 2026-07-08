@@ -157,8 +157,11 @@ mid-generation) and `--phase generate` verifies the confirmed prompt via scene_a
 FR-006 proven: all 13 shipped options round-trip (applied == fresh run, row killed).
 Byte-identity pinned: `--phase full` default, kit/legacy, derive_register without
 `--assumptions-out`, runner argv without phase, pre-015 run dirs in the UI. Assumptions
-are emitted STRUCTURED at the guess sites (never regex-parsed from trace). PENDING: T017,
-the human gates (the FREE browser dry pass + the ONE paid eye-gate SC-006).
+are emitted STRUCTURED at the guess sites (never regex-parsed from trace). EYE-GATE T017
+PASSED 2026-07-08 (operator-judged): the free dry pass live-caught the 173925 defect class
+pre-spend on `run_CJXQ_20260708_143643` (the gate row replaced the wrong image); the paid
+leg confirmed once, the nudge landed on its own gate (`run_..._145952`), and the image
+matches the confirmed framing (clean brand lockup this run). Feature COMPLETE.
 Spec/plan/tasks: `specs/015-pre-spend-confirm-gate/`.
 
 Prior feature `014-explicit-usage-wins` - BUILT (US1-US3) + structurally green
