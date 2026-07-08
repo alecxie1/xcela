@@ -105,15 +105,17 @@ generation inside a self-test.** A green self-test ≠ correct output; only the 
 - Keep this file + SYSTEM_MAP current in the SAME commit that makes them stale. A stale
   brief actively misleads the next session.
 
-## Current frame (live state in SYSTEM_MAP §6/23 regroup)
-The "kit of parts + bespoke per-message composition" reframe (feature
-`001-kit-of-parts-composition`) is BUILT through US3 and passes its falsifiable structural
-self-tests. It replaces the 6/18 "ONE TEMPLATE, N TEXTS" machine FOR KIT BRANDS: each sign
-gets a meaning-driven icon + a distinct layout archetype, the reserved text zone is disjoint
-from the icon zone (no scrub), and type is fit-clamped to its zone. The reference is
-internalized into the kit, not cloned. Kit-less brands keep the legacy render-and-scrub path.
-**Still pending: T020, the ONE paid run judged by the human eye** (structure green ≠ pixels
-correct). Spec/plan/tasks: `specs/001-kit-of-parts-composition/`. Details: `docs/ARCHITECTURE.md` §9.
+## Current frame (live state in SYSTEM_MAP header + journey 4)
+The WORKING PRODUCT today is the THIN ROUTE in the browser (journey 4 in SYSTEM_MAP): onboard a
+brand once via the `/onboard` wizard (005/006), fill the guided run form (004/012) with a style
+reference + optional product photos (007/013), `conductor --thin` composes the prompt (003) with
+render modes (009), a render-aware + explicit-usage register (011/014), and role-aware palette
+(008), and the operator judges final.png. Three paid eye-gates passed on CJXQ (011/012/014).
+Next named feature: **015 brand-key enrichment** (brand-level product library). Known taste gap:
+thin-route logo lockups are model-probabilistic (nudge today; the licensed/composite moat is the
+real fix). The KIT path (001, per-message icon + layout + reserved-zone compositing) is BUILT but
+DORMANT since the 6/23 regroup (its T020 eye test was confounded; a clean kit eye-PASS is owed if
+revived); kit-less brands keep the legacy render-and-scrub path. Details: `docs/ARCHITECTURE.md` §9.
 
 ## Top pitfalls (full list in docs/ARCHITECTURE.md §11)
 - Legacy `place_measured` inherits gpt's text size (failure (a)); the KIT path instead uses
@@ -218,7 +220,8 @@ Spec/plan/tasks: `specs/011-register-render-aware/`.
 Prior built features: `010-unified-frontend` (BUILT US1-US3, structurally green test_frontend_nav 3/3;
 the two `frontend/` pages are ONE app: shared header/nav on both with active-view marker, onboard
 save-success -> `/?brand=<id>` handoff + live-runner preselect, UI touch-up with 5 `<fieldset>`s; PURE
-frontend, no server change; pending the FREE human eye/flow check T010),
+frontend, no server change; eye/flow gate T010 closed 2026-07-08, satisfied de facto by the operator
+driving both pages through the CJXQ onboarding + the 011/012/014 form-launched runs),
 `009-asset-render-modes` (BUILT US1-US3, structurally green render_modes 5/5 +
 thin_route 7/7; the task drives render mode + framing on the thin route via `render_style` ->
 `normalize_render_style` -> asset_profile + the (asset_profile x register) opener matrix + negatives split;
@@ -227,17 +230,24 @@ execute-path drift fix 265a524),
 `008-palette-role-guidance` (BUILT US1-US2, structurally green: palette_roles 6/6 +
 brand_key 10/10 + onboard 10/10; every brand color drives behavior on the thin route via
 `scene_author.ROLE_GUIDANCE` + role-aware color block; exactly-one-primary in the shared `validate_lean_key`;
-the gate offers 5 roles; pending the human eye-gate T011), `001-kit-of-parts-composition` (US3, paid eye gate pending),
+the gate offers 5 roles; eye-gate T011 closed 2026-07-08, satisfied de facto by the role-tagged CJXQ key
+driving three operator-passed gates), `001-kit-of-parts-composition` (US3; T020 RAN 2026-06-23,
+structurally clean but the eye test was confounded, see the 6/23 regroup; kit path dormant since the
+thin-route pivot, a clean kit eye-PASS still owed if revived),
 `002-faithful-brief-intake` (faithful intake + wired dropped fields + review), `003-thin-spine`
 (the prompt-compose thin route `conductor --thin`, the engine 004 wraps), `004-frontend-live-runner`
-(thin local web live-runner, operator paid run T016 pending), `005-brand-intake-front-half` (fully
+(thin local web live-runner; operator run T016 closed 2026-07-08, satisfied de facto: the 011/012/014
+eye-gate runs were all launched from this form and judged), `005-brand-intake-front-half` (fully
 verified, T015 cold-brand chajiuxingqiu onboarded end to end), `007-reference-upload` (BUILT US1-US3,
 structurally green test_reference_upload 6/6; the live-runner takes the reference as a file UPLOAD via the
 shared `frontend/uploads.py` `save_upload`, `POST /run` multipart, contract unchanged; plus a follow-on
-fix that surfaces conductor failures in the UI via `run_error.txt`; pending the human browser smoke + paid
-sign T012), `006-web-onboarding-gate` (BUILT US1-US3, structurally green: multipart 3 + onboard 9 +
+fix that surfaces conductor failures in the UI via `run_error.txt`; eye-gate T012 closed 2026-07-08,
+satisfied de facto: every CJXQ run dir carries the picker-uploaded reference.png, outputs judged),
+`006-web-onboarding-gate` (BUILT US1-US3, structurally green: multipart 3 + onboard 9 +
 verify_reuse 6; the designer-facing browser wizard wrapping the 005 PURE modules; `frontend/onboard.py` +
-`frontend/multipart.py` + `brand_intake/persist.py`; pending the human browser smoke + paid sign T017).
+`frontend/multipart.py` + `brand_intake/persist.py`; eye-gate T017 closed 2026-07-08, satisfied de facto:
+`answer_keys/CJXQ.json` verified_by=web IS the wizard run on the real 茶救星球 PDF, paid outputs on that
+key operator-judged in the 011/012/014 gates).
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,

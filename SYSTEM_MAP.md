@@ -1,5 +1,22 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-07-04._
+_Single source of truth for "what is this whole thing." Updated 2026-07-08._
+
+> **▶ HOUSEKEEPING 2026-07-08 (post-014 sweep):** `answer_keys/CJXQ.json` is now COMMITTED: it is the
+> PRODUCTION key for 茶救星球 / JO'S CHA (web-onboarded via the 006 wizard, verified 2026-06-30, the key
+> behind every recent eye-gate run); `answer_keys/chajiuxingqiu.json` stays as the 005 T015 verify-test
+> artifact for the same brand, historical, not production. Five older eye-gates are CLOSED as satisfied
+> de facto, evidence cited in each feature's tasks.md: 004 T016 + 007 T012 (the 011/012/014 paid runs were
+> all launched from the live-runner form; run dirs carry the form-written inputs.json + picker-uploaded
+> reference.png), 006 T017 (CJXQ.json verified_by=web IS the wizard end to end on the real VI PDF), 008
+> T011 (the role-tagged key drove three operator-passed gates), 010 T010 (both pages driven as one app
+> through real work). 001 T020 is closed as RAN-BUT-NOT-PASSED: the kit run happened 2026-06-23
+> (`run_aia_20260623_110905`, structurally clean; the eye comparison was CONFOUNDED, see the 6/23 regroup)
+> and the effort pivoted to the intake fix + the thin route; the kit path is DORMANT, a clean kit eye-PASS
+> is still owed IF that path is revived. STILL OPEN: **013 T009** (photographic product-refs rerun, at the
+> operator's option). NEXT NAMED
+> FEATURE: **015 brand-key enrichment** (durable brand-level product library reusing the 013 feed path).
+> Known taste backlog: thin-route logo LOCKUP softness (stray character in the 014 run; nudge today, the
+> licensed/composite moat is the real fix).
 
 > **▶ BUILD STATUS 2026-07-04: feature 014 (explicit usage wins over the vibe guess) is BUILT + structurally green.**
 > The register engine's LAST known leak between stated intent and register is closed. Observed on
@@ -609,7 +626,7 @@ INPUTS (per brand, supplied once)          INPUTS (per job)
 | A | Typography extraction (VI → font mandate) | extract_typography | ✅ proven |
 | A | Font library + name-table index | build_font_index, brands/aia/fonts/ | ✅ proven (31 HanYi fonts) |
 | A | Answer-key human-verify pass | answer_keys/*.json | 🟡 partial (Tier-1 verify still owed) |
-| B | Guided subfields (4-bucket schema) | brief_schema_v3.json | 🟡 schema done, FORM unbuilt (UI) |
+| B | Guided subfields (4-bucket schema) | brief_schema_v3.json | ✅ FORM built as the 004 live-runner + 012 lossless brief (guided fields, verbatim threading); v3 scaffold itself superseded |
 | B | Reference blind-score → register target | register/blind_score, calibrate_from_reference | ✅ proven (Step-0 falsified OK) |
 | B | derive_register (subfields→profile) | register/derive_register | ✅ proven (direction+magnitude) |
 | C | Reconciliation / "weight" mechanism | brief_schema_v2 locks + register_profile | ✅ proven (held vs flexed) |
@@ -622,20 +639,23 @@ INPUTS (per brand, supplied once)          INPUTS (per job)
 | F | Font compliance (licensed_exact + manifest) | composite_text | ✅ proven |
 | G | Approval / nudge loop | approve.py | ✅ built (recolor/removal/restore verified) |
 | SPINE | One-command harness (agent-free) | harness/run_harness.py, config/aia.yaml | 🟡 runs, but template-fill ONLY (no D/F), AIA-only, ref stubbed, no saved run folder |
-| CONDUCTOR | Brand-general human-gate orchestrator | harness/conductor.py, test_conductor.py | ✅ built 6/18 + self-test 5/5 (AGENT-FREE); ⚠️ output fails eyeball — see 6/18 regroup |
+| CONDUCTOR | Brand-general human-gate orchestrator | harness/conductor.py, test_conductor.py | ✅ built 6/18 + self-test green (AGENT-FREE); the THIN route (`--thin`) has since passed the 011/012/014 operator eye-gates (the 6/18 "fails eyeball" note applied to the pre-thin kit/legacy output) |
+| THIN ROUTE | Prompt-compose spine (003) + render modes (009) + render-aware register (011) + lossless brief (012) + product refs (013) + explicit usage (014) | harness/scene_author.py, register/derive_register.py | ✅ built + structurally green (seven-suite sweep); three paid eye-gates PASSED on CJXQ (154416 / 164912 / 141245) |
+| FRONTEND | Local web app: live-runner (004) + onboarding wizard (006) + reference/product uploads (007/013) + unified nav (010) | frontend/ | ✅ built + structurally green; drives all recent paid runs; eye-gates closed de facto 2026-07-08 |
+| INTAKE | Brand onboarding front-half (005) + web gate (006) | brand_intake/, frontend/onboard.py | ✅ proven live: chajiuxingqiu (CLI, T015) + CJXQ (web, production key) |
 | AXIS A | Render-and-scrub placement | closed_loop_composite.place_measured | 🟡 built + self-test 5/5; ❌ FAILS eyeball: text overflow + scrub damages icon (template-swap frame is wrong) |
 | AXIS B | Reference-relationship dial (extend/match_style/mood) | reference_style_to_prompt.RUNG_TEMPLATES | 🟡 built; "extend" CLONES one panel → signs too similar (6/18). Job needed "vary within a system," not clone |
 | — | X-mark handling (分别画叉, signs #4/#5) | cover_redraw X-redraw | 🟡 worked pre-chroma; re-testing in chroma batch |
-| — | Brief-intake LLM (messy text→subfields) | — | 🔴 unbuilt (judgment glue — point 1) |
+| — | Brief-intake LLM (messy text→subfields) | — | ⚪ superseded: the 004/012 guided FORM collects the brief losslessly, no LLM glue needed (the human IS the input gate, §I) |
 | — | Text-localization OCR (place text in PNG) | — | 🔴 unbuilt — the one true blocker to agent-free flat path (point 3) |
 | — | Reference STYLE analyzer (auto, in-pipeline) | reference_style_to_prompt.py | ✅ WIRED 6/18 (conductor injects aligned_prompt as scene_author --aligned-prompt). ⚠️ vision-extract non-determinism remains; "extend" rung clones one panel (point c) |
 | A | IP cutout from client source (PSD/PDF/img on white) | psd_to_cutout.py | ✅ BUILT 6/16 — edge-connected bg removal; falsifiable self-test (137 interior comps preserved). ⚠️ leaves ENCLOSED bg pockets; see deferred optimization |
-| — | Server (Vercel frontend + long backend) | — | 🔴 unbuilt (decided: not pure serverless) |
-| — | Version control hygiene | .git | 🟡 4 commits (freeze/backup/conductor/render-scrub) — work IS committed, but cadence coarse + NO remote/off-machine backup (gh not installed) |
+| — | Server (Vercel frontend + long backend) | frontend/server.py | 🟡 LOCAL thin web app built (004/006/007/010, stdlib http.server); cloud/hosted deploy still unbuilt |
+| — | Version control hygiene | .git | ✅ per-task commit cadence (spec-driven workflow) + private remote origin (github.com/alecxie1/xcela; IP/secrets gitignored) |
 
 ---
 
-## USER JOURNEY — WHAT ACTUALLY HAPPENS TODAY (2026-06-17)
+## USER JOURNEY — WHAT ACTUALLY HAPPENS (journeys 1-3 written 2026-06-17, journey 4 is TODAY)
 
 **Journey 1 — the clean one-command path (real, but thin):**
   1. `python harness/run_harness.py aia`
@@ -666,12 +686,25 @@ INPUTS (per brand, supplied once)          INPUTS (per job)
   code vs journey 2 = the OCR locator (step 3) + wiring the analyzer + the conductor that sequences
   and STOPS at the gates. Steps 3's scripts already exist and are proven.
 
-**EXPECT today:** every transform above is individually real and verified; with Hermes driving you
-  get on-brand drafts a human finishes. The hard engineering (font compliance, chroma containment,
-  occlusion gate) is genuine.
-**DON'T EXPECT (yet):** to run journey 3 — it's the target, not built. Today the in-between glue and
-  the PNG-reading are still Hermes (journey 2), and only AIA has a config. The "tool" today = proven
-  parts bin + thin spine + Hermes as the assembler.
+**Journey 4 — TODAY (2026-07, the thin route in the browser; Hermes-free, three eye-gates passed):**
+  1. Onboard a brand once: `/onboard` wizard (upload VI PDF → confirm pages → verify locks +
+     assign color roles → upload logo → save key).                    [👤 HUMAN verifies, ⚙️ CODE extracts]
+  2. Fill the run form at `/`: brand, verbatim message lines, asset type / occasion / render
+     style, vibe sliders, design notes, STYLE reference upload (+ 0-6 product photo uploads).  [👤 HUMAN]
+  3. `conductor --thin`: calibrate + derive_register → assemble_thin_prompt → gpt-image-2 with
+     [style, logo, products...] refs; stages stream in the browser.   [⚙️ CODE, no AI judgment glue]
+  4. Operator judges final.png by eye; nudge = binding note → new run dir.        [👤 HUMAN taste gate]
+  This IS journey 3's shape, delivered via the thin route (prompt-compose) rather than the
+  measure/composite back-half; the composite moat (licensed-font compositing on the thin route)
+  remains the deferred hardening. Proven live on CJXQ: onboarding (web key) + the 011/012/014
+  paid eye-gate runs, all form-launched.
+
+**EXPECT today:** journey 4 end to end for any onboarded brand (flat OR photographic marketing
+  assets, product-faithful with uploaded shots); every transform individually real and verified.
+  The hard engineering (font compliance, chroma containment, occlusion gate) is genuine.
+**DON'T EXPECT (yet):** the KIT path's paid validation (001 T020 open); pixel-exact text (thin
+  route paints type; logo lockups are model-probabilistic — the composite moat is the fix); a
+  hosted/cloud deployment (the app is local).
 **STANDALONE, DEFINED CORRECTLY:** remove the AI STAGEHAND (the ← marks in journey 2), keep the 👤
   HUMAN gates (journey 3). Agent-free, NOT human-free. The designer is required at the input + taste
   gates by design; only the invisible AI glue gets replaced — some by code (OCR, sequencing), some by
