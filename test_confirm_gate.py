@@ -245,6 +245,64 @@ def check3_conductor_phases():
     return passed, f"derive_argv_and_state={a}; rederive_skips_calibrate_keeps_answers={b}; unconfirmed_refused={c}; generate_argv_and_done={d}; drift_resets={e}"
 
 
+def check4_assumptions_out():
+    """T004 (contracts/assumptions-schema.md): (a) unmatched usage + no calibration emits
+    register_lane (reason=unmatched, canonical-pick options) + magnitude (reason=fallback);
+    (b) blank usage emits reason=blank; (c) the 173925 defect fixture emits NO register_lane
+    row (its usage explicitly matched 'social', a human statement; an always-ask build fails
+    here) while still deriving the marketing lane the gate displays; (d) matched usage +
+    calibration = ZERO records; (e) sink absent = profile byte-identical to the pin; (f) the
+    CLI flag writes the file, and omitting it writes nothing."""
+    import subprocess
+    import tempfile
+
+    sink = []
+    dr.derive_register(_subfields(usage="goes viral on rednote"), {}, assumptions_sink=sink)
+    ids = [r["id"] for r in sink]
+    lane = next((r for r in sink if r["id"] == "register_lane"), None)
+    a = (ids == ["register_lane", "magnitude"]
+         and lane["cause"]["reason"] == "unmatched"
+         and {"field": "context.usage_context", "value": "marketing"}
+         in [o["writes"] for o in lane["options"]]
+         and sink[1]["cause"]["reason"] == "fallback"
+         and not any("—" in json.dumps(r, ensure_ascii=False) for r in sink))
+
+    sink = []
+    dr.derive_register(_subfields(usage=""), {}, assumptions_sink=sink)
+    b = sink and sink[0]["id"] == "register_lane" and sink[0]["cause"]["reason"] == "blank"
+
+    sink = []
+    p = dr.derive_register(_load(SUBFIELDS_173925), {}, assumptions_sink=sink)
+    c = (p["inferred_register"] == "marketing"
+         and not any(r["id"] == "register_lane" for r in sink))
+
+    sink = []
+    dr.derive_register(_subfields(usage="marketing launch"), {},
+                       calibration={"register_target": {"formality": 3, "playfulness": 7}},
+                       assumptions_sink=sink)
+    d = sink == []
+
+    absent = json.dumps(dr.derive_register(_subfields(), {}), ensure_ascii=False, sort_keys=True)
+    e = absent == EXPECTED_PREFEATURE_PROFILE
+
+    with tempfile.TemporaryDirectory() as td:
+        sf = Path(td) / "subfields.json"
+        sf.write_text(json.dumps(_subfields(usage="goes viral on rednote")), encoding="utf-8")
+        ap = Path(td) / "assumptions_register.json"
+        r1 = subprocess.run([sys.executable, str(REPO / "register" / "derive_register.py"),
+                             "--subfields", str(sf), "--brand", "aia", "--out", td,
+                             "--assumptions-out", str(ap)], capture_output=True, text=True)
+        with_flag = r1.returncode == 0 and ap.exists() and _load(ap)[0]["id"] == "register_lane"
+        ap.unlink()
+        r2 = subprocess.run([sys.executable, str(REPO / "register" / "derive_register.py"),
+                             "--subfields", str(sf), "--brand", "aia", "--out", td],
+                            capture_output=True, text=True)
+        f = with_flag and r2.returncode == 0 and not ap.exists()
+
+    passed = all([a, b, c, d, e, f])
+    return passed, f"unmatched_emits={a}; blank_reason={b}; explicit_match_asks_nothing={c}; zero_guesses_empty={d}; no_sink_byte_identical={e}; cli_flag={f}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
@@ -252,6 +310,8 @@ CHECKS = [
      check2_prompt_only_and_drift_guard),
     ("T003 conductor --phase derive/generate/full: seam, resume, refusal, drift reset",
      check3_conductor_phases),
+    ("T004 derive_register --assumptions-out: structured guesses, explicit matches ask nothing",
+     check4_assumptions_out),
 ]
 
 

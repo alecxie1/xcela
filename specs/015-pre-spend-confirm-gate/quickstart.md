@@ -21,8 +21,10 @@ Expected: all checks green. The suite asserts (see contracts/ for exact shapes):
   inert for all pinned inputs).
 - Per shipped assumption option: write-back + re-derive == fresh-run derivation with that
   value from the start (FR-006 round-trip identity).
-- Replaying the archived 173925 defect subfields emits the `register_lane` assumption
-  record (SC-003's structural half).
+- Replaying the archived 173925 defect subfields derives the marketing lane the gate would
+  display pre-spend (SC-003's structural half) and emits NO `register_lane` assumption
+  row: its usage explicitly matched 'social' (a human statement, not a guess; an
+  always-ask build fails this). Unmatched usage DOES emit the row.
 - Confirm idempotency: second confirm on `generating`/`done` state triggers no second
   launch (stubbed).
 - Prompt drift: inputs mutated after confirm -> generate phase fails loud, state reset.

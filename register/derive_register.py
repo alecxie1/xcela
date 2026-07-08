@@ -36,6 +36,17 @@ USAGE_RULES = [
     (MARKETING_USAGE_KEYWORDS, "marketing"),
 ]
 
+# Feature 015 (pre-spend gate): the register-lane assumption row's constrained picks. Each
+# `writes.value` is a CANONICAL recognized input (a USAGE_RULES keyword), so an applied answer
+# flows through the one derivation path as an explicit human statement (the 014 semantics:
+# a hard signal no vibe guess can override). Round-trip identity is asserted per option.
+REGISTER_LANE_OPTIONS = [
+    {"label": "marketing piece",
+     "writes": {"field": "context.usage_context", "value": "marketing"}},
+    {"label": "hand-held event prop",
+     "writes": {"field": "context.usage_context", "value": "held for photos"}},
+]
+
 # register -> design-language hints (the leap's payload).
 REGISTER_HINTS = {
     "event_prop": {
@@ -77,7 +88,8 @@ REGISTER_SLIDER_DEFAULTS = {
 }
 
 
-def derive_register(subfields: dict, brand_key: dict, calibration: dict | None = None) -> dict:
+def derive_register(subfields: dict, brand_key: dict, calibration: dict | None = None,
+                    assumptions_sink: list | None = None) -> dict:
     """Pure function: subfields dict + brand answer_key (+ optional reference calibration)
     -> register_profile (with trace). Subfields set DIRECTION (which register, logo or not,
     strictness); a calibration's register_target sets MAGNITUDE (the slider coordinates)."""
@@ -98,6 +110,7 @@ def derive_register(subfields: dict, brand_key: dict, calibration: dict | None =
             base_row, base_hit = keywords, hit
             trace.append(f"usage_context={subfields.get('usage_context')!r} matched {hit!r} => {reg} base")
             break
+    no_rule_matched = base is None
     if base is None:
         base = "marketing"
         trace.append(f"usage_context={subfields.get('usage_context')!r} matched no rule => marketing base (default)")
@@ -165,6 +178,37 @@ def derive_register(subfields: dict, brand_key: dict, calibration: dict | None =
         slider_source = "subfields"
         trace.append(f"MAGNITUDE from subfield vibe: formality={out_formality}, "
                      f"playfulness={out_playfulness} (no calibration, no register default)")
+
+    # --- 2c. feature 015 (pre-spend gate): structured assumption records, emitted at the
+    # guess sites themselves (never regex-parsed from the prose trace). The sink is opt-in:
+    # without it, behavior and every output byte stay identical (the 011/014 pins hold).
+    if assumptions_sink is not None:
+        if no_rule_matched:
+            raw_usage = subfields.get("usage_context")
+            assumptions_sink.append({
+                "id": "register_lane",
+                "dimension": "job register (what kind of piece this is)",
+                "assumed_value": (f"{register} (default: your usage words matched no known "
+                                  "pattern)" if usage else f"{register} (default: no usage "
+                                  "context was given)"),
+                "cause": {"input": "context.usage_context", "value": raw_usage,
+                          "reason": "unmatched" if usage else "blank"},
+                "options": [dict(o) for o in REGISTER_LANE_OPTIONS],
+                "source": "derive_register",
+            })
+        if slider_source != "calibration":
+            assumptions_sink.append({
+                "id": "magnitude",
+                "dimension": "style intensity (how far from corporate)",
+                "assumed_value": (f"{slider_source}: formality={out_formality}, "
+                                  f"playfulness={out_playfulness} (no calibration available)"),
+                "cause": {"input": "reference_image", "value": None, "reason": "fallback"},
+                "options": [{"label": "set directly",
+                             "writes": {"field": "context.vibe",
+                                        "value": {"formality": "<int 0-10>",
+                                                  "playfulness": "<int 0-10>"}}}],
+                "source": "derive_register",
+            })
 
     # --- 3. brand anchors: ALWAYS hold primary color (client kept AIA red even in playful refs) ---
     anchors = ["primary_color"]
@@ -291,6 +335,11 @@ def main() -> None:
     ap.add_argument("--calibration", default="",
                     help="optional calibration.json (register/calibrate_from_reference.py output): "
                     "its register_target sets slider MAGNITUDE; subfields still set DIRECTION")
+    ap.add_argument("--assumptions-out", default="",
+                    help="feature 015 (pre-spend gate): optional path; when given, write the "
+                         "STRUCTURED assumption records (the engine's own guesses: unmatched "
+                         "register lane, magnitude fallback) as JSON there. Absent = byte-"
+                         "identical behavior and output.")
     args = ap.parse_args()
 
     subfields = json.loads(Path(args.subfields).read_text(encoding="utf-8"))
@@ -298,7 +347,13 @@ def main() -> None:
     calibration = (json.loads(Path(args.calibration).read_text(encoding="utf-8"))
                    if args.calibration else None)
 
-    profile = derive_register(subfields, brand_key, calibration=calibration)
+    sink = [] if args.assumptions_out else None
+    profile = derive_register(subfields, brand_key, calibration=calibration,
+                              assumptions_sink=sink)
+    if args.assumptions_out:
+        Path(args.assumptions_out).write_text(
+            json.dumps(sink, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"assumptions ({len(sink)}): {args.assumptions_out}", file=sys.stderr)
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
