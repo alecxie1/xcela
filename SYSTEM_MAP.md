@@ -1,6 +1,33 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 
+> **▶ BUILD STATUS 2026-07-08 (latest): feature 015 (pre-spend confirm gate) is BUILT + structurally green.**
+> The dimension interview, scoped to the evidence: the tool now SHOWS ITS GUESSES BEFORE YOU PAY. Every
+> browser run stops after deriving its plan (`conductor --phase derive`: calibrate + derive_register +
+> scene_author `--prompt-only`, zero image spend) at a gate showing the derived register, anchors/flexes,
+> the final prompt, and ONE row per recorded assumption, emitted STRUCTURED at the guess sites (never
+> regex-parsed from prose): unmatched/blank register lane, magnitude fallback (derive_register
+> `--assumptions-out`, profile bytes untouched, all 011/014 pins hold), unrecognized render/dial,
+> unparseable/clamped size (conductor records). Rows carry CONSTRAINED controls only (picks / bounded
+> numbers; clarification Q1): an answer applies a SHIPPED option's canonical recognized value (the lane
+> pick writes a USAGE_RULES keyword = an explicit human statement per 014; one additive hard row makes
+> the formal pick deterministic, pinned inert for all baselines), then re-derives FREE on the same run
+> dir (calibration.json reused, the vision calls never repeat in the answer loop). `POST /run/<id>/confirm`
+> is the ONLY spending route (idempotent, cost-stated, state-before-launch); `--phase generate` re-runs the
+> sign step with `--verify-prompt`: any drift between the confirmed final_prompt.txt and a fresh assembly
+> fails loud pre-spend and resets the gate. Nudge reruns land on their OWN gate (clarification Q2:
+> "no browser run spends without a confirmed plan", asserted at the launch sites). Zero-guess briefs show
+> zero rows + one confirm click (FR-008); walking away leaves an honest unspent draft; a server restart
+> re-renders the gate from disk (stateless routes). FR-006 round-trip identity proven for ALL 13 shipped
+> options (applied == fresh run, byte-comparable profile + plan, each answer kills its own row). CLI
+> byte-identity everywhere: `--phase full` default, kit/legacy untouched, runner argv without phase,
+> pre-015 run dirs render as before. Tests: test_confirm_gate 14/14 incl. a REAL free subprocess
+> end-to-end (derive stops pre-spend; tampered generate blocked free); the full 26-suite prior sweep
+> passes UNCHANGED. PENDING + LOAD-BEARING: T017, the human gates: (a) the FREE browser dry pass
+> (ambiguous brief -> two rows -> a pick refreshes the plan in seconds -> walk away leaves the draft);
+> (b) the ONE paid eye-gate (SC-006: change an answer, confirm once, the image matches the confirmed
+> framing; nudge lands on a new gate before any second spend). Spec: `specs/015-pre-spend-confirm-gate/`.
+
 > **▶ HOUSEKEEPING 2026-07-08 (post-014 sweep):** `answer_keys/CJXQ.json` is now COMMITTED: it is the
 > PRODUCTION key for 茶救星球 / JO'S CHA (web-onboarded via the 006 wizard, verified 2026-06-30, the key
 > behind every recent eye-gate run); `answer_keys/chajiuxingqiu.json` stays as the 005 T015 verify-test
@@ -691,9 +718,12 @@ INPUTS (per brand, supplied once)          INPUTS (per job)
      assign color roles → upload logo → save key).                    [👤 HUMAN verifies, ⚙️ CODE extracts]
   2. Fill the run form at `/`: brand, verbatim message lines, asset type / occasion / render
      style, vibe sliders, design notes, STYLE reference upload (+ 0-6 product photo uploads).  [👤 HUMAN]
-  3. `conductor --thin`: calibrate + derive_register → assemble_thin_prompt → gpt-image-2 with
-     [style, logo, products...] refs; stages stream in the browser.   [⚙️ CODE, no AI judgment glue]
-  4. Operator judges final.png by eye; nudge = binding note → new run dir.        [👤 HUMAN taste gate]
+  3. `conductor --phase derive`: calibrate + derive_register → assemble_thin_prompt; STOPS at
+     the PRE-SPEND GATE (015): derived register + prompt + every recorded assumption as a
+     confirmable row; answers re-derive free.                          [⚙️ CODE, then 👤 HUMAN input gate]
+  4. Operator confirms (cost stated) → `--phase generate` (drift-guarded) → gpt-image-2 with
+     [style, logo, products...] refs; stages stream in the browser.    [👤 HUMAN spend gate, ⚙️ CODE]
+  5. Operator judges final.png by eye; nudge = binding note → a new run dir at its own gate.  [👤 HUMAN taste gate]
   This IS journey 3's shape, delivered via the thin route (prompt-compose) rather than the
   measure/composite back-half; the composite moat (licensed-font compositing on the thin route)
   remains the deferred hardening. Proven live on CJXQ: onboarding (web key) + the 011/012/014

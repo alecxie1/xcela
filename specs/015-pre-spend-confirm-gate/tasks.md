@@ -71,7 +71,7 @@
 
 ## Phase 6: Polish, docs currency, and the human gates
 
-- [ ] T015 [P] Update `CLAUDE.md` (active-feature block above the SPECKIT markers) + `SYSTEM_MAP.md` (header status + journey 4 gains the gate step) in the same commit that stales them (§VII): the browser flow now stops at the pre-spend gate; answers are explicit human statements; the CLI default is untouched; note the deferred full-interview upgrades stay in the inbox brief.
+- [x] T015 [P] Update `CLAUDE.md` (active-feature block above the SPECKIT markers) + `SYSTEM_MAP.md` (header status + journey 4 gains the gate step) in the same commit that stales them (§VII): the browser flow now stops at the pre-spend gate; answers are explicit human statements; the CLI default is untouched; note the deferred full-interview upgrades stay in the inbox brief.
 - [ ] T016 Run the complete free surface one last time and paste real output into the task: `test_confirm_gate.py` (all checks), the quickstart step 2 sweep, and the server GET/POST smoke over a synthetic run dir (stages gate stage, confirm idempotency, answer refusal), NO paid calls anywhere.
 - [ ] T017 The human gates (quickstart steps 3-4, NOT automated; needs the human, the last step spends): (a) FREE browser dry pass: ambiguous brief ("goes viral on rednote" + "about poster size") stops at the gate with two assumption rows, a pick refreshes the plan in seconds, walking away leaves the honest draft, a server restart re-renders the gate from disk; (b) the ONE paid eye-gate (SC-006): change an answer, confirm (cost stated), exactly one generation, judge by eye that the image matches the confirmed framing, then nudge and confirm the rerun lands on a NEW gate before any second spend. Record the verdict in `SYSTEM_MAP.md`.
 

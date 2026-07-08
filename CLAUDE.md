@@ -88,6 +88,7 @@ image sets MAGNITUDE (how far, via blind vision score). See `docs/ARCHITECTURE.m
 ## How to test (the FREE structural surfaces — use BEFORE spending)
 ```
 .venv/bin/python test_conductor.py            # conductor self-test (dry-run, no paid calls)
+.venv/bin/python test_confirm_gate.py         # 015 pre-spend gate self-test (incl. a real FREE derive run)
 .venv/bin/python test_render_and_scrub.py     # axis A+B self-test (--explain, no paid calls)
 .venv/bin/python harness/conductor.py --brand aia --inputs conductor_inputs_example.json \
     --out /tmp/dry --dry-run --no-approve      # plan only, NO model calls
@@ -108,9 +109,11 @@ generation inside a self-test.** A green self-test ≠ correct output; only the 
 ## Current frame (live state in SYSTEM_MAP header + journey 4)
 The WORKING PRODUCT today is the THIN ROUTE in the browser (journey 4 in SYSTEM_MAP): onboard a
 brand once via the `/onboard` wizard (005/006), fill the guided run form (004/012) with a style
-reference + optional product photos (007/013), `conductor --thin` composes the prompt (003) with
-render modes (009), a render-aware + explicit-usage register (011/014), and role-aware palette
-(008), and the operator judges final.png. Three paid eye-gates passed on CJXQ (011/012/014).
+reference + optional product photos (007/013), `conductor --phase derive` composes the plan (003)
+with render modes (009), a render-aware + explicit-usage register (011/014), and role-aware palette
+(008), then STOPS at the 015 pre-spend gate (derived plan + every recorded assumption, answers
+re-derive free); the operator confirms (the only spend) and judges final.png. Three paid eye-gates
+passed on CJXQ (011/012/014).
 Next named feature: **015 brand-key enrichment** (brand-level product library). Known taste gap:
 thin-route logo lockups are model-probabilistic (nudge today; the licensed/composite moat is the
 real fix). The KIT path (001, per-message icon + layout + reserved-zone compositing) is BUILT but
@@ -135,7 +138,30 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `014-explicit-usage-wins` - BUILT (US1-US3) + structurally green
+**Active feature:** `015-pre-spend-confirm-gate` - BUILT (US1-US3) + structurally green
+(test_confirm_gate 14/14; the FULL 26-suite prior sweep passes UNCHANGED). The dimension
+interview in its evidence-scoped form: every BROWSER run stops at a pre-spend gate.
+`POST /run` launches `conductor --phase derive` (calibrate + derive_register + scene_author
+`--prompt-only`: register profile, final_prompt.txt, structured `assumptions.json`,
+`gate_state.json` awaiting, ZERO image spend); the UI's 3b panel shows the derived plan +
+one row per recorded guess (unmatched/blank register lane, magnitude fallback, unrecognized
+render/dial, unparseable/clamped size), each with CONSTRAINED controls (picks / bounded
+numbers, never free-text retype); `POST /run/<id>/answer` applies only SHIPPED options
+(canonical recognized values; the lane pick writes a USAGE_RULES keyword, an explicit human
+statement per 014 semantics; ONE additive hard row (("formal document","official
+notice"),"formal") makes the formal pick deterministic) then re-derives FREE on the same
+run dir (calibration reused, vision calls never repeated); `POST /run/<id>/confirm` is the
+ONLY spending route (idempotent: state written before launch, repeat confirms no-op even
+mid-generation) and `--phase generate` verifies the confirmed prompt via scene_author
+`--verify-prompt` (drift = fail loud + gate reset, never generate from unseen values).
+FR-006 proven: all 13 shipped options round-trip (applied == fresh run, row killed).
+Byte-identity pinned: `--phase full` default, kit/legacy, derive_register without
+`--assumptions-out`, runner argv without phase, pre-015 run dirs in the UI. Assumptions
+are emitted STRUCTURED at the guess sites (never regex-parsed from trace). PENDING: T017,
+the human gates (the FREE browser dry pass + the ONE paid eye-gate SC-006).
+Spec/plan/tasks: `specs/015-pre-spend-confirm-gate/`.
+
+Prior feature `014-explicit-usage-wins` - BUILT (US1-US3) + structurally green
 (test_explicit_usage_wins 4/4; the seven-suite sweep incl. register_render_aware 8/8 green).
 The LAST register leak is closed: the flat-vector-era vibe promotion (playful+informal promotes
 marketing->event_prop) no longer overrides an EXPLICIT match on the marketing-keywords row.
