@@ -16,12 +16,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CONDUCTOR = "harness/conductor.py"
 
 
-def build_conductor_argv(inputs_path, brand: str, style_notes=None) -> list:
+def build_conductor_argv(inputs_path, brand: str, style_notes=None, phase=None) -> list:
     """Pure: the conductor CLI invocation for a (re)run. `style_notes` (a nudge) is added verbatim
-    as a binding clause; absent/empty omits it. No `--out` => a new run dir per call."""
+    as a binding clause; absent/empty omits it. No `--out` => a new run dir per call.
+    Feature 015: `phase` appends `--phase <derive|generate>`; None keeps the pre-015 argv
+    byte-identical (the faithful CLI default). The browser launches derive (zero spend) and,
+    on operator confirmation, generate."""
     argv = [PY, CONDUCTOR, "--brand", brand, "--thin", "--no-approve", "--inputs", str(inputs_path)]
     if style_notes:
         argv += ["--style-notes", str(style_notes)]
+    if phase:
+        argv += ["--phase", str(phase)]
     return argv
 
 

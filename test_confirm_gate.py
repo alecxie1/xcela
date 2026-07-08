@@ -363,6 +363,61 @@ def check5_conductor_assumptions():
     return passed, f"triggers_exact={a}; dial_mirror_guard={b}; size_reasons={c}; union_and_argv={d}; zero_guesses_empty_file={e}; no_emdash={f}"
 
 
+def check6_server_confirm_flow():
+    """T006 (contracts/server-routes.md): (a) runner argv legacy shape byte-identical with
+    phase=None, --phase appended otherwise; (b) decide_confirm: pre-015 dir -> 404 no launch;
+    awaiting+prompt+meta -> 200 + launch + state confirmed with the prompt sha BEFORE launch;
+    repeat -> 200 no-op no launch (FR-012, zero second spends); missing prompt -> 409 and the
+    gate STAYS awaiting; missing run_meta -> 409 (the generate argv could not be reproduced)."""
+    import hashlib
+    import tempfile
+    sys.path.insert(0, str(REPO / "frontend"))
+    import runner as runner_mod
+    import server as server_mod
+
+    legacy = runner_mod.build_conductor_argv("in.json", "aia", style_notes="note")
+    a = (legacy == [sys.executable, "harness/conductor.py", "--brand", "aia", "--thin",
+                    "--no-approve", "--inputs", "in.json", "--style-notes", "note"]
+         and runner_mod.build_conductor_argv("in.json", "aia", phase="derive")
+         == legacy[:-2] + ["--phase", "derive"])
+
+    with tempfile.TemporaryDirectory() as td:
+        b = server_mod.decide_confirm(Path(td), "$0.08")[0] == 404
+
+        (Path(td) / "sign_s1").mkdir(parents=True)
+        (Path(td) / "sign_s1" / "final_prompt.txt").write_text("the prompt", encoding="utf-8")
+        (Path(td) / "run_meta.json").write_text(
+            json.dumps({"brand": "aia", "style_notes": "note"}), encoding="utf-8")
+        conductor.write_gate_state(td, "awaiting_confirmation")
+        code, payload, launch = server_mod.decide_confirm(Path(td), "$0.08")
+        gs = _load(Path(td) / "gate_state.json")
+        c = (code == 200 and launch and launch["brand"] == "aia"
+             and launch["style_notes"] == "note"
+             and gs["state"] == "confirmed"
+             and gs["confirmation"]["confirmed_prompt_sha"]
+             == hashlib.sha256(b"the prompt").hexdigest()
+             and gs["confirmation"]["cost_stated"] == "$0.08")
+
+        code2, payload2, launch2 = server_mod.decide_confirm(Path(td), "$0.08")
+        d = code2 == 200 and launch2 is None and payload2.get("state") == "confirmed"
+
+    with tempfile.TemporaryDirectory() as td:
+        conductor.write_gate_state(td, "awaiting_confirmation")
+        (Path(td) / "run_meta.json").write_text(json.dumps({"brand": "aia"}), encoding="utf-8")
+        code, _, launch = server_mod.decide_confirm(Path(td), "$0.08")
+        e = (code == 409 and launch is None
+             and _load(Path(td) / "gate_state.json")["state"] == "awaiting_confirmation")
+
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / "sign_s1").mkdir(parents=True)
+        (Path(td) / "sign_s1" / "final_prompt.txt").write_text("p", encoding="utf-8")
+        conductor.write_gate_state(td, "awaiting_confirmation")
+        f = server_mod.decide_confirm(Path(td), "$0.08")[0] == 409
+
+    passed = all([a, b, c, d, e, f])
+    return passed, f"argv_shapes={a}; pre015_404={b}; confirm_launches_once={c}; repeat_noop={d}; no_prompt_409_stays_awaiting={e}; no_meta_409={f}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
@@ -374,6 +429,8 @@ CHECKS = [
      check4_assumptions_out),
     ("T005 conductor assumption aggregation: exact triggers, dial mirror, engine+conductor union",
      check5_conductor_assumptions),
+    ("T006 server: derive-first launch, idempotent cost-stated confirm (decide_confirm)",
+     check6_server_confirm_flow),
 ]
 
 

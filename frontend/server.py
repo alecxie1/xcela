@@ -10,6 +10,7 @@ runs fine with this server absent.
   .venv/bin/python frontend/server.py            # serves http://localhost:8765
 """
 
+import hashlib
 import json
 import os
 import re
@@ -84,11 +85,56 @@ def write_run_inputs(form: dict, reference, run_dir: Path, products=None) -> Pat
     return inputs_writer.write_inputs(form, run_dir / "inputs.json")
 
 
-def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes):
-    """Run the conductor (the paid step) in a background thread so /stages can poll progressively.
-    We append --out <run_dir> (a FRESH dir per call) so the server can address the run while it runs;
-    build_conductor_argv stays --out-free (the faithful CLI default)."""
-    argv = runner.build_conductor_argv(inputs_path, brand, style_notes=style_notes) + ["--out", str(run_dir)]
+def decide_confirm(run_dir: Path, cost_label: str):
+    """HTTP-free confirm decision (feature 015, contracts/server-routes.md; unit-testable).
+    Returns (status_code, payload, launch): `launch` is None (nothing to start) or
+    {brand, inputs_path, style_notes} for a --phase generate run. When launch is set, the
+    gate state has ALREADY been written to 'confirmed' (state-before-launch: a crashed
+    launch never leaves an unguarded awaiting gate, and a repeat confirm no-ops)."""
+    gs_path = Path(run_dir) / "gate_state.json"
+    if not Path(run_dir).exists() or not gs_path.exists():
+        return 404, {"error": "no gated run here (pre-015 runs have no pre-spend gate)"}, None
+    try:
+        gs = json.loads(gs_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return 409, {"error": "gate_state.json unreadable; re-run the derive phase"}, None
+    state = gs.get("state")
+    if state in ("confirmed", "generating", "done"):
+        return 200, {"ok": True, "state": state,
+                     "note": "already confirmed; no second spend"}, None
+    if state != "awaiting_confirmation":
+        return 409, {"error": f"gate state {state!r} does not accept confirm"}, None
+    prompt_path = Path(run_dir) / "sign_s1" / "final_prompt.txt"
+    if not prompt_path.exists():
+        return 409, {"error": "no assembled prompt to confirm; the derive phase has not "
+                              "finished (or failed, see run_error.txt)"}, None
+    meta_path = Path(run_dir) / "run_meta.json"
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return 409, {"error": "run_meta.json missing/unreadable; cannot reproduce the "
+                              "derive argv for the generate phase"}, None
+    now = datetime.now().isoformat(timespec="seconds")
+    gs["state"] = "confirmed"
+    gs["updated"] = now
+    gs["confirmation"] = {
+        "confirmed_prompt_sha": hashlib.sha256(prompt_path.read_bytes()).hexdigest(),
+        "cost_stated": cost_label,
+        "confirmed_at": now,
+    }
+    gs_path.write_text(json.dumps(gs, ensure_ascii=False, indent=2), encoding="utf-8")
+    launch = {"brand": meta["brand"], "inputs_path": Path(run_dir) / "inputs.json",
+              "style_notes": meta.get("style_notes")}
+    return 200, {"ok": True, "state": "confirmed", "cost_stated": cost_label}, launch
+
+
+def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes, phase=None):
+    """Run the conductor in a background thread so /stages can poll progressively. We append
+    --out <run_dir> so the server can address the run while it runs; build_conductor_argv
+    stays --out-free (the faithful CLI default). Feature 015: phase='derive' is the ZERO-SPEND
+    first leg every browser run takes; phase='generate' is the confirmed paid leg."""
+    argv = runner.build_conductor_argv(inputs_path, brand, style_notes=style_notes,
+                                       phase=phase) + ["--out", str(run_dir)]
 
     def _work():
         try:
@@ -147,6 +193,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._onboard_extract(path[len("/onboard/"):-len("/extract")])
         if path.startswith("/onboard/") and path.endswith("/save"):
             return self._onboard_save(path[len("/onboard/"):-len("/save")])
+        # --- Feature 015: the pre-spend gate's confirm (the ONLY route that spends) ---
+        if path.startswith("/run/") and path.endswith("/confirm"):
+            return self._run_confirm(path[len("/run/"):-len("/confirm")])
         # --- Feature 004: the back-half run ---
         if path != "/run":
             return self._send(404, {"error": "not found"})
@@ -168,12 +217,53 @@ class Handler(BaseHTTPRequestHandler):
             run_dir.mkdir(parents=True, exist_ok=True)
             inputs_path = write_run_inputs(form, reference, run_dir,  # saves the uploads into the run dir
                                            products=products)
-            _launch_async(run_dir, brand, inputs_path, form.get("style_notes") or None)
+            style_notes = form.get("style_notes") or None
+            # Feature 015: persist what the confirm leg needs to reproduce the derive argv
+            # exactly (style_notes is an argv-only channel; a mismatch would trip the
+            # --verify-prompt drift guard).
+            (run_dir / "run_meta.json").write_text(json.dumps(
+                {"brand": brand, "style_notes": style_notes}, ensure_ascii=False, indent=2),
+                encoding="utf-8")
+            # Feature 015: every browser run starts with the ZERO-SPEND derive phase; the paid
+            # generate phase runs only through POST /run/<id>/confirm (nudge reruns included).
+            _launch_async(run_dir, brand, inputs_path, style_notes, phase="derive")
         except Exception as exc:  # noqa: BLE001
             if _inflight.locked():
                 _inflight.release()
             return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
         return self._send(200, {"run_id": run_id, "per_run_cost_usd": PER_RUN_COST_USD})
+
+    def _run_confirm(self, run_id):
+        """Feature 015 (FR-012): idempotent, cost-stated confirm. State is written BEFORE the
+        launch; a repeat confirm sees confirmed/generating/done and never spends twice. The
+        no-op states answer BEFORE the single-flight lock, so a repeat confirm during the
+        generation itself gets the graceful no-op, not a 409."""
+        run_dir = OUTPUT / run_id
+        gs_path = run_dir / "gate_state.json"
+        if gs_path.exists():
+            try:
+                state = json.loads(gs_path.read_text(encoding="utf-8")).get("state")
+            except Exception:  # noqa: BLE001
+                state = None
+            if state in ("confirmed", "generating", "done"):
+                return self._send(200, {"ok": True, "state": state,
+                                        "note": "already confirmed; no second spend",
+                                        "per_run_cost_usd": PER_RUN_COST_USD})
+        if not _inflight.acquire(blocking=False):
+            return self._send(409, {"error": "a run is already in flight (single-flight); wait"})
+        launched = False
+        try:
+            code, payload, launch = decide_confirm(run_dir, f"${PER_RUN_COST_USD:.2f}")
+            if launch:
+                _launch_async(run_dir, launch["brand"], launch["inputs_path"],
+                              launch["style_notes"], phase="generate")
+                launched = True  # _launch_async's worker releases the lock
+            return self._send(code, {**payload, "per_run_cost_usd": PER_RUN_COST_USD})
+        except Exception as exc:  # noqa: BLE001
+            return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
+        finally:
+            if not launched and _inflight.locked():
+                _inflight.release()
 
     # --- Feature 006 onboarding handlers (thin glue over onboard.py; no model, never intake.main) ---
 
