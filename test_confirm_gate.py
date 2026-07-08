@@ -303,6 +303,66 @@ def check4_assumptions_out():
     return passed, f"unmatched_emits={a}; blank_reason={b}; explicit_match_asks_nothing={c}; zero_guesses_empty={d}; no_sink_byte_identical={e}; cli_flag={f}"
 
 
+def check5_conductor_assumptions():
+    """T005: (a) each conductor record fires on its exact trigger and never on recognized
+    input; (b) _dial_unrecognized mirrors normalize_dial (drift guard: recognized values
+    never flagged, gibberish flagged AND folded to extend); (c) reasons distinguish blank /
+    unparseable / clamped sizes; (d) the derive phase's derive_register argv carries
+    --assumptions-out and assumptions.json is the engine+conductor union; (e) recognized
+    everything + zero engine records = assumptions.json == []; (f) no em-dash anywhere."""
+    import tempfile
+    import format_size as fmtsize
+
+    sr_bad = fmtsize.resolve_size("about poster size")
+    sr_ok = fmtsize.resolve_size("60x40cm")
+    bad = build_gate_inputs = {
+        **_gate_inputs("ref.png"), "render_style": "watercolor",
+        "reference_relationship": "随便什么 whatever"}
+    recs = conductor.build_conductor_assumptions(bad, sr_bad)
+    a1 = ([r["id"] for r in recs] == ["render_style", "relationship_dial", "format_size"]
+          and all(r["source"] == "conductor" for r in recs))
+    recs_ok = conductor.build_conductor_assumptions(_gate_inputs("ref.png"), sr_ok)
+    a = a1 and recs_ok == []
+
+    recognized = ["extend", "match_style", "mood", "template series", "style match",
+                  "inspiration, loose"]
+    b = (all(not conductor._dial_unrecognized(v) for v in recognized)
+         and conductor._dial_unrecognized("随便什么 whatever")
+         and conductor.normalize_dial("随便什么 whatever") == conductor.DEFAULT_DIAL)
+
+    r_blank = conductor.build_conductor_assumptions(
+        {**_gate_inputs(), "format_size": None}, fmtsize.resolve_size(None))
+    r_unp = conductor.build_conductor_assumptions(
+        {**_gate_inputs(), "format_size": "about poster size"},
+        fmtsize.resolve_size("about poster size"))
+    r_clamp = conductor.build_conductor_assumptions(
+        {**_gate_inputs(), "format_size": "500x40cm"}, fmtsize.resolve_size("500x40cm"))
+    c = ([r[-1]["cause"]["reason"] for r in (r_blank, r_unp, r_clamp)]
+         == ["blank", "unparseable", "clamped"])
+
+    ok_stub = lambda step: {"ok": True, "returncode": 0}  # noqa: E731
+    with tempfile.TemporaryDirectory() as td:
+        fake_engine = [{"id": "register_lane", "source": "derive_register", "options": []}]
+        (Path(td) / "assumptions_register.json").write_text(
+            json.dumps(fake_engine), encoding="utf-8")
+        inputs = {**_gate_inputs(), "render_style": "watercolor"}
+        rec, manifest, _ = _run_execute(td, inputs, "derive", ok_stub)
+        derive_step = next(s for s in rec if s["label"] == "derive_register")
+        union = _load(Path(td) / "assumptions.json")
+        d = ("--assumptions-out" in derive_step["argv"]
+             and [r["id"] for r in union] == ["register_lane", "render_style"]
+             and union[0]["source"] == "derive_register")
+
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / "assumptions_register.json").write_text("[]", encoding="utf-8")
+        rec, manifest, _ = _run_execute(td, _gate_inputs(), "derive", ok_stub)
+        e = _load(Path(td) / "assumptions.json") == []
+
+    f = "—" not in json.dumps(recs + r_blank + r_unp + r_clamp, ensure_ascii=False)
+    passed = all([a, b, c, d, e, f])
+    return passed, f"triggers_exact={a}; dial_mirror_guard={b}; size_reasons={c}; union_and_argv={d}; zero_guesses_empty_file={e}; no_emdash={f}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
@@ -312,6 +372,8 @@ CHECKS = [
      check3_conductor_phases),
     ("T004 derive_register --assumptions-out: structured guesses, explicit matches ask nothing",
      check4_assumptions_out),
+    ("T005 conductor assumption aggregation: exact triggers, dial mirror, engine+conductor union",
+     check5_conductor_assumptions),
 ]
 
 

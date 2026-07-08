@@ -116,6 +116,101 @@ def normalize_render_style(value) -> str:
     return "flat_graphic"
 
 
+# 015 gate: render_style values the pipeline RECOGNIZES (photo terms map to photo, flat
+# terms are the documented flat lane; blank is the documented default). Anything else is
+# silently folded to flat_graphic by normalize_render_style, which is exactly the guess the
+# gate must surface.
+RENDER_RECOGNIZED = ("", "photographic", "photo", "flat vector", "flat graphic",
+                     "flat_graphic", "flat")
+
+
+def _render_unrecognized(value) -> bool:
+    """015 gate: a NON-EMPTY render_style that is neither a photo nor a known flat term."""
+    return str(value or "").strip().lower() not in RENDER_RECOGNIZED
+
+
+def _dial_unrecognized(value) -> bool:
+    """015 gate: a non-empty reference_relationship that normalize_dial folds to
+    DEFAULT_DIAL via its last-resort branch. MIRRORS normalize_dial's recognition
+    (drift-guarded by test: recognized values here must never disagree with it)."""
+    if not value:
+        return False
+    v = str(value).strip().lower()
+    if v in DIAL_VALUES:
+        return False
+    if v.startswith("template") or "extend" in v or "series" in v:
+        return False
+    if v.startswith("style") or "match" in v:
+        return False
+    if v.startswith("inspiration") or "mood" in v or "loose" in v:
+        return False
+    return True
+
+
+def build_conductor_assumptions(inputs: dict, size_resolution: dict) -> list:
+    """015 gate: the conductor-level guess records (contracts/assumptions-schema.md).
+    PURE: no I/O. Every option's writes.value is a value the pipeline recognizes, so an
+    applied answer re-derives to the same profile as a fresh run (FR-006)."""
+    recs = []
+    raw_render = inputs.get("render_style")
+    if _render_unrecognized(raw_render):
+        recs.append({
+            "id": "render_style",
+            "dimension": "render mode (flat graphic vs photographic)",
+            "assumed_value": "flat vector (your render style was not recognized)",
+            "cause": {"input": "render_style", "value": raw_render, "reason": "unmatched"},
+            "options": [
+                {"label": "flat vector",
+                 "writes": {"field": "render_style", "value": "flat vector"}},
+                {"label": "photographic",
+                 "writes": {"field": "render_style", "value": "photographic"}},
+            ],
+            "source": "conductor",
+        })
+    raw_rel = inputs.get("reference_relationship")
+    if inputs.get("reference_image") and _dial_unrecognized(raw_rel):
+        recs.append({
+            "id": "relationship_dial",
+            "dimension": "reference relationship (how closely to follow the reference)",
+            "assumed_value": "extend (closest match; your wording was not recognized)",
+            "cause": {"input": "reference_relationship", "value": raw_rel,
+                      "reason": "unmatched"},
+            "options": [
+                {"label": "extend the reference family",
+                 "writes": {"field": "reference_relationship", "value": "extend"}},
+                {"label": "match its style",
+                 "writes": {"field": "reference_relationship", "value": "match style"}},
+                {"label": "mood only",
+                 "writes": {"field": "reference_relationship", "value": "mood"}},
+            ],
+            "source": "conductor",
+        })
+    note = size_resolution.get("note")
+    if note:
+        raw_size = inputs.get("format_size")
+        reason = ("clamped" if size_resolution.get("needs_review")
+                  else ("blank" if not raw_size else "unparseable"))
+        recs.append({
+            "id": "format_size",
+            "dimension": "output size",
+            "assumed_value": (f"{size_resolution['width']}x{size_resolution['height']} "
+                              f"({note})"),
+            "cause": {"input": "format_size", "value": raw_size, "reason": reason},
+            "options": [
+                {"label": "60x40cm landscape",
+                 "writes": {"field": "format_size", "value": "60x40cm"}},
+                {"label": "40x60cm portrait",
+                 "writes": {"field": "format_size", "value": "40x60cm"}},
+                {"label": "square",
+                 "writes": {"field": "format_size", "value": "50x50cm"}},
+                {"label": "keep 1536x1024",
+                 "writes": {"field": "format_size", "value": "1536x1024px"}},
+            ],
+            "source": "conductor",
+        })
+    return recs
+
+
 # --------------------------------------------------------------------------- #
 # Pure builders (no I/O, no network): the testable core. dry-run and real mode
 # both construct commands from these, so the plan and the execution never drift.
@@ -911,9 +1006,15 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
                     notes.append("calibrate_from_reference failed or wrote no calibration.json; "
                                  "derive_register run WITHOUT --calibration")
 
+        # 015 gate: only the derive phase asks the engine for its structured guesses; the
+        # full phase keeps its exact argv (byte-identity), the flag is appended like the
+        # scene_author phase flags (executed argv = plan argv + the phase extra).
+        derive_extra = (["--assumptions-out", str(Path(out) / "assumptions_register.json")]
+                        if phase == "derive" else [])
         derive = run_step(_cmd("register", "derive_register",
                                _derive_argv(brand, out, subfields_path,
-                                            str(calibration_path) if used_calibration else None)))
+                                            str(calibration_path) if used_calibration else None)
+                               + derive_extra))
         have_profile = derive["ok"] and profile_path.exists()
         if have_profile:
             print_register_profile_plain(profile_path)
@@ -1100,6 +1201,22 @@ def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, pl
 
     # --- 6b. 015 gate state transitions (data-model.md state machine) ---
     if phase == "derive":
+        # assumptions.json = the engine's own records + the conductor-level guesses,
+        # recomputed WHOLE on every derive (never accumulated; spec edge case).
+        engine_recs = []
+        engine_path = Path(out) / "assumptions_register.json"
+        if engine_path.exists():
+            try:
+                engine_recs = json.loads(engine_path.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                notes.append("assumptions_register.json unreadable; engine assumption "
+                             "records omitted (honest null)")
+        else:
+            notes.append("derive_register wrote no assumptions_register.json; engine "
+                         "assumption records omitted (honest null)")
+        assumptions = list(engine_recs) + build_conductor_assumptions(inputs, size_resolution)
+        (Path(out) / "assumptions.json").write_text(
+            json.dumps(assumptions, ensure_ascii=False, indent=2), encoding="utf-8")
         keep = prior_gate if (prior_gate or {}).get("state") == "awaiting_confirmation" else None
         write_gate_state(out, "awaiting_confirmation", prior=keep)
         notes.append("derived, awaiting confirmation; no image spend")
