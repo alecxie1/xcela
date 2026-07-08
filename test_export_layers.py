@@ -19,6 +19,8 @@ sys.path.insert(0, str(REPO))
 
 from PIL import Image  # noqa: E402
 
+import export_layers as xl  # noqa: E402
+
 CHROMA = (0, 177, 64)  # #00B140, must stay equal to scene_author.CHROMA_KEY_HEX
 CANVAS = (1536, 1024)
 
@@ -129,8 +131,80 @@ def check0_fixtures():
                 f"unfed-logo excluded={c}")
 
 
+def check1_enumeration_and_plan():
+    """T002 / FR-001, FR-011, SC-003: elements come from the run's own artifacts with stable
+    ids; the unfed logo NEVER becomes an element; the plan prices exactly N+1 calls. A build
+    that guesses elements, misses the fed-gate, or forgets the +1 background fails here."""
+    d = _tmp("enum")
+    run, key = make_run_dir(d / "run", messages=3, logo_fed=True, products=1)
+    els = xl.enumerate_elements(run, key)
+    ids = [e["id"] for e in els]
+    a = (ids == ["text_1", "text_2", "text_3", "logo", "product_1"]
+         and els[0]["text"] == "瓜田冰爽特供"
+         and els[3]["ref"] == key["logo_path"]
+         and els[4]["kind"] == "product")
+
+    run2, key2 = make_run_dir(d / "run2", messages=2, logo_fed=False, products=0)
+    ids2 = [e["id"] for e in xl.enumerate_elements(run2, key2)]
+    b = ids2 == ["text_1", "text_2"]
+
+    plan = xl.export_plan(run, key, per_image_usd=0.08)
+    c = (plan["calls"] == 6 and abs(plan["cost_usd"] - 0.48) < 1e-9
+         and plan["size"] == "1536x1024"
+         and plan["source_image"].endswith("sign_s1/generated.png"))
+    ok = a and b and c
+    return ok, f"ids={ids}; unfed={ids2}; calls={plan['calls']} cost={plan['cost_usd']}"
+
+
+def check2_prompts_and_refusals():
+    """T002 / FR-002, FR-003, FR-011: value-bearing prompt clauses (constitution III): the
+    VERBATIM line appears exactly once; the literal key hex; identical-position/size and
+    exact-canvas demands; ONE-element exclusivity; logo/product prompts name the SECOND
+    supplied image; the background prompt lists EVERY element's description; zero-element
+    and missing-source plans refuse with named SystemExits."""
+    d = _tmp("prom")
+    run, key = make_run_dir(d / "run", messages=2, logo_fed=True, products=1)
+    els = xl.enumerate_elements(run, key)
+
+    line = "瓜田冰爽特供"
+    tp = xl.isolation_prompt(els[0])
+    a = (tp.count(f'"{line}"') == 1
+         and xl.CHROMA_KEY_HEX in tp and "#00B140" in tp
+         and "identical position" in tp and "identical size" in tp
+         and "exact canvas size" in tp
+         and "EXACTLY ONE element" in tp)
+
+    lp = xl.isolation_prompt(els[2])   # logo
+    pp = xl.isolation_prompt(els[3])   # product
+    b = "SECOND supplied image" in lp and "SECOND supplied image" in pp and line not in lp
+
+    bg = xl.background_prompt(els)
+    b2 = (all(xl._element_desc(e) in bg for e in els)
+          and "REMOVED" in bg and "no text" in bg)
+
+    c = False
+    run2, key2 = make_run_dir(d / "empty", messages=0, logo_fed=False, products=0)
+    try:
+        xl.export_plan(run2, key2)
+    except SystemExit as exc:
+        c = "no enumerable elements" in str(exc)
+    e = False
+    run3, key3 = make_run_dir(d / "nosrc", messages=2)
+    (run3 / "sign_s1" / "generated.png").unlink()
+    try:
+        xl.export_plan(run3, key3)
+    except SystemExit as exc:
+        e = "nothing to decompose" in str(exc)
+
+    ok = a and b and b2 and c and e
+    return ok, (f"text clauses={a}; second-image={b}; background lists all={b2}; "
+                f"zero-el refusal={c}; no-source refusal={e}")
+
+
 CHECKS = [
     ("T001 fixtures: exact #00B140, real artifact names, fed-refs honesty", check0_fixtures),
+    ("T002 enumeration + plan: stable ids, fed-logo gate, N+1 pricing", check1_enumeration_and_plan),
+    ("T002 prompts + refusals: verbatim/value clauses, named SystemExits", check2_prompts_and_refusals),
 ]
 
 

@@ -18,7 +18,7 @@ anywhere in tests; the one paid step is the human eye-gate (T009).
 
 **Purpose**: spec artifacts committed; the test scaffold + synthetic fixtures every later check reuses.
 
-- [ ] T001 Commit the 016 spec artifacts (spec.md, plan.md, research.md, data-model.md,
+- [x] T001 Commit the 016 spec artifacts (spec.md, plan.md, research.md, data-model.md,
       contracts/, checklists/, this file) plus the CLAUDE.md active-feature flip; create
       `test_export_layers.py` scaffold with the shared fixture builders: `make_run_dir(tmp,
       messages=3, logo_fed=True, products=1)` writing a CJXQ-shaped `inputs.json` +
@@ -34,7 +34,7 @@ anywhere in tests; the one paid step is the human eye-gate (T009).
 
 **Purpose**: the PURE half every story needs: enumeration, prompts, plan, the free CLI surface.
 
-- [ ] T002 Create `harness/export_layers.py` pure half: constants (`EXPORT_DIRNAME`, `ZIP_NAME`,
+- [x] T002 Create `harness/export_layers.py` pure half: constants (`EXPORT_DIRNAME`, `ZIP_NAME`,
       `STATE_NAME`, `MANIFEST_NAME`, `NULL_OPAQUE_MAX=0.95`, `NULL_OPAQUE_MIN=0.001`,
       `NULL_RESIDUAL_MAX=2000`, `CHROMA_KEY_HEX` imported from `harness/scene_author.py`);
       `find_source_image` (final.png > generated.png > None); `enumerate_elements` (per
