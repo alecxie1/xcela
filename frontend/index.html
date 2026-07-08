@@ -114,6 +114,7 @@
     <div id="pregate"></div>
     <div class="stage"><h3><span class="dot wait" id="d_image"></span>4. Generated sign</h3><div class="body" id="image"><span class="pending">not yet (appears only after you confirm the plan)</span></div></div>
     <div id="gate"></div>
+    <div id="exportstage"></div>
   </section>
 </main>
 <script>
@@ -237,14 +238,19 @@ async function poll() {
   const r = await fetch(`/run/${currentRun}/stages`); const v = await r.json();
   ["brief","register","prompt","image"].forEach(k => renderStage(k, v[k]));
   renderPreGate(v.gate, v.per_run_cost_usd);
+  renderExport(v);  // 016: the layered-export stage (opt-in button / progress / download)
   if (v.error) {  // the conductor failed loud: surface it instead of hanging silently at 'brief'
     clearInterval(poller); poller = null; $("run").disabled = false;
     $("formNote").textContent = "Run failed: " + v.error.split("\n").pop();
     return;
   }
-  if (v.image.present || (!v.inflight)) {
+  // 016: keep polling while an export is running (the export worker also holds inflight)
+  const exporting = v.export && v.export.present && v.export.content.state === "exporting";
+  if ((v.image.present || (!v.inflight)) && !exporting) {
     clearInterval(poller); poller = null; $("run").disabled = false;
-    if (v.image.present) showGate();
+    // re-render the taste panel only when absent, so an Approve verdict survives the
+    // poller stopping again after an export finishes
+    if (v.image.present && !$("gate").innerHTML) showGate();
   }
 }
 async function startRun(style_notes) {
@@ -279,10 +285,60 @@ function renderAttempts() {
 }
 function viewAttempt(id) {
   currentRun = id; renderAttempts();
+  $("gate").innerHTML = ""; $("exportstage").innerHTML = "";  // re-render for the switched run
   if (poller) { clearInterval(poller); poller = null; }
   poll();
 }
 $("run").addEventListener("click", () => startRun(null));
+// --- Feature 016: the layered-export stage. NEVER automatic: the button states the exact
+// cost (from the FREE plan endpoint) and only an explicit click POSTs the spending route. ---
+async function renderExport(v) {
+  const el = $("exportstage");
+  const gateDone = v.gate && v.gate.present && v.gate.content.state === "done";
+  const ex = v.export;
+  if ((!ex || !ex.present) && !gateDone) { el.innerHTML = ""; el.dataset.run = ""; return; }
+  if (!ex || !ex.present) {
+    // unexported, gate done: offer the opt-in button once per run (no refetch flicker)
+    if (el.dataset.run === currentRun && $("exportbtn")) return;
+    el.dataset.run = currentRun;
+    el.innerHTML = `<div class="stage"><h3>6. Layered export (optional, paid)</h3><div class="body">
+      <div class="note">Splits the generated image into per-element layers (transparent PNG + white-background JPG preview each, zipped). gpt-image-2 has no native layer output, so every layer is one extra paid image.</div>
+      <button id="exportbtn" type="button" disabled>Export layers (checking the cost...)</button>
+      <div id="exportNote" class="note"></div></div></div>`;
+    const r = await fetch(`/run/${currentRun}/export/plan`);
+    const j = await r.json();
+    if (!r.ok) { $("exportbtn").textContent = "Export unavailable"; $("exportNote").textContent = j.error || ""; return; }
+    $("exportbtn").textContent = `Export layers (paid, ~$${j.cost_usd.toFixed(2)} for ${j.calls} images)`;
+    $("exportbtn").disabled = false;
+    $("exportbtn").onclick = doExport;
+    return;
+  }
+  const c = ex.content;
+  el.dataset.run = currentRun;
+  const rows = (c.layers || []).map(l =>
+    `<div>${l.status === "ok" ? "✔" : "✖"} <b>${esc(l.id)}</b>${l.status === "ok" ? "" : `: NULL, ${esc(l.note)} (raw image kept in the zip for manual salvage)`}</div>`).join("");
+  let head = "";
+  if (c.state === "exporting") head = `<span class="pending">exporting (paid, ${esc(c.cost_stated || "")}; ${c.calls || "?"} images)...</span>`;
+  if (c.state === "failed") head = `<div class="note">Export FAILED: ${esc(c.error || "see run_error.txt")}</div><button id="exportretry" type="button">Retry export (paid, ${esc(c.cost_stated || "")})</button>`;
+  const zip = c.zip_ready ? `<div><a href="/run/${currentRun}/layers.zip" download>Download layers.zip</a></div>` : "";
+  el.innerHTML = `<div class="stage"><h3>6. Layered export</h3><div class="body">${head}${rows}${zip}</div></div>`;
+  const retry = $("exportretry");
+  if (retry) retry.onclick = doExport;
+}
+async function doExport() {
+  const btn = $("exportbtn") || $("exportretry");
+  if (btn) btn.disabled = true;
+  const r = await fetch(`/run/${currentRun}/export`, { method: "POST" });
+  const j = await r.json();
+  if (!r.ok) {
+    const note = $("exportNote");
+    if (note) note.textContent = j.error || "export refused";
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (poller) clearInterval(poller);
+  poller = setInterval(poll, 1000); poll();
+}
 function showGate() {
   $("gate").innerHTML = `<div class="stage"><h3>5. Your taste call (two actions)</h3><div class="body">
     <button id="approve" style="background:#2a6">Approve (good, stop)</button>

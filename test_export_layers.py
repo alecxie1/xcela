@@ -407,6 +407,25 @@ def check7_decide_export_and_plan_view():
                 f"repeat-noop={f}; failed-retry={g}; zero-el-409={h}")
 
 
+def check6_form():
+    """T006 / FR-008 (the project's form-grep pattern): the export control exists, is an
+    explicit type="button" that starts DISABLED until the FREE plan endpoint labels its cost
+    (cost_usd + calls templated into the label), the spending POST appears exactly once (only
+    inside doExport), doExport is never auto-invoked (handler assignments only), the zip
+    download link targets /layers.zip, and the failed state offers an explicit retry."""
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    a = ('id="exportstage"' in html
+         and 'id="exportbtn" type="button" disabled' in html)
+    b = ("/export/plan" in html
+         and "j.cost_usd.toFixed(2)" in html and "j.calls" in html)
+    c = html.count('/export`, { method: "POST" }') == 1
+    e = "doExport();" not in html and html.count("= doExport") == 2  # two handlers, no auto-call
+    f = "/layers.zip" in html and 'id="exportretry"' in html and "renderExport(v)" in html
+    ok = a and b and c and e and f
+    return ok, (f"button markup={a}; free-plan label={b}; one spending POST={c}; "
+                f"never automatic={e}; zip/retry/poll wiring={f}")
+
+
 CHECKS = [
     ("T001 fixtures: exact #00B140, real artifact names, fed-refs honesty", check0_fixtures),
     ("T002 enumeration + plan: stable ids, fed-logo gate, N+1 pricing", check1_enumeration_and_plan),
@@ -415,6 +434,7 @@ CHECKS = [
     ("T004 orchestrator: N+1 calls, contract refs, progressive manifest, exact zip", check4_orchestrator_and_zip),
     ("T005 state machine: state-before-spend, no-ops, failed-only retry, reservation", check5_state_machine),
     ("T005 decide_export + plan view: contract codes/payloads/launch triples", check7_decide_export_and_plan_view),
+    ("T006 form: opt-in cost-labeled button, progress rows, zip link, never automatic", check6_form),
 ]
 
 

@@ -108,7 +108,7 @@ only from failed; 409 while the gate is not done; disk-backed rendering.
       HTTP-free: each code/payload/launch triple asserted, incl. 409 on an awaiting gate and
       no-op payload wording). Commit: `feat(016): pre-spend state machine + export routes + stage (T005)`.
 
-- [ ] T006 [US2] `frontend/index.html`: after the image stage, an "Export layers" button labeled
+- [x] T006 [US2] `frontend/index.html`: after the image stage, an "Export layers" button labeled
       from `GET /run/<id>/export/plan` ("paid, ~$X for N images"), never automatic or
       pre-selected; click POSTs `/run/<id>/export` then polls the run view; render per-layer
       progress rows (ok / null + note) from the export stage; `layers.zip` download link when
