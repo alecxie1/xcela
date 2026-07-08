@@ -646,6 +646,27 @@ def check10_answer_route():
     return passed, f"apply_and_provenance={a}; slider_merge_keeps_warmth={b}; refusals_leave_untouched={c}; confirmed_rejects_answers={d}; pre015_404={e}"
 
 
+def check14_launch_sites():
+    """T014: the invariant 'no browser run spends without a confirmed plan' at the launch
+    sites: server.py contains exactly ONE phase="generate" launch (inside the confirm
+    handler) and every other _launch_async call is phase="derive" (POST /run, which the
+    nudge rerun also takes); the CLI default stays phase-free (runner argv byte-identity is
+    check6a; the thin plan pin is check1b; the profile pins are checks 4e/9c)."""
+    src = (REPO / "frontend" / "server.py").read_text(encoding="utf-8")
+    # call sites = every "_launch_async(" that is not the def; calls may span lines, so
+    # inspect the argument window after each occurrence
+    sites = [src[m + len("_launch_async("): m + 240]
+             for m in (i for i in range(len(src)) if src.startswith("_launch_async(", i))
+             if not src[:m].rstrip().endswith("def")]
+    sites = [s for s in sites if True]
+    gen = [s for s in sites if 'phase="generate"' in s]
+    der = [s for s in sites if 'phase="derive"' in s]
+    a = len(sites) == 3 and len(gen) == 1 and len(der) == 2
+    b = 'phase="full"' not in src  # the server never forces a one-shot paid run
+    passed = a and b
+    return passed, f"launch_sites(1_generate+2_derive)={a}; no_full_phase_in_server={b}"
+
+
 def check13_zero_guess_and_legacy():
     """T013 (FR-008, SC-004): (a) a fully explicit + recognized brief with calibration emits
     ZERO assumption records end to end (engine sink AND conductor records), so the gate
@@ -788,6 +809,8 @@ CHECKS = [
      check12_round_trip_identity),
     ("T013 zero-guess gate: summary + one confirm, no manufactured questions; pre-015 as today",
      check13_zero_guess_and_legacy),
+    ("T014 closure: every browser launch derives first; only confirm generates",
+     check14_launch_sites),
 ]
 
 
