@@ -1,0 +1,53 @@
+{
+  "brand": "茶救星球",
+  "brand_en": "JO'S CHA",
+  "logo_path": "/home/alecx/workspace/handyprint-design-tool/brands/CJXQ/jos cha logo.png",
+  "source_pdf": "uploaded.pdf",
+  "verified_by": "web",
+  "verified_date": "2026-06-30",
+  "fields": {
+    "brand_name_cn": {
+      "value": "茶救星球"
+    },
+    "brand_name_en": {
+      "value": "JO'S CHA"
+    },
+    "colors": {
+      "items": [
+        {
+          "name_cn": "天空蓝",
+          "name_en": "Sky Blue",
+          "role": "primary",
+          "printed_html": "31B4E7",
+          "rgb": [
+            49,
+            180,
+            231
+          ]
+        },
+        {
+          "name_cn": "鲜草绿",
+          "name_en": "Fresh Green",
+          "role": "secondary",
+          "printed_html": "73C900",
+          "rgb": [
+            115,
+            201,
+            0
+          ]
+        },
+        {
+          "name_cn": "浅水蓝",
+          "name_en": "Pale Aqua",
+          "role": "background",
+          "printed_html": "94D4EB",
+          "rgb": [
+            148,
+            212,
+            235
+          ]
+        }
+      ]
+    }
+  }
+}
