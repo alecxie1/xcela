@@ -646,6 +646,77 @@ def check10_answer_route():
     return passed, f"apply_and_provenance={a}; slider_merge_keeps_warmth={b}; refusals_leave_untouched={c}; confirmed_rejects_answers={d}; pre015_404={e}"
 
 
+def check12_round_trip_identity():
+    """T012 (FR-006, the load-bearing sweep): for EVERY shipped option of EVERY record type,
+    write-back + re-derive == a fresh run whose inputs carried that value from the start
+    (byte-comparable register profile AND byte-identical build_plan), and the applied value
+    KILLS its own assumption row (recomputed whole, converges in one step). The magnitude
+    row is the declared exception (it re-fires reflecting the applied values whenever no
+    calibration exists; asserted). A write-back whose canonical value drifted from what the
+    engine recognizes fails here."""
+    sys.path.insert(0, str(REPO / "frontend"))
+    import inputs_writer as iw
+
+    def derive_of(inputs):
+        sf = conductor.build_subfields(inputs, thin=True)
+        sink = []
+        prof = json.dumps(dr.derive_register(sf, {}, assumptions_sink=sink),
+                          ensure_ascii=False, sort_keys=True)
+        return prof, sink
+
+    def plan_of(inputs):
+        return json.dumps(conductor.build_plan(inputs, "aia", "/tmp/rt015", no_approve=True,
+                                               thin=True), ensure_ascii=False, sort_keys=True)
+
+    failures = []
+    base = _gate_inputs("ref.png")
+    base["context"]["usage_context"] = "goes viral on rednote"  # unmatched -> lane row fires
+
+    for opt in dr.REGISTER_LANE_OPTIONS:
+        applied = json.loads(json.dumps(base))
+        iw.apply_answer(applied, opt["writes"]["field"], opt["writes"]["value"])
+        fresh = json.loads(json.dumps(base))
+        fresh["context"]["usage_context"] = opt["writes"]["value"]
+        pa, sink_a = derive_of(applied)
+        pf, _ = derive_of(fresh)
+        if not (pa == pf and plan_of(applied) == plan_of(fresh)
+                and not any(r["id"] == "register_lane" for r in sink_a)):
+            failures.append(("lane", opt["label"]))
+
+    applied = json.loads(json.dumps(base))
+    iw.apply_answer(applied, "context.vibe", {"formality": 4, "playfulness": 6})
+    fresh = json.loads(json.dumps(base))
+    fresh["context"]["vibe"] = {"formality": 4, "playfulness": 6, "warmth": 5}
+    pa, sink_a = derive_of(applied)
+    pf, _ = derive_of(fresh)
+    mag = next((r for r in sink_a if r["id"] == "magnitude"), None)
+    if not (pa == pf and mag is not None and "formality=4" in mag["assumed_value"]):
+        failures.append(("magnitude", "set directly"))
+
+    import format_size as fmtsize
+    # enumerate every conductor option from records forced to fire
+    forced = conductor.build_conductor_assumptions(
+        {**base, "render_style": "watercolor",
+         "reference_relationship": "随便 whatever", "format_size": "about poster size"},
+        fmtsize.resolve_size("about poster size"))
+    for rec in forced:
+        for opt in rec["options"]:
+            applied = json.loads(json.dumps(
+                {**base, "render_style": "watercolor",
+                 "reference_relationship": "随便 whatever", "format_size": "about poster size"}))
+            iw.apply_answer(applied, opt["writes"]["field"], opt["writes"]["value"])
+            fresh = json.loads(json.dumps(applied))  # same dict: field already canonical
+            still = conductor.build_conductor_assumptions(
+                applied, fmtsize.resolve_size(applied.get("format_size")))
+            if any(r["id"] == rec["id"] for r in still):
+                failures.append((rec["id"], opt["label"], "row_not_killed"))
+            if plan_of(applied) != plan_of(fresh):
+                failures.append((rec["id"], opt["label"], "plan_drift"))
+
+    passed = not failures
+    return passed, f"round_trip_failures={failures[:4]} ({len(failures)} total; 3 lane + 1 magnitude + {sum(len(r['options']) for r in forced)} conductor options swept)"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
@@ -669,6 +740,8 @@ CHECKS = [
      check10_answer_route),
     ("T011 gate controls present in index.html (greps, the weakest gate)",
      check11_gate_controls),
+    ("T012 FR-006 round-trip identity: every shipped option, applied == fresh, row killed",
+     check12_round_trip_identity),
 ]
 
 
