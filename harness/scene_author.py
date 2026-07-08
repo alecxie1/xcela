@@ -1075,8 +1075,47 @@ def run_thin_mode(args) -> None:
                                   occasion=getattr(args, "occasion", "") or None,
                                   product_images=product_images)
     prompt_path = out_dir / "final_prompt.txt"
+    # 015 gate, generate phase: the operator confirmed the EXISTING final_prompt.txt. If the
+    # freshly assembled prompt differs (inputs touched out-of-band, code changed between
+    # phases), never generate from unseen values (FR-007). Explicit flag: the legacy CLI
+    # approve-gate nudge re-runs this step on the SAME dir with a changed prompt and must
+    # keep overwriting freely.
+    if getattr(args, "verify_prompt", False):
+        if not prompt_path.exists():
+            print(f"ERROR: --verify-prompt: {prompt_path} does not exist; nothing was "
+                  "confirmed (run the derive phase first)", file=sys.stderr)
+            sys.exit(3)
+        if prompt_path.read_text(encoding="utf-8") != prompt:
+            print(f"ERROR: prompt drift detected: {prompt_path} no longer matches the "
+                  "current inputs; re-derive and re-confirm (015 gate)", file=sys.stderr)
+            sys.exit(3)
     prompt_path.write_text(prompt, encoding="utf-8")
     print(f"  Saved {prompt_path}  ({prompt_path.stat().st_size} bytes)")
+
+    if getattr(args, "prompt_only", False):
+        # 015 pre-spend gate: STOP at the assembled prompt. Zero generation calls, zero refs
+        # assembly; the partial manifest records the stop honestly (generation: null).
+        (out_dir / "run_manifest.json").write_text(json.dumps({
+            "brand": args.brand,
+            "asset_profile": args.asset_profile,
+            "mode": "thin",
+            "route": "thin",
+            "licensed_type": "deferred (raw gpt text)",
+            "prompt_path": str(prompt_path),
+            "messages": messages,
+            "dial": dial,
+            "reference_fed": has_reference,
+            "product_images": product_images,
+            "mandatory_elements": mandatory,
+            "forbidden_elements": forbidden,
+            "size": f"{canvas_wh[0]}x{canvas_wh[1]}",
+            "generation": None,
+            "needs_review": False,
+            "needs_review_reason": None,
+            "note": "prompt-only (015 gate): generation deferred to operator confirmation",
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("  [prompt-only] STOP before generation (015 pre-spend gate); no model call")
+        return
 
     print("\n=== Generate the WHOLE sign via gpt-image-2 (STOP at generated.png) ===")
     sys.path.insert(0, str(Path(__file__).parent))
@@ -1443,6 +1482,13 @@ def main():
                         "(verbatim text + mandatory/forbidden + palette + dial + ref) and let "
                         "gpt-image-2 compose the WHOLE sign. STOPS at generated.png — no kit, no "
                         "tier-3, no compose_select, no measure, no composite. Moat deferred.")
+    parser.add_argument("--prompt-only", action="store_true",
+                        help="THIN route (015 pre-spend gate, derive phase): stop right after "
+                             "final_prompt.txt is written; no generation call, no refs assembly.")
+    parser.add_argument("--verify-prompt", action="store_true",
+                        help="THIN route (015 gate, generate phase): fail loud if the freshly "
+                             "assembled prompt differs from the existing final_prompt.txt (the "
+                             "operator confirmed THAT prompt, never generate from unseen values).")
     parser.add_argument("--product-image", action="append", default=None,
                         help="(013, thin only, repeatable) a REAL product shot fed to generation "
                              "as an additional input image and bound by the PRODUCT FIDELITY "

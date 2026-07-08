@@ -29,17 +29,19 @@ Calibrate/derive argv MUST be provably independent of applied answers except thr
 
 ## harness/scene_author.py (thin driver)
 
-New flag: `--prompt-only` (thin mode only).
+New flags: `--prompt-only` and `--verify-prompt` (thin mode only).
 
-- With it: assemble_thin_prompt -> write `final_prompt.txt` -> print note -> return.
-  NO import of `generate`, no refs assembly, no model call.
-- Without it, when `final_prompt.txt` ALREADY exists in `--out` (generate phase resume):
-  re-assemble; if the fresh prompt != the existing file's content, FAIL LOUD
-  (`prompt drift detected: <out>/final_prompt.txt no longer matches the inputs; re-derive
-  and re-confirm`) with a nonzero exit; the conductor resets gate state to
+- `--prompt-only`: assemble_thin_prompt -> write `final_prompt.txt` -> write a partial
+  `run_manifest.json` (`generation: null` + an honest note) -> return. NO import of
+  `generate`, no refs assembly, no model call.
+- `--verify-prompt` (passed ONLY by the conductor generate phase): re-assemble; if
+  `final_prompt.txt` is missing OR the fresh prompt differs from its content, FAIL LOUD
+  (named drift error, nonzero exit, zero generation); the conductor resets gate state to
   `awaiting_confirmation`. If equal: proceed to generation exactly as today.
-- Without it, no existing prompt file: today's behavior byte-identical (the `--phase full`
-  lane).
+- NEITHER flag: today's behavior byte-identical. (Contract amendment during T002: the
+  drift check is an EXPLICIT flag, not an existing-file heuristic, because the legacy CLI
+  approve-gate nudge re-runs this step on the SAME dir with an intentionally changed
+  prompt and must keep overwriting freely.)
 
 ## register/derive_register.py
 

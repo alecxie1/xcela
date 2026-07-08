@@ -61,9 +61,82 @@ def check1_baselines_hold():
     return passed, f"profile_pin={a}; plan_pin={b}; fixture_173925_marketing={c}"
 
 
+def _stub_generate():
+    """Inject a fake `generate` module (records calls, writes a fake png). Returns the
+    call list; caller must restore sys.modules['generate'] afterwards."""
+    import types
+    calls = []
+    fake = types.ModuleType("generate")
+
+    def generate_variant(prompt, refs, out_png, size="1536x1024", quality="high"):
+        calls.append({"prompt": prompt, "refs": list(refs), "out": out_png})
+        Path(out_png).write_bytes(b"\x89PNGfake" * 20000)
+        return {"stub": True, "size": size}
+
+    fake.generate_variant = generate_variant
+    prior = sys.modules.get("generate")
+    sys.modules["generate"] = fake
+    return calls, prior
+
+
+def _thin_args(out, prompt_only=False, verify_prompt=False, must="测试标语"):
+    import argparse
+    return argparse.Namespace(
+        brand="aia", out=str(out), must_include=must, register_profile="",
+        mandatory_elements="", forbidden_elements="", dial="", ref_image="",
+        style_notes="", product_image=None, explain=False, size="1536x1024",
+        asset_profile="flat_graphic", asset_type="", occasion="",
+        prompt_only=prompt_only, verify_prompt=verify_prompt)
+
+
+def check2_prompt_only_and_drift_guard():
+    """T002 (contracts/cli-phases.md, scene_author rows): a wrong build cannot satisfy all
+    four: (a) --prompt-only writes final_prompt.txt + a generation:null manifest and makes
+    ZERO generate calls; (b) --verify-prompt over the unchanged prompt proceeds to exactly
+    ONE generate call; (c) --verify-prompt over a MUTATED final_prompt.txt fails loud
+    (SystemExit, zero new calls); (d) --verify-prompt with no confirmed prompt fails loud."""
+    import tempfile
+    import scene_author as sa
+    calls, prior = _stub_generate()
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "sign_s1"
+            sa.run_thin_mode(_thin_args(out, prompt_only=True))
+            manifest = _load(out / "run_manifest.json")
+            a = ((out / "final_prompt.txt").exists()
+                 and not (out / "generated.png").exists()
+                 and manifest["generation"] is None and len(calls) == 0)
+
+            sa.run_thin_mode(_thin_args(out, verify_prompt=True))
+            b = len(calls) == 1 and (out / "generated.png").exists()
+
+            (out / "final_prompt.txt").write_text("tampered", encoding="utf-8")
+            try:
+                sa.run_thin_mode(_thin_args(out, verify_prompt=True))
+                c = False
+            except SystemExit as exc:
+                c = exc.code != 0 and len(calls) == 1
+
+            fresh = Path(td) / "sign_s2"
+            try:
+                sa.run_thin_mode(_thin_args(fresh, verify_prompt=True))
+                d = False
+            except SystemExit as exc:
+                d = exc.code != 0 and len(calls) == 1
+    finally:
+        if prior is not None:
+            sys.modules["generate"] = prior
+        else:
+            sys.modules.pop("generate", None)
+    passed = a and b and c and d
+    return passed, f"prompt_only_stops={a}; verify_match_generates_once={b}; drift_fails_loud={c}; missing_prompt_fails_loud={d}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
+    ("T002 scene_author --prompt-only stops pre-spend; --verify-prompt drift guard",
+     check2_prompt_only_and_drift_guard),
 ]
 
 
