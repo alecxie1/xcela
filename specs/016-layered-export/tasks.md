@@ -128,7 +128,7 @@ only from failed; 409 while the gate is not done; disk-backed rendering.
 
 **Independent Test**: manifest field-completeness asserted per layer against the data model.
 
-- [ ] T007 [US3] Harden the audit surface in `harness/export_layers.py`: every layer record
+- [x] T007 [US3] Harden the audit surface in `harness/export_layers.py`: every layer record
       carries id/kind/prompt/status/note/opaque_frac/stray_component_px_dropped/despilled_px/
       green_residual_px_in_preview/bbox/files exactly per data-model.md; manifest root carries
       source_image + size + the flagged background entry; `export_state.json` carries plan +

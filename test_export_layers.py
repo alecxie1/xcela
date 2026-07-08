@@ -426,6 +426,65 @@ def check6_form():
                 f"never automatic={e}; zip/retry/poll wiring={f}")
 
 
+def check9_audit_manifest():
+    """T007 / FR-006, US3 acceptance 3-4: the manifest is a COMPLETE audit record. Every
+    layer entry (ok AND null) carries the exact data-model.md field set (a build that drops
+    a keying stat or the prompt fails); ok files = {cutout, preview} both on disk; null
+    files = {raw} only; the background entry is model_continued: true with both files; the
+    state file carries plan + cost_stated + timestamps, and error ONLY when failed."""
+    d = _tmp("audit")
+    run, key = make_run_dir(d / "run", messages=1, logo_fed=True, products=1)
+    stub = RecordingStub(run, null_ids={"product_1"})
+    xl.export_layers(run, key, generate_fn=stub, per_image_usd=0.08)
+    man = json.loads((run / xl.MANIFEST_NAME).read_text(encoding="utf-8"))
+
+    base = {"id", "kind", "prompt", "status", "note", "opaque_frac",
+            "stray_component_px_dropped", "despilled_px",
+            "green_residual_px_in_preview", "bbox", "files"}
+    schema_ok = True
+    for layer in man["layers"]:
+        want = base | ({"text"} if layer["kind"] == "text" else {"ref"})
+        if set(layer.keys()) != want:
+            schema_ok = False
+    ok_layers = [l for l in man["layers"] if l["status"] == "ok"]
+    a = (schema_ok and len(man["layers"]) == 3
+         and all(set(l["files"]) == {"cutout", "preview"}
+                 and Path(l["files"]["cutout"]).is_file()
+                 and Path(l["files"]["preview"]).is_file()
+                 and l["bbox"] is not None and l["note"] == "" for l in ok_layers))
+
+    null = next(l for l in man["layers"] if l["status"] == "null")
+    b = (set(null["files"]) == {"raw"} and Path(null["files"]["raw"]).is_file()
+         and null["bbox"] is None and null["note"] != "")
+
+    bg = man["background"]
+    c = (bg["model_continued"] is True and bg["prompt"] == xl.background_prompt(
+            xl.enumerate_elements(run, key))
+         and Path(bg["files"]["image"]).is_file() and Path(bg["files"]["preview"]).is_file()
+         and man["source_image"].endswith("generated.png") and man["size"] == "1536x1024")
+
+    st = xl.read_state(run)
+    e = (st["state"] == "done" and st["cost_stated"] == "$0.32"
+         and st["plan"]["calls"] == 4 and "created" in st and "updated" in st
+         and "error" not in st)
+    run2, key2 = make_run_dir(d / "fail", messages=1, logo_fed=False, products=0)
+
+    class Boom(RecordingStub):
+        def __call__(self, *a, **k):
+            raise RuntimeError("boom")
+
+    try:
+        xl.export_layers(run2, key2, generate_fn=Boom(run2))
+    except RuntimeError:
+        pass
+    st2 = xl.read_state(run2)
+    f = st2["state"] == "failed" and "boom" in st2["error"]
+
+    ok = a and b and c and e and f
+    return ok, (f"schema+ok-files={a}; null-packaging={b}; background-flag={c}; "
+                f"state-done={e}; state-failed-error={f}")
+
+
 CHECKS = [
     ("T001 fixtures: exact #00B140, real artifact names, fed-refs honesty", check0_fixtures),
     ("T002 enumeration + plan: stable ids, fed-logo gate, N+1 pricing", check1_enumeration_and_plan),
@@ -435,6 +494,7 @@ CHECKS = [
     ("T005 state machine: state-before-spend, no-ops, failed-only retry, reservation", check5_state_machine),
     ("T005 decide_export + plan view: contract codes/payloads/launch triples", check7_decide_export_and_plan_view),
     ("T006 form: opt-in cost-labeled button, progress rows, zip link, never automatic", check6_form),
+    ("T007 audit manifest: full record schema ok AND null, flagged background, state file", check9_audit_manifest),
 ]
 
 
