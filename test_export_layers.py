@@ -201,10 +201,44 @@ def check2_prompts_and_refusals():
                 f"zero-el refusal={c}; no-source refusal={e}")
 
 
+def check3_real_keying():
+    """T003 / FR-004, FR-005, US3 acceptance 1-2: the REAL strip_chroma runs on synthetic
+    fixtures and key_layer judges honestly. Falsifiable values: alpha probed at exact pixels,
+    bbox within the defringe margin of the drawn rect, each null carries its NAMED note.
+    An always-ok or always-null build, or one that fabricates a cutout, fails here."""
+    d = _tmp("key")
+
+    rect = make_chroma_png(d / "rect.png", content="rect")
+    r1 = xl.key_layer(rect, d / "L_rect")
+    cut = Image.open(r1["cutout"])
+    a = (r1["status"] == "ok" and cut.mode == "RGBA"
+         and cut.getpixel((10, 10))[3] == 0                    # green field -> transparent
+         and cut.getpixel((768, 512))[3] == 255                # rect center -> opaque
+         and Path(r1["preview_jpg"]).is_file()
+         and r1["note"] == "")
+    # drawn rect: x 384..1151, y 256..767; defringe erodes 2px; getbbox right/lower exclusive
+    bx = r1["bbox"]
+    b = bx is not None and all(abs(v - e) <= 4 for v, e in zip(bx, [384, 256, 1152, 768]))
+
+    full = make_chroma_png(d / "full.png", content="full")
+    r2 = xl.key_layer(full, d / "L_full")
+    c = (r2["status"] == "null" and "chroma directive ignored" in r2["note"]
+         and r2["bbox"] is None and "preview_jpg" not in r2)
+
+    empty = make_chroma_png(d / "empty.png", content="empty")
+    r3 = xl.key_layer(empty, d / "L_empty")
+    e = r3["status"] == "null" and "empty frame" in r3["note"]
+
+    ok = a and b and c and e
+    return ok, (f"rect ok={a} bbox={bx}; full-null={c} (frac={r2['opaque_frac']}); "
+                f"empty-null={e} (frac={r3['opaque_frac']})")
+
+
 CHECKS = [
     ("T001 fixtures: exact #00B140, real artifact names, fed-refs honesty", check0_fixtures),
     ("T002 enumeration + plan: stable ids, fed-logo gate, N+1 pricing", check1_enumeration_and_plan),
     ("T002 prompts + refusals: verbatim/value clauses, named SystemExits", check2_prompts_and_refusals),
+    ("T003 real keying: probed alpha + bbox, named honest nulls", check3_real_keying),
 ]
 
 

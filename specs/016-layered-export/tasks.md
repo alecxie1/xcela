@@ -59,7 +59,7 @@ anywhere in tests; the one paid step is the human eye-gate (T009).
 **Independent Test**: with `generate_fn` stubbed, a fixture run exports to a zip with exactly
 the expected members and exactly N+1 recorded calls.
 
-- [ ] T003 [US1] Add `key_layer(isolated_png, layer_dir)` to `harness/export_layers.py`:
+- [x] T003 [US1] Add `key_layer(isolated_png, layer_dir)` to `harness/export_layers.py`:
       call the REAL `strip_chroma` (`harness/closed_loop_composite.py`, unchanged), apply the
       NULL_* thresholds, on ok flatten `preview_white.png` -> `preview.jpg` and record the
       opaque bbox; return `{"status","note",**stats,"bbox"}`. Test: check3 drives REAL keying on

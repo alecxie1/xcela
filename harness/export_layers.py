@@ -148,6 +148,43 @@ def export_plan(run_dir: Path, brand_key: dict,
             "source_image": str(source), "size": size}
 
 
+def key_layer(isolated_png: Path, layer_dir: Path) -> dict:
+    """Key one isolation output to a layer via the REAL strip_chroma (reused unchanged),
+    then judge it honestly (research.md D4): a layer is OK only when the keying stats say a
+    clean chroma field surrounded real content. On ok: preview.jpg (white-flattened, the JPG
+    deliverable) + the opaque bbox (position-drift measurement). On null: a named note; the
+    caller ships the raw output, NEVER a cutout (constitution V)."""
+    from closed_loop_composite import strip_chroma  # lazy: pulls numpy/scipy
+
+    layer_dir = Path(layer_dir)
+    layer_dir.mkdir(parents=True, exist_ok=True)
+    rec = dict(strip_chroma(isolated_png, layer_dir, key_hex=CHROMA_KEY_HEX))
+
+    frac = rec["opaque_frac"]
+    residual = rec["green_residual_px_in_preview"]
+    if frac > NULL_OPAQUE_MAX:
+        rec.update(status="null", bbox=None,
+                   note=f"chroma directive ignored: opaque_frac {frac} > {NULL_OPAQUE_MAX} "
+                        "(the model painted a full frame, not one element on green)")
+        return rec
+    if frac < NULL_OPAQUE_MIN:
+        rec.update(status="null", bbox=None,
+                   note=f"empty frame: opaque_frac {frac} < {NULL_OPAQUE_MIN}")
+        return rec
+    if residual > NULL_RESIDUAL_MAX:
+        rec.update(status="null", bbox=None,
+                   note=f"dirty key field: {residual}px green residual > {NULL_RESIDUAL_MAX}")
+        return rec
+
+    from PIL import Image
+    preview_jpg = layer_dir / "preview.jpg"
+    Image.open(rec["preview_white"]).convert("RGB").save(preview_jpg, quality=90)
+    bbox = Image.open(rec["cutout"]).getchannel("A").getbbox()
+    rec.update(status="ok", note="", preview_jpg=str(preview_jpg),
+               bbox=list(bbox) if bbox else None)
+    return rec
+
+
 def _brand_from_run(run_dir: Path) -> str:
     meta = Path(run_dir) / "run_meta.json"
     if meta.is_file():
