@@ -234,11 +234,77 @@ def check3_real_keying():
                 f"empty-null={e} (frac={r3['opaque_frac']})")
 
 
+class RecordingStub:
+    """Injectable generate_fn: records every call, writes synthetic chroma PNGs so the REAL
+    key_layer runs downstream. null_ids get a full-noise frame (forces an honest null).
+    manifest_len_at_call proves the manifest grows PROGRESSIVELY (crash = truthful partial)."""
+
+    def __init__(self, run_dir, null_ids=()):
+        self.run_dir = Path(run_dir)
+        self.null_ids = set(null_ids)
+        self.calls = []
+        self.manifest_len_at_call = []
+
+    def __call__(self, prompt, refs, out_path, size=None, **kw):
+        mpath = self.run_dir / xl.MANIFEST_NAME
+        n = len(json.loads(mpath.read_text(encoding="utf-8"))["layers"]) if mpath.is_file() else -1
+        self.manifest_len_at_call.append(n)
+        self.calls.append({"prompt": prompt, "refs": list(refs), "out": out_path, "size": size,
+                           "state_on_disk": (xl.read_state(self.run_dir) or {}).get("state")})
+        layer_id = Path(out_path).parent.name
+        if layer_id == "background":
+            Image.new("RGB", CANVAS, (120, 120, 200)).save(out_path)
+        else:
+            make_chroma_png(out_path, content="full" if layer_id in self.null_ids else "rect")
+        return {"stub": True}
+
+
+def check4_orchestrator_and_zip():
+    """T004 / FR-006, SC-003, SC-004: exactly N+1 calls; refs per contract ([source] for text
+    and background, [source, asset] for logo/product); size threaded from run_manifest; the
+    manifest grows one entry per layer BETWEEN calls with the EXACT prompt; the zip member set
+    EQUALS the expected set; the forced-null layer ships raw + note and NO cutout/preview."""
+    import zipfile
+    d = _tmp("orch")
+    run, key = make_run_dir(d / "run", messages=2, logo_fed=True, products=1)
+    stub = RecordingStub(run, null_ids={"product_1"})
+    res = xl.export_layers(run, key, generate_fn=stub, per_image_usd=0.08)
+
+    a = res["state"] == "done" and len(stub.calls) == 5   # 4 elements + 1 background
+    src = str(run / "sign_s1" / "generated.png")
+    c0, c2, c3, c4 = stub.calls[0], stub.calls[2], stub.calls[3], stub.calls[4]
+    b = (c0["refs"] == [src] and c0["size"] == "1536x1024"
+         and c2["refs"] == [src, key["logo_path"]]
+         and c3["refs"] == [src, str(run / "product_1.jpg")]
+         and c4["refs"] == [src])
+    els = xl.enumerate_elements(run, key)
+    c = (all(stub.calls[i]["prompt"] == xl.isolation_prompt(els[i]) for i in range(4))
+         and c4["prompt"] == xl.background_prompt(els))
+    prog = stub.manifest_len_at_call == [0, 1, 2, 3, 4]   # entry i on disk before call i+1
+
+    zf = zipfile.ZipFile(run / xl.ZIP_NAME)
+    expected = {"export_manifest.json", "background.png", "background_preview.jpg",
+                "text_1.png", "text_1_preview.jpg", "text_2.png", "text_2_preview.jpg",
+                "logo.png", "logo_preview.jpg", "product_1_raw.png"}
+    e = set(zf.namelist()) == expected
+
+    man = json.loads((run / xl.MANIFEST_NAME).read_text(encoding="utf-8"))
+    null = [l for l in man["layers"] if l["id"] == "product_1"][0]
+    f = (null["status"] == "null" and "chroma directive ignored" in null["note"]
+         and set(null["files"]) == {"raw"})
+
+    ok = a and b and c and prog and e and f
+    return ok, (f"calls={len(stub.calls)} done={a}; refs={b}; prompts exact={c}; "
+                f"progressive={prog} ({stub.manifest_len_at_call}); zip set equal={e}; "
+                f"null packaging={f}")
+
+
 CHECKS = [
     ("T001 fixtures: exact #00B140, real artifact names, fed-refs honesty", check0_fixtures),
     ("T002 enumeration + plan: stable ids, fed-logo gate, N+1 pricing", check1_enumeration_and_plan),
     ("T002 prompts + refusals: verbatim/value clauses, named SystemExits", check2_prompts_and_refusals),
     ("T003 real keying: probed alpha + bbox, named honest nulls", check3_real_keying),
+    ("T004 orchestrator: N+1 calls, contract refs, progressive manifest, exact zip", check4_orchestrator_and_zip),
 ]
 
 

@@ -192,6 +192,136 @@ def _brand_from_run(run_dir: Path) -> str:
     return ""
 
 
+# ---------------------------------------------------------------- state + orchestrator
+
+def _now() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def read_state(run_dir: Path):
+    p = Path(run_dir) / STATE_NAME
+    return _read_json(p) if p.is_file() else None
+
+
+def _write_state(run_dir: Path, state: dict) -> dict:
+    state["updated"] = _now()
+    (Path(run_dir) / STATE_NAME).write_text(
+        json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    return state
+
+
+def _write_manifest(run_dir: Path, manifest: dict) -> None:
+    (Path(run_dir) / MANIFEST_NAME).write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _layer_entry(element: dict, prompt: str, rec: dict, isolated_png: Path) -> dict:
+    """One manifest layer record, exactly the data-model.md schema."""
+    entry = {"id": element["id"], "kind": element["kind"],
+             "prompt": prompt, "status": rec["status"], "note": rec["note"],
+             "opaque_frac": rec["opaque_frac"],
+             "stray_component_px_dropped": rec["stray_component_px_dropped"],
+             "despilled_px": rec["despilled_px"],
+             "green_residual_px_in_preview": rec["green_residual_px_in_preview"],
+             "bbox": rec.get("bbox")}
+    if element["kind"] == "text":
+        entry["text"] = element["text"]
+    else:
+        entry["ref"] = element["ref"]
+    if rec["status"] == "ok":
+        entry["files"] = {"cutout": rec["cutout"], "preview": rec["preview_jpg"]}
+    else:
+        entry["files"] = {"raw": str(isolated_png)}   # manual salvage; NEVER a cutout
+    return entry
+
+
+def build_zip(run_dir: Path, manifest: dict) -> Path:
+    """layers.zip per data-model.md: manifest + background pair + per ok-layer
+    <id>.png + <id>_preview.jpg + per null-layer <id>_raw.png."""
+    run_dir = Path(run_dir)
+    zip_path = run_dir / ZIP_NAME
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.write(run_dir / MANIFEST_NAME, MANIFEST_NAME)
+        bg = manifest["background"]["files"]
+        zf.write(bg["image"], "background.png")
+        zf.write(bg["preview"], "background_preview.jpg")
+        for layer in manifest["layers"]:
+            if layer["status"] == "ok":
+                zf.write(layer["files"]["cutout"], f"{layer['id']}.png")
+                zf.write(layer["files"]["preview"], f"{layer['id']}_preview.jpg")
+            else:
+                zf.write(layer["files"]["raw"], f"{layer['id']}_raw.png")
+    return zip_path
+
+
+def export_layers(run_dir: Path, brand_key: dict, generate_fn=None,
+                  per_image_usd: float = PER_IMAGE_USD_DEFAULT) -> dict:
+    """The orchestrator. 015 spend semantics: no-op on exporting/done (zero calls, even
+    mid-flight); retry accepted ONLY from failed; refuses unless the run's confirm gate
+    reached done; export_state.json state="exporting" is on disk BEFORE the first paid call;
+    the manifest is appended progressively so a crash leaves a truthful partial; any
+    exception after spend starts = state "failed" + error, fail loud."""
+    run_dir = Path(run_dir)
+
+    state = read_state(run_dir)
+    if state and state.get("state") in ("exporting", "done"):
+        return {"state": state["state"],
+                "note": "already exporting/exported; no second spend"}
+
+    gate_path = run_dir / "gate_state.json"
+    gate = _read_json(gate_path).get("state") if gate_path.is_file() else None
+    if gate != "done":
+        raise SystemExit(f"export refused: gate_state is {gate!r}, not 'done' "
+                         "(no browser spend without a confirmed, generated run)")
+
+    plan = export_plan(run_dir, brand_key, per_image_usd=per_image_usd)
+    state = _write_state(run_dir, {"state": "exporting", "plan": plan,
+                                   "cost_stated": f"${plan['cost_usd']:.2f}",
+                                   "created": _now()})   # BEFORE any paid call
+
+    if generate_fn is None:
+        from generate import generate_variant as generate_fn  # lazy: the paid client
+
+    manifest = {"source_image": plan["source_image"], "size": plan["size"],
+                "layers": [], "background": None}
+    _write_manifest(run_dir, manifest)
+    try:
+        source = plan["source_image"]
+        for element in plan["elements"]:
+            prompt = isolation_prompt(element)
+            refs = [source] + ([element["ref"]] if element["kind"] in ("logo", "product")
+                               else [])
+            layer_dir = run_dir / EXPORT_DIRNAME / element["id"]
+            layer_dir.mkdir(parents=True, exist_ok=True)
+            isolated = layer_dir / "isolated.png"
+            generate_fn(prompt, refs, str(isolated), size=plan["size"])
+            rec = key_layer(isolated, layer_dir)
+            manifest["layers"].append(_layer_entry(element, prompt, rec, isolated))
+            _write_manifest(run_dir, manifest)   # progressive: crash = truthful partial
+
+        bg_prompt = background_prompt(plan["elements"])
+        bg_dir = run_dir / EXPORT_DIRNAME / "background"
+        bg_dir.mkdir(parents=True, exist_ok=True)
+        bg_png = bg_dir / "background.png"
+        generate_fn(bg_prompt, [source], str(bg_png), size=plan["size"])
+        from PIL import Image
+        bg_jpg = bg_dir / "background_preview.jpg"
+        Image.open(bg_png).convert("RGB").save(bg_jpg, quality=90)
+        manifest["background"] = {"prompt": bg_prompt, "model_continued": True,
+                                  "files": {"image": str(bg_png), "preview": str(bg_jpg)}}
+        _write_manifest(run_dir, manifest)
+
+        zip_path = build_zip(run_dir, manifest)
+        state.update(state="done")
+        _write_state(run_dir, state)
+        return {"state": "done", "zip": str(zip_path),
+                "layers": [{"id": l["id"], "status": l["status"]} for l in manifest["layers"]]}
+    except (Exception, SystemExit) as exc:
+        state.update(state="failed", error=f"{type(exc).__name__}: {exc}")
+        _write_state(run_dir, state)
+        raise
+
+
 # ---------------------------------------------------------------- CLI
 
 def main():
@@ -216,8 +346,8 @@ def main():
         print(json.dumps(plan, ensure_ascii=False, indent=2))
         return
 
-    raise SystemExit("the full export path lands with the orchestrator (tasks T004/T005); "
-                     "only --plan-only is available at this build stage")
+    result = export_layers(run_dir, brand_key)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

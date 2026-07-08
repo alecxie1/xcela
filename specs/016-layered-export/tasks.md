@@ -69,7 +69,7 @@ the expected members and exactly N+1 recorded calls.
       frame". (Also discharges US3 acceptance 1-2.) Commit:
       `feat(016): key_layer over real strip_chroma + honest-null thresholds (T003)`.
 
-- [ ] T004 [US1] Add the orchestrator `export_layers(run_dir, brand_key, generate_fn=None,
+- [x] T004 [US1] Add the orchestrator `export_layers(run_dir, brand_key, generate_fn=None,
       per_image_usd)` + `build_zip`: state written BEFORE the first call (full semantics T005);
       per element `generate_fn(prompt, [source]+([ref] if logo/product), export/<id>/isolated.png,
       size=run_manifest size)` then `key_layer`, APPENDING each layer record (with its prompt) to
