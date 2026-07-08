@@ -140,9 +140,11 @@ frame each produce status null with the correct named note, a shipped raw image,
 - An element that is itself green (near #00B140) cannot be keyed; the isolation prompt forbids
   key-colored elements, and the null thresholds catch non-compliance (dirty key field note).
 - Detached marks in one element (a multi-glyph text line, a logo with separate symbols): the
-  keying's largest-component behavior may drop pieces; the dropped-pixels stat exposes it in the
-  manifest. Accepted for v1; a keep-all-components keying option is a possible v2, deliberately
-  not made in v1 so the die-cut path stays byte-identical.
+  keying's largest-component behavior may drop pieces; when the dropped pixels OUTNUMBER the
+  kept pixels the layer is an honest null (the raw output ships for salvage, per FR-005);
+  a minority drop stays visible via the dropped-pixels stat in the manifest. The keying itself
+  is unchanged in v1 (the die-cut path stays byte-identical); a keep-all-components option is
+  a possible v2.
 - Every isolation call fails or nulls: the export completes honestly (state done, zip with raw
   images + notes); the operator judges whether anything is salvageable. Money spent is recorded
   either way.
@@ -169,17 +171,21 @@ frame each produce status null with the correct named note, a shipped raw image,
   layer ships as a true RGBA PNG plus a white-background JPG preview.
 - **FR-005**: Deterministic thresholds on the keying statistics MUST mark a layer null (kept
   fraction too high = chroma directive ignored; too low = empty; green residual = dirty key
-  field). A null layer MUST ship the raw model output plus a manifest note naming the failure,
-  and MUST NOT ship a fabricated cutout.
+  field; dropped stray pixels outnumbering kept pixels = the largest-component keep erased
+  the majority of a multi-part element). A null layer MUST ship the raw model output plus a
+  manifest note naming the failure, and MUST NOT ship a fabricated cutout.
 - **FR-006**: The export MUST produce layers.zip in the run directory containing exactly: the
   manifest, the background pair, and per element either (cutout PNG + preview JPG) or (raw PNG +
   null note in the manifest). The manifest MUST record per layer: the element identity, the
   prompt, the keying statistics, the opaque bounding box, and any null note.
 - **FR-007**: Export MUST follow the 015 pre-spend contract: a free plan surface states the
   exact call count and cost BEFORE any click; export state is written to disk BEFORE the first
-  paid call; repeat requests no-op with no second spend, even mid-flight; retry is accepted only
-  from the failed state; export is refused unless the run's confirm gate reached done; a server
-  restart re-renders the export stage purely from disk.
+  paid call; repeat requests no-op with no second spend while a live worker owns the state;
+  retry is accepted from the failed state AND from verifiably-stuck exporting states (a
+  reservation no worker ever adopted, or a worker whose recorded process is dead): no crash,
+  interrupt, or hard kill may ever brick a run's only export; export is refused unless the
+  run's confirm gate reached done; a server restart re-renders the export stage purely from
+  disk.
 - **FR-008**: The run view MUST offer export as a labeled opt-in control (call count + cost),
   never automatic and never pre-selected, with per-layer progress (ok / null with note) and a
   download link when done. Failures surface in the UI, never silently.

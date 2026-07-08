@@ -38,6 +38,15 @@ def make_chroma_png(path, w=1536, h=1024, content="rect"):
         for x in range(w // 4, 3 * w // 4):
             for y in range(h // 4, 3 * h // 4):
                 px[x, y] = (200, 30, 30)
+    elif content == "multi":
+        # three equal DISCONNECTED blobs (a multi-glyph text line): largest-component keep
+        # retains one and drops two, i.e. the majority of the content
+        from PIL import ImageDraw
+        img = Image.new("RGB", (w, h), CHROMA)
+        draw = ImageDraw.Draw(img)
+        for i in range(3):
+            x0 = w // 8 + i * (w // 4)
+            draw.rectangle([x0, h // 3, x0 + w // 8, 2 * h // 3], fill=(200, 30, 30))
     elif content == "full":
         img = Image.new("RGB", (w, h), (180, 160, 140))
         px = img.load()
@@ -179,7 +188,10 @@ def check2_prompts_and_refusals():
     b = "SECOND supplied image" in lp and "SECOND supplied image" in pp and line not in lp
 
     bg = xl.background_prompt(els)
-    b2 = (all(xl._element_desc(e) in bg for e in els)
+    # the background call passes ONLY the source image, so its element descriptions must
+    # never reference a second supplied image (that hint is isolation-call-only)
+    b2 = (all(xl._element_desc(e, with_ref_hint=False) in bg for e in els)
+          and "SECOND supplied image" not in bg
           and "REMOVED" in bg and "no text" in bg)
 
     c = False
@@ -229,9 +241,17 @@ def check3_real_keying():
     r3 = xl.key_layer(empty, d / "L_empty")
     e = r3["status"] == "null" and "empty frame" in r3["note"]
 
-    ok = a and b and c and e
+    # majority-drop honest null: 3 disconnected equal blobs -> largest-component keep
+    # erases 2/3 of the content; that layer must NOT ship as an unqualified "ok" cutout
+    multi = make_chroma_png(d / "multi.png", content="multi")
+    r4 = xl.key_layer(multi, d / "L_multi")
+    f = (r4["status"] == "null" and "MAJORITY" in r4["note"]
+         and r4["stray_component_px_dropped"] > 0)
+
+    ok = a and b and c and e and f
     return ok, (f"rect ok={a} bbox={bx}; full-null={c} (frac={r2['opaque_frac']}); "
-                f"empty-null={e} (frac={r3['opaque_frac']})")
+                f"empty-null={e} (frac={r3['opaque_frac']}); majority-drop-null={f} "
+                f"(dropped={r4['stray_component_px_dropped']})")
 
 
 class RecordingStub:
@@ -302,9 +322,12 @@ def check4_orchestrator_and_zip():
 def check5_state_machine():
     """T005 / FR-007, SC-003: state ON DISK before the first paid call; done => a second
     invocation makes ZERO calls; a mid-flight crash lands in failed (with the partial
-    manifest intact) and ONLY failed accepts a retry; an unconfirmed gate refuses with zero
-    spend; the decider's reservation (exporting, no started_at) is ADOPTED by the worker
-    while a STARTED exporting state no-ops."""
+    manifest intact) and failed accepts a retry; an unconfirmed gate refuses with zero
+    spend; the decider's reservation (exporting, no started_at) is ADOPTED by the worker;
+    an exporting owned by a LIVE pid no-ops while a DEAD-pid exporting (hard-killed worker)
+    is reclaimed; KeyboardInterrupt marks failed (never a stranded 'exporting')."""
+    import os
+    import subprocess
     d = _tmp("state")
     run, key = make_run_dir(d / "run", messages=1, logo_fed=False, products=0)
     stub = RecordingStub(run)
@@ -351,24 +374,53 @@ def check5_state_machine():
     s5 = RecordingStub(run5)
     res5 = xl.export_layers(run5, key5, generate_fn=s5)
     g = res5["state"] == "done" and len(s5.calls) == 2   # adopted, not no-oped
+
     run6, key6 = make_run_dir(d / "started", messages=1, logo_fed=False, products=0)
-    xl._write_state(run6, {"state": "exporting", "plan": None, "started_at": "t"})
+    xl._write_state(run6, {"state": "exporting", "plan": None, "started_at": "t",
+                           "pid": os.getpid()})          # a LIVE worker owns this state
     s6 = RecordingStub(run6)
     res6 = xl.export_layers(run6, key6, generate_fn=s6)
     h = len(s6.calls) == 0 and "no second spend" in res6["note"]
 
-    ok = a and b and c and e and f and g and h
+    # a hard-killed worker (started_at set, pid DEAD) must be reclaimable, never bricked
+    pr = subprocess.Popen(["sleep", "0"]); pr.wait()
+    run7, key7 = make_run_dir(d / "deadpid", messages=1, logo_fed=False, products=0)
+    xl._write_state(run7, {"state": "exporting", "plan": None, "started_at": "t",
+                           "pid": pr.pid})
+    s7 = RecordingStub(run7)
+    res7 = xl.export_layers(run7, key7, generate_fn=s7)
+    i = res7["state"] == "done" and len(s7.calls) == 2   # stuck state reclaimed
+
+    # KeyboardInterrupt (Ctrl-C of the server SIGINTs the child) must land in failed,
+    # never strand 'exporting' (a stranded started state was un-retryable pre-review)
+    run8, key8 = make_run_dir(d / "sigint", messages=1, logo_fed=False, products=0)
+
+    class Interrupt(RecordingStub):
+        def __call__(self, *a, **k):
+            raise KeyboardInterrupt()
+
+    j = False
+    try:
+        xl.export_layers(run8, key8, generate_fn=Interrupt(run8))
+    except KeyboardInterrupt:
+        st8 = xl.read_state(run8)
+        j = st8["state"] == "failed" and "KeyboardInterrupt" in st8["error"]
+
+    ok = a and b and c and e and f and g and h and i and j
     return ok, (f"state-before-call={a}; done-noop={b}; crash->failed+partial={c}; "
                 f"failed-retry={e}; gate-refusal={f}; reservation-adopted={g}; "
-                f"started-noop={h}")
+                f"live-pid-noop={h}; dead-pid-reclaimed={i}; sigint->failed={j}")
 
 
 def check7_decide_export_and_plan_view():
     """T005 / FR-007, FR-008 contract rows: decide_export + export_plan_view HTTP-free.
     Asserted as (code, payload, launch) VALUES: 404 no run; 409 awaiting gate (zero state
-    written); 202 + reservation WITHOUT started_at on accept; repeat => 200 no-op, launch
-    False; failed => retry accepted with cost restated; zero elements => 409 named; the
-    plan view 200 carries calls/cost and never writes state."""
+    written); 202 + reservation WITHOUT started_at on accept; an UNADOPTED reservation is
+    reclaimed (202 recovered_stuck), a LIVE-worker exporting no-ops (200); failed => retry
+    accepted, cost restated, stale export_error.txt cleared; zero elements => 409 named;
+    missing source => 404 on BOTH surfaces (shared preflight); the plan view 200 carries
+    calls/cost and never writes state; the two cost constants are ONE price (drift guard)."""
+    import os
     sys.path.insert(0, str(REPO / "frontend"))
     import server  # noqa: PLC0415
 
@@ -391,20 +443,41 @@ def check7_decide_export_and_plan_view():
     e = (code3 == 202 and launch3 and payload3["state"] == "exporting"
          and st3["state"] == "exporting" and "started_at" not in st3
          and payload3["cost_stated"] == st3["cost_stated"])
+    # an UNADOPTED reservation (no worker ever ran) is verifiably stuck: repeat decide
+    # RECLAIMS it (a crash between reservation and launch must not brick the export)
     code4, payload4, launch4 = server.decide_export(run3)
-    f = code4 == 200 and not launch4 and "no second spend" in payload4["note"]
+    f = code4 == 202 and launch4 and payload4["recovered_stuck"] is True
+    # once a LIVE worker owns the state (started_at + running pid), repeats no-op
+    st3 = xl.read_state(run3)
+    st3.update(started_at="t", pid=os.getpid())
+    xl._write_state(run3, st3)
+    code4b, payload4b, launch4b = server.decide_export(run3)
+    f2 = code4b == 200 and not launch4b and "no second spend" in payload4b["note"]
 
     xl._write_state(run3, {"state": "failed", "error": "boom", "created": "t"})
+    (run3 / "export_error.txt").write_text("old failure tail", encoding="utf-8")
     code5, payload5, launch5 = server.decide_export(run3)
-    g = code5 == 202 and launch5 and payload5["retry_after_failure"] is True
+    g = (code5 == 202 and launch5 and payload5["retry_after_failure"] is True
+         and not (run3 / "export_error.txt").exists())   # a fresh attempt clears the marker
 
     run6, _ = make_run_dir(d / "zero", messages=0, logo_fed=False, products=0)
     code6, payload6, launch6 = server.decide_export(run6)
     h = code6 == 409 and "no enumerable elements" in payload6["error"] and not launch6
 
-    ok = a and b and c and e and f and g and h
+    # contract: 'Preconditions identical to the plan endpoint': missing source = 404 on BOTH
+    run7, _ = make_run_dir(d / "nosrc", messages=2, logo_fed=False, products=0)
+    (run7 / "sign_s1" / "generated.png").unlink()
+    pc7, _pv7 = server.export_plan_view(run7)
+    dc7, _dp7, dl7 = server.decide_export(run7)
+    i = pc7 == 404 and dc7 == 404 and not dl7
+
+    # the drift guard the export_layers comment promises: one price, asserted
+    j = server.PER_RUN_COST_USD == xl.PER_IMAGE_USD_DEFAULT
+
+    ok = a and b and c and e and f and f2 and g and h and i and j
     return ok, (f"404={a}; 409-gate={b}; plan-view={c}; 202+reservation={e}; "
-                f"repeat-noop={f}; failed-retry={g}; zero-el-409={h}")
+                f"stuck-reclaimed={f}; live-noop={f2}; failed-retry+marker-cleared={g}; "
+                f"zero-el-409={h}; no-source-404-both={i}; cost-drift-guard={j}")
 
 
 def check6_form():
@@ -534,7 +607,7 @@ CHECKS = [
     ("T002 prompts + refusals: verbatim/value clauses, named SystemExits", check2_prompts_and_refusals),
     ("T003 real keying: probed alpha + bbox, named honest nulls", check3_real_keying),
     ("T004 orchestrator: N+1 calls, contract refs, progressive manifest, exact zip", check4_orchestrator_and_zip),
-    ("T005 state machine: state-before-spend, no-ops, failed-only retry, reservation", check5_state_machine),
+    ("T005 state machine: state-before-spend, live no-op vs stuck reclaim, sigint->failed", check5_state_machine),
     ("T005 decide_export + plan view: contract codes/payloads/launch triples", check7_decide_export_and_plan_view),
     ("T006 form: opt-in cost-labeled button, progress rows, zip link, never automatic", check6_form),
     ("T007 audit manifest: full record schema ok AND null, flagged background, state file", check9_audit_manifest),

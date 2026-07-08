@@ -25,6 +25,17 @@ def _load_text(p):
         return None
 
 
+def _pid_alive(pid):
+    """Read-only liveness probe (signal 0). Stdlib-local on purpose: run_view stays
+    import-light and PURE (no harness import just to share three lines)."""
+    import os
+    try:
+        os.kill(int(pid), 0)
+    except (OSError, TypeError, ValueError):
+        return False
+    return True
+
+
 def run_view(run_dir, sign_id: str = "s1") -> dict:
     """A run dir -> {run_id, brief, register, prompt, image, manifest_notes}. Each stage is
     {present, content, note}; an absent stage carries the manifest notes as its note (honest null).
@@ -65,15 +76,25 @@ def run_view(run_dir, sign_id: str = "s1") -> dict:
     # unexported run (pre-016 dirs included): export is opt-in and paid, never assumed.
     export_state = _load_json(run_dir / "export_state.json")
     export_manifest = _load_json(run_dir / "export_manifest.json")
+    export_error = _load_text(run_dir / "export_error.txt")  # the export worker's own marker,
+    # deliberately distinct from run_error.txt (which means the RUN failed, not the export)
     if export_state is None:
         export = {"present": False, "content": None,
                   "note": "not exported; export is opt-in and paid"}
     else:
+        state = export_state.get("state")
+        # An "exporting" nobody owns (reservation never adopted, or the worker pid is dead
+        # after a hard kill) is STALE: surface it so the UI can offer the retry the state
+        # machine accepts, instead of rendering a forever-spinner (honest null, §V).
+        stale = (state == "exporting"
+                 and not (export_state.get("started_at")
+                          and _pid_alive(export_state.get("pid"))))
         export = {"present": True, "note": None, "content": {
-            "state": export_state.get("state"),
+            "state": state,
+            "stale": stale,
             "cost_stated": export_state.get("cost_stated"),
             "calls": (export_state.get("plan") or {}).get("calls"),
-            "error": export_state.get("error"),
+            "error": export_state.get("error") or (export_error.strip() if export_error else None),
             "layers": (export_manifest or {}).get("layers") or [],
             "zip_ready": (run_dir / "layers.zip").is_file(),
         }}

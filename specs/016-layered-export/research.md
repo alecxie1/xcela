@@ -66,6 +66,10 @@ and current API documentation on 2026-07-08.
 - `opaque_frac > 0.95` → null "model ignored the chroma directive (full-frame content)".
 - `opaque_frac < 0.001` → null "empty frame".
 - `green_residual_px_in_preview > 2000` → null "dirty key field (green residue)".
+- `stray_component_px_dropped > kept px` → null "largest-component keep dropped the MAJORITY
+  of the content" (post-review hardening: a multi-glyph text line keyed down to one glyph must
+  not ship as an unqualified ok cutout; the keying itself stays unchanged, only the judgment
+  gained a fourth threshold).
 - Null layers ship `<id>_raw.png` (the un-keyed model output, manual salvage) + manifest note;
   never a cutout. Values chosen against synthetic fixtures; a wrong implementation (always-ok or
   always-null) fails the fixture checks.

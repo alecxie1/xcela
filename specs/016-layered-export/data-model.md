@@ -34,21 +34,29 @@ refuse to plan (SystemExit, named reason).
   "plan": { ...export plan... },
   "cost_stated": "$0.48",
   "created": "ISO", "updated": "ISO",
+  "started_at": "ISO",      // set when a WORKER adopts the state (absent on a fresh
+                            // server-side reservation)
+  "pid": 12345,             // the adopting worker's process id (liveness probe)
   "error": "..."            // failed only
 }
 ```
 
-State machine:
+State machine (ownership = started_at + a LIVE pid; `state_blocks_new_export` is the one
+arbiter every surface calls):
 ```
 (absent) --POST/CLI (gate done, plan valid; state written BEFORE first paid call)--> exporting
-exporting --all calls + zip complete--> done
-exporting --exception--> failed
-exporting --repeat request--> no-op (no second spend, even mid-flight)
-done      --repeat request--> no-op
-failed    --explicit retry (cost restated)--> exporting   // the ONE re-entry
+exporting(live)  --all calls + zip complete--> done
+exporting(live)  --ANY interruption incl. SIGINT (BaseException)--> failed
+exporting(live)  --repeat request--> no-op (no second spend, even mid-flight)
+exporting(STUCK: unadopted reservation, or dead pid after a hard kill)
+                 --explicit retry (cost restated, recovered_stuck)--> exporting
+done             --repeat request--> no-op
+failed           --explicit retry (cost restated; stale export_error.txt cleared)--> exporting
 ```
 Preconditions to leave (absent): `gate_state.state == "done"`, source image exists, >=1 element.
-Restart safety: every UI render derives purely from this file + the manifest.
+Restart safety: every UI render derives purely from this file + the manifest; a stuck
+exporting renders as `stale: true` so the UI offers the retry the machine accepts.
+Export failures write `export_error.txt` (NEVER `run_error.txt`, which means the RUN failed).
 
 ### Layer record (one entry in `<run_dir>/export_manifest.json`, appended progressively)
 | Field | Type | Rule |

@@ -155,9 +155,14 @@ removed, flagged model_continued); layers.zip = RGBA cutouts + white-bg JPG prev
 outputs for honest-null layers (thresholds on the keying stats; never a fabricated cutout) +
 the audit manifest (prompts, keying stats, bboxes for drift measurement). Spend follows the 015
 contract: the free plan endpoint states N+1 calls + cost BEFORE the click; decide_export writes
-an exporting RESERVATION pre-launch which the subprocess worker ADOPTS (started_at); repeats
-no-op even mid-flight; retry ONLY from failed; 409 unless the gate is done; disk-backed
-(restart-safe); byte-identity tree-hash-proven for unexported runs and real pre-016 dirs.
+an exporting RESERVATION pre-launch which the subprocess worker ADOPTS (started_at + pid);
+repeats no-op while a LIVE worker owns the state; retry from failed AND verifiably-stuck
+exporting (unadopted reservation / dead pid; SIGINT lands in failed, nothing bricks the export);
+409 unless the gate is done; disk-backed (restart-safe); byte-identity tree-hash-proven for
+unexported runs and real pre-016 dirs. Post-review hardening (8-angle review 2026-07-08): a
+fourth honest-null (majority stray drop), export_error.txt separate from run_error.txt, shared
+_export_preflight (plan/spend preconditions identical), no raw exceptions out of export routes,
+UI stale-fetch/latch/poller fixes, cost-constant drift guard now real.
 New harness/export_layers.py (injectable generate_fn; `--plan-only` free surface, proven live
 on run_CJXQ_20260708_151506: 5 elements, 6 calls, $0.48) + decide_export/export_plan_view + 3
 routes + additive run_view stage + the opt-in stage-6 button (form-grep pinned never-automatic).

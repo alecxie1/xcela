@@ -207,105 +207,127 @@ def _gate_state(run_dir: Path):
         return None
 
 
-def export_plan_view(run_dir: Path, per_image_usd: float = PER_RUN_COST_USD):
-    """Feature 016: the FREE pre-spend plan for the export button label (contracts/
-    http-and-cli.md). HTTP-free, zero paid calls. Returns (status_code, payload)."""
+def _read_export_state(run_dir: Path):
+    """(state, error) wrapper over export_mod.read_state: the module fails LOUD on a corrupt
+    state file (a silent None would let the orchestrator re-spend), the server instead turns
+    it into a named refusal. Returns (None, msg) on corruption."""
+    try:
+        return export_mod.read_state(run_dir), None
+    except Exception:  # noqa: BLE001
+        return None, ("export_state.json exists but is unreadable; fix or delete it "
+                      "to export this run again")
+
+
+def _export_preflight(run_dir: Path, per_image_usd: float):
+    """Feature 016: the ONE precondition chain the free plan view AND the spending decide
+    share (contract: 'Preconditions identical to the plan endpoint'). Returns
+    ((status_code, payload), None) on refusal or (None, plan) on success; NEVER raises
+    (a corrupt brand key / run artifact is a named 409, not a socket abort)."""
     run_dir = Path(run_dir)
     if not run_dir.is_dir():
-        return 404, {"error": "no such run"}
-    if _gate_state(run_dir) != "done":
-        return 409, {"error": "export needs a generated, judged image: the run's gate is "
-                              f"{_gate_state(run_dir)!r}, not 'done'"}
+        return (404, {"error": "no such run"}), None
+    gate = _gate_state(run_dir)
+    if gate != "done":
+        return (409, {"error": "export needs a generated, judged image: the run's gate is "
+                               f"{gate!r}, not 'done'"}), None
     if export_mod.find_source_image(run_dir) is None:
-        return 404, {"error": "no final.png/generated.png in this run (nothing to decompose)"}
+        return (404, {"error": "no final.png/generated.png in this run "
+                               "(nothing to decompose)"}), None
     brand = export_mod._brand_from_run(run_dir)
     if not brand:
-        return 409, {"error": "run_meta.json missing/unreadable; cannot resolve the brand"}
+        return (409, {"error": "run_meta.json missing/unreadable; cannot resolve "
+                               "the brand"}), None
     try:
         plan = export_mod.export_plan(run_dir, export_mod.load_brand(brand),
                                       per_image_usd=per_image_usd)
     except SystemExit as exc:   # zero elements: a layered export would be a paid no-op
-        return 409, {"error": str(exc)}
-    state = export_mod.read_state(run_dir)
-    return 200, {**plan, "export_state": state.get("state") if state else None}
+        return (409, {"error": str(exc)}), None
+    except Exception as exc:    # missing/corrupt brand key or run artifact: named, not a 500
+        return (409, {"error": f"cannot plan the export: {type(exc).__name__}: {exc}"}), None
+    return None, plan
+
+
+def export_plan_view(run_dir: Path, per_image_usd: float = PER_RUN_COST_USD):
+    """Feature 016: the FREE pre-spend plan for the export button label (contracts/
+    http-and-cli.md). HTTP-free, zero paid calls, zero writes. Returns (status_code, payload)."""
+    err, plan = _export_preflight(run_dir, per_image_usd)
+    if err:
+        return err
+    state, serr = _read_export_state(run_dir)
+    payload = {**plan, "export_state": state.get("state") if state else None}
+    if serr:
+        payload["state_note"] = serr
+    return 200, payload
 
 
 def decide_export(run_dir: Path, per_image_usd: float = PER_RUN_COST_USD):
     """Feature 016: HTTP-free export decision, mirroring decide_confirm. Returns
     (status_code, payload, launch: bool). When launch is True, export_state.json has
     ALREADY been written as an "exporting" RESERVATION (state-before-launch, WITHOUT
-    started_at: the launched worker adopts it; see export_layers.export_layers). Repeats
-    no-op with no second spend, even mid-flight; retry is accepted ONLY from failed (an
-    export crash must not brick the run's only export)."""
+    started_at: the launched worker adopts it, recording its pid). No-ops with no second
+    spend while a LIVE worker owns the state (export_mod.state_blocks_new_export, the one
+    arbiter); retry is accepted from failed AND from verifiably-stuck exporting states
+    (unadopted reservation, dead worker pid): a crash must not brick the run's only export."""
     run_dir = Path(run_dir)
     if not run_dir.is_dir():
         return 404, {"error": "no such run"}, False
-    state = export_mod.read_state(run_dir)
-    if state and state.get("state") in ("exporting", "done"):
+    state, serr = _read_export_state(run_dir)
+    if serr:
+        return 409, {"error": serr}, False
+    if export_mod.state_blocks_new_export(state):
         return 200, {"ok": True, "state": state["state"],
                      "note": "already exporting/exported; no second spend"}, False
-    gate = _gate_state(run_dir)
-    if gate != "done":
-        return 409, {"error": "export needs a generated, judged image: the run's gate is "
-                              f"{gate!r}, not 'done'"}, False
-    brand = export_mod._brand_from_run(run_dir)
-    if not brand:
-        return 409, {"error": "run_meta.json missing/unreadable; cannot resolve the brand"}, False
-    try:
-        plan = export_mod.export_plan(run_dir, export_mod.load_brand(brand),
-                                      per_image_usd=per_image_usd)
-    except SystemExit as exc:
-        return 409, {"error": str(exc)}, False
+    err, plan = _export_preflight(run_dir, per_image_usd)
+    if err:
+        return (*err, False)
     cost = f"${plan['cost_usd']:.2f}"
     retrying = bool(state and state.get("state") == "failed")
+    recovered = bool(state and state.get("state") == "exporting")  # stuck state reclaimed
+    (run_dir / "export_error.txt").unlink(missing_ok=True)  # a fresh attempt clears the old marker
     export_mod._write_state(run_dir, {"state": "exporting", "plan": plan,
                                       "cost_stated": cost,
                                       "created": datetime.now().isoformat(timespec="seconds")})
     return 202, {"ok": True, "state": "exporting", "cost_stated": cost,
-                 "calls": plan["calls"], "retry_after_failure": retrying}, True
+                 "calls": plan["calls"], "retry_after_failure": retrying,
+                 "recovered_stuck": recovered}, True
 
 
-def _launch_export_async(run_dir: Path):
-    """Feature 016: run the exporter as a background subprocess (crash isolation, the
-    _launch_async pattern). The worker owns the _inflight release; a nonzero exit surfaces
-    in run_error.txt AND in export_state.json (the module marks failed itself)."""
-    argv = [sys.executable, "harness/export_layers.py", "--run-dir", str(run_dir)]
+def _spawn_worker(argv: list, run_dir: Path, error_name: str = "run_error.txt"):
+    """The ONE background-subprocess worker (015 generation and 016 export both launch
+    through it): crash isolation via subprocess, the fail-loud tail written to error_name
+    (§V: surface it, never hang silently), the _inflight release owned by the worker.
+    016 uses error_name='export_error.txt' so an export failure NEVER masquerades as a
+    run failure (run_error.txt is the conductor's marker and poisons the run view)."""
 
     def _work():
         try:
             proc = subprocess.run(argv, cwd=str(REPO_ROOT), capture_output=True, text=True)
             if proc.returncode != 0:
                 err = (proc.stderr or proc.stdout or "").strip()
-                tail = "\n".join(err.splitlines()[-12:]) or f"export exited {proc.returncode}"
-                (run_dir / "run_error.txt").write_text(tail, encoding="utf-8")
+                tail = "\n".join(err.splitlines()[-12:]) or f"worker exited {proc.returncode}"
+                (run_dir / error_name).write_text(tail, encoding="utf-8")
         finally:
             _inflight.release()
 
     threading.Thread(target=_work, daemon=True).start()
 
 
+def _launch_export_async(run_dir: Path):
+    """Feature 016: the exporter subprocess. Failures land in export_error.txt (NOT
+    run_error.txt) and in export_state.json (the module marks failed itself when it got
+    far enough; an earlier death leaves an unstarted reservation the retry path reclaims)."""
+    _spawn_worker([sys.executable, "harness/export_layers.py", "--run-dir", str(run_dir)],
+                  run_dir, error_name="export_error.txt")
+
+
 def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes, phase=None):
-    """Run the conductor in a background thread so /stages can poll progressively. We append
+    """Run the conductor via the shared worker so /stages can poll progressively. We append
     --out <run_dir> so the server can address the run while it runs; build_conductor_argv
     stays --out-free (the faithful CLI default). Feature 015: phase='derive' is the ZERO-SPEND
     first leg every browser run takes; phase='generate' is the confirmed paid leg."""
     argv = runner.build_conductor_argv(inputs_path, brand, style_notes=style_notes,
                                        phase=phase) + ["--out", str(run_dir)]
-
-    def _work():
-        try:
-            proc = subprocess.run(argv, cwd=str(REPO_ROOT), capture_output=True, text=True)
-            if proc.returncode != 0:
-                # Surface the conductor's fail-loud to the human (§V) instead of hanging silently at
-                # 'brief': write an error marker run_view + the UI read. (capture_output buffers the
-                # subprocess streams; the conductor still writes its stage artifacts to disk live.)
-                err = (proc.stderr or proc.stdout or "").strip()
-                tail = "\n".join(err.splitlines()[-12:]) or f"conductor exited {proc.returncode}"
-                (run_dir / "run_error.txt").write_text(tail, encoding="utf-8")
-        finally:
-            _inflight.release()
-
-    threading.Thread(target=_work, daemon=True).start()
+    _spawn_worker(argv, run_dir)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -344,9 +366,9 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/run/") and path.endswith("/layers.zip"):
             run_id = path[len("/run/"):-len("/layers.zip")]
             zp = OUTPUT / run_id / export_mod.ZIP_NAME
-            state = export_mod.read_state(OUTPUT / run_id)
-            if not zp.is_file() or not state or state.get("state") != "done":
-                return self._send(404, {"error": "layers.zip not ready (export not done)"})
+            state, serr = _read_export_state(OUTPUT / run_id)
+            if serr or not zp.is_file() or not state or state.get("state") != "done":
+                return self._send(404, {"error": serr or "layers.zip not ready (export not done)"})
             return self._send(200, zp.read_bytes(), "application/zip")
         return self._send(404, {"error": "not found"})
 
@@ -431,29 +453,40 @@ class Handler(BaseHTTPRequestHandler):
             if not launched and _inflight.locked():
                 _inflight.release()
 
-    def _run_export(self, run_id):
-        """Feature 016 (FR-007): opt-in, cost-stated layered export with the 015 spend
-        semantics. The no-op states answer BEFORE the single-flight lock, so a repeat click
-        mid-export gets the graceful no-op, not a 409."""
-        run_dir = OUTPUT / run_id
-        state = export_mod.read_state(run_dir) if run_dir.is_dir() else None
-        if state and state.get("state") in ("exporting", "done"):
-            return self._send(200, {"ok": True, "state": state["state"],
-                                    "note": "already exporting/exported; no second spend"})
+    def _locked_spend(self, decide_fn, launch_fn, wrap=None):
+        """The ONE acquire/decide/launch/release scaffold both spending handlers use
+        (015 confirm and 016 export): single-flight 409, launched-flag lock handoff to the
+        worker, fail-loud 400, conditional release. Encoding it once keeps the two spend
+        routes' locking discipline identical by construction."""
         if not _inflight.acquire(blocking=False):
             return self._send(409, {"error": "a run is already in flight (single-flight); wait"})
         launched = False
         try:
-            code, payload, launch = decide_export(run_dir)
+            code, payload, launch = decide_fn()
             if launch:
-                _launch_export_async(run_dir)   # the worker releases the lock
+                launch_fn(launch)   # the worker releases the lock
                 launched = True
-            return self._send(code, payload)
+            return self._send(code, wrap(payload) if wrap else payload)
         except Exception as exc:  # noqa: BLE001
             return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
         finally:
             if not launched and _inflight.locked():
                 _inflight.release()
+
+    def _run_export(self, run_id):
+        """Feature 016 (FR-007): opt-in, cost-stated layered export with the 015 spend
+        semantics. The no-op states answer BEFORE the single-flight lock (via the shared
+        state_blocks_new_export arbiter), so a repeat click mid-export gets the graceful
+        no-op, not a 409; a corrupt state file is a named 409, never a socket abort."""
+        run_dir = OUTPUT / run_id
+        state, serr = _read_export_state(run_dir) if run_dir.is_dir() else (None, None)
+        if serr:
+            return self._send(409, {"error": serr})
+        if export_mod.state_blocks_new_export(state):
+            return self._send(200, {"ok": True, "state": state["state"],
+                                    "note": "already exporting/exported; no second spend"})
+        return self._locked_spend(lambda: decide_export(run_dir),
+                                  lambda _launch: _launch_export_async(run_dir))
 
     def _run_confirm(self, run_id):
         """Feature 015 (FR-012): idempotent, cost-stated confirm. State is written BEFORE the
@@ -471,21 +504,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "state": state,
                                         "note": "already confirmed; no second spend",
                                         "per_run_cost_usd": PER_RUN_COST_USD})
-        if not _inflight.acquire(blocking=False):
-            return self._send(409, {"error": "a run is already in flight (single-flight); wait"})
-        launched = False
-        try:
-            code, payload, launch = decide_confirm(run_dir, f"${PER_RUN_COST_USD:.2f}")
-            if launch:
-                _launch_async(run_dir, launch["brand"], launch["inputs_path"],
-                              launch["style_notes"], phase="generate")
-                launched = True  # _launch_async's worker releases the lock
-            return self._send(code, {**payload, "per_run_cost_usd": PER_RUN_COST_USD})
-        except Exception as exc:  # noqa: BLE001
-            return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
-        finally:
-            if not launched and _inflight.locked():
-                _inflight.release()
+        return self._locked_spend(
+            lambda: decide_confirm(run_dir, f"${PER_RUN_COST_USD:.2f}"),
+            lambda launch: _launch_async(run_dir, launch["brand"], launch["inputs_path"],
+                                         launch["style_notes"], phase="generate"),
+            wrap=lambda payload: {**payload, "per_run_cost_usd": PER_RUN_COST_USD})
 
     # --- Feature 006 onboarding handlers (thin glue over onboard.py; no model, never intake.main) ---
 

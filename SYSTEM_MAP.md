@@ -14,24 +14,39 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 > zero elements = loud refusal, never a paid background-only export). HONEST NULLS per layer:
 > thresholds on the keying stats (opaque_frac > 0.95 = chroma directive ignored, < 0.001 = empty,
 > green residual > 2000 = dirty field) mark a layer null; the zip then ships the RAW model output +
-> a named manifest note, never a fabricated cutout. The audit manifest carries per layer: prompt,
+> a named manifest note, never a fabricated cutout; POST-REVIEW HARDENING added a FOURTH null
+> (stray-dropped px outnumbering kept px = the largest-component keep erased the majority of a
+> multi-glyph element; the keying itself unchanged). The audit manifest carries per layer: prompt,
 > 4 keying stats, opaque bbox (position drift is MEASURED, accepted for v1 per the draft charter),
 > files. SPEND: the 015 contract applied whole: free GET /run/<id>/export/plan labels the button
 > (N+1 calls, exact $) BEFORE any click; POST /run/<id>/export is the only spending route;
 > decide_export writes an "exporting" RESERVATION pre-launch (state-before-spend) which the
-> subprocess worker ADOPTS via started_at; repeats no-op even mid-flight; retry ONLY from failed (a
-> crash must not brick the run's only export); 409 unless the run's confirm gate reached done; a
-> server restart re-renders from disk; the manifest is appended progressively so a crash leaves a
-> truthful partial. New: harness/export_layers.py (CLI: --run-dir [--plan-only], injectable
-> generate_fn so tests never touch the paid client), server decide_export + export_plan_view + 3
-> routes, ONE additive run_view export stage (honest null on unexported/pre-016 dirs), the stage-6
-> opt-in button (starts disabled until the free plan labels it; exactly one spending POST;
-> never-automatic form-grep pinned). Tests: test_export_layers 10/10 (real strip_chroma on synthetic
-> #00B140 fixtures with probed alpha + bbox; stubbed orchestrator: N+1 calls, contract refs,
-> progressive manifest, exact zip member set; state machine incl. reservation adoption;
-> decide contract triples; full audit schema; tree-hash byte-identity incl. real pre-016 run dirs);
-> the FULL 30-suite sweep green (test_confirm_gate's pinned run_view key set gains exactly the one
-> additive export stage, 14/14). FREE live proof: --plan-only on run_CJXQ_20260708_151506 enumerates
+> subprocess worker ADOPTS via started_at + its pid; repeats no-op while a LIVE worker owns the
+> state; retry accepted from failed AND from verifiably-stuck exporting (unadopted reservation,
+> dead worker pid; state_blocks_new_export is the ONE arbiter; ANY interruption incl. SIGINT lands
+> in failed via BaseException): no crash/kill can brick the run's only export; 409 unless the run's
+> confirm gate reached done; a server restart re-renders from disk; the manifest is appended
+> progressively so a crash leaves a truthful partial. An 8-angle adversarial code review
+> (2026-07-08) drove the hardening: background prompt no longer references a nonexistent second
+> image (with_ref_hint split), export failures write export_error.txt (NEVER run_error.txt, which
+> poisoned the run view as "Run failed"), the shared _export_preflight makes plan/spend
+> preconditions identical by construction (missing source = 404 on both), raw exceptions can no
+> longer escape the export routes (named 409s), the UI recovers from a failed cost check (free
+> retry click), drops stale cross-run plan fetches (a spend can never be authorized under another
+> run's stated price), restarts the poll interval on attempt switches, and the cost constant
+> identity is now actually drift-guarded in tests. New: harness/export_layers.py (CLI: --run-dir
+> [--plan-only], injectable generate_fn so tests never touch the paid client), server
+> decide_export + export_plan_view + _export_preflight + _spawn_worker (shared with 015's
+> launcher) + 3 routes, ONE additive run_view export stage (honest null on unexported/pre-016
+> dirs; stale-worker detection via pid liveness), the stage-6 opt-in button (starts disabled until
+> the free plan labels it; exactly one spending POST; never-automatic form-grep pinned). Tests:
+> test_export_layers 10/10 (real strip_chroma on synthetic #00B140 fixtures with probed alpha +
+> bbox + the majority-drop null; stubbed orchestrator: N+1 calls, contract refs, progressive
+> manifest, exact zip member set; state machine incl. reservation adoption, dead-pid reclaim,
+> SIGINT->failed; decide contract triples incl. stuck-reclaim + cost drift guard; full audit
+> schema; tree-hash byte-identity incl. real pre-016 run dirs); the FULL 30-suite sweep green
+> (test_confirm_gate's pinned run_view key set gains exactly the one additive export stage,
+> 14/14). FREE live proof: --plan-only on run_CJXQ_20260708_151506 enumerates
 > 3 text lines + logo + product_1 = 6 calls, $0.48. PENDING: **T009, the ONE paid eye-gate (SC-007)**:
 > on a real judged CJXQ run click Export, download layers.zip, stack cutouts over background.png in
 > an editor, judge element fidelity / position drift / null honesty; record the verdict here.

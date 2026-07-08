@@ -27,6 +27,7 @@ CLI:
 
 import argparse
 import json
+import os
 import sys
 import zipfile
 from datetime import datetime
@@ -40,13 +41,18 @@ ZIP_NAME = "layers.zip"
 STATE_NAME = "export_state.json"
 MANIFEST_NAME = "export_manifest.json"
 DEFAULT_SIZE = "1536x1024"
-PER_IMAGE_USD_DEFAULT = 0.08  # mirrors frontend/server.py PER_RUN_COST_USD (drift-guarded)
+PER_IMAGE_USD_DEFAULT = 0.08  # == frontend/server.py PER_RUN_COST_USD (one run = one image
+                              # today; identity asserted by test_export_layers check7)
 
 # Honest-null thresholds on strip_chroma's stats (research.md D4). Deterministic and
 # falsifiable: a wrong build that always-oks or always-nulls fails the synthetic fixtures.
 NULL_OPAQUE_MAX = 0.95     # kept ~everything: the model ignored the chroma directive
 NULL_OPAQUE_MIN = 0.001    # kept ~nothing: an empty frame
 NULL_RESIDUAL_MAX = 2000   # key green survives in the preview: dirty key field
+# The fourth null: strip_chroma keeps only the largest connected component; when the DROPPED
+# strays outnumber the kept pixels (a multi-glyph text line keyed down to one glyph), the
+# keying could not do its job and the layer must not ship as an unqualified cutout (FR-005).
+# dropped > kept  <=>  the majority of the painted content was erased.
 
 
 # ---------------------------------------------------------------- pure half
@@ -88,15 +94,19 @@ def enumerate_elements(run_dir: Path, brand_key: dict) -> list:
     return elements
 
 
-def _element_desc(element: dict) -> str:
+def _element_desc(element: dict, with_ref_hint: bool = True) -> str:
+    """with_ref_hint=True is for ISOLATION prompts, whose calls really do pass the original
+    asset as a second reference. The background call passes ONLY the source image, so its
+    descriptions must never mention a second supplied image that does not exist."""
     kind = element["kind"]
     if kind == "text":
         return f'the text "{element["text"]}" with its exact typography'
     if kind == "logo":
-        return "the brand logo (the SECOND supplied image is the original logo asset)"
+        return ("the brand logo (the SECOND supplied image is the original logo asset)"
+                if with_ref_hint else "the brand logo")
     if kind == "product":
         return ("the product shown in the SECOND supplied image, as it appears in the "
-                "finished design")
+                "finished design" if with_ref_hint else "the branded product")
     raise ValueError(f"unknown element kind {kind!r}")
 
 
@@ -116,7 +126,7 @@ def isolation_prompt(element: dict, key_hex: str = CHROMA_KEY_HEX) -> str:
 
 
 def background_prompt(elements: list) -> str:
-    descs = "; ".join(_element_desc(e) for e in elements)
+    descs = "; ".join(_element_desc(e, with_ref_hint=False) for e in elements)
     return (
         "The supplied image is a finished design. Repaint it with these foreground elements "
         f"REMOVED: {descs}. Continue the background scene naturally behind where they were, "
@@ -175,8 +185,17 @@ def key_layer(isolated_png: Path, layer_dir: Path) -> dict:
         rec.update(status="null", bbox=None,
                    note=f"dirty key field: {residual}px green residual > {NULL_RESIDUAL_MAX}")
         return rec
-
     from PIL import Image
+    with Image.open(isolated_png) as _im:
+        _w, _h = _im.size
+    kept_px = frac * _w * _h
+    dropped = rec["stray_component_px_dropped"]
+    if dropped > kept_px:   # the majority of the painted content was erased as "strays"
+        rec.update(status="null", bbox=None,
+                   note=f"largest-component keep dropped the MAJORITY of the content "
+                        f"({dropped}px dropped vs ~{int(kept_px)}px kept); a multi-part "
+                        "element (detached glyphs/marks) cannot ship as a cutout")
+        return rec
     preview_jpg = layer_dir / "preview.jpg"
     Image.open(rec["preview_white"]).convert("RGB").save(preview_jpg, quality=90)
     bbox = Image.open(rec["cutout"]).getchannel("A").getbbox()
@@ -201,6 +220,30 @@ def _now() -> str:
 def read_state(run_dir: Path):
     p = Path(run_dir) / STATE_NAME
     return _read_json(p) if p.is_file() else None
+
+
+def _pid_alive(pid) -> bool:
+    try:
+        os.kill(int(pid), 0)
+    except (OSError, TypeError, ValueError):
+        return False
+    return True
+
+
+def state_blocks_new_export(state) -> bool:
+    """The ONE definition of 'a new export must no-op' (the orchestrator, decide_export and
+    the server's pre-lock check all call this; encode it nowhere else). done blocks forever.
+    exporting blocks only while a LIVE worker owns it (started_at set AND its recorded pid
+    is running). A reservation never adopted, or an exporting whose worker died without
+    marking failed (kill -9, reboot), does NOT block: those are verifiably-stuck states and
+    the retry path reclaims them instead of bricking the run's only export."""
+    if not state:
+        return False
+    s = state.get("state")
+    if s == "done":
+        return True
+    return (s == "exporting" and bool(state.get("started_at"))
+            and _pid_alive(state.get("pid")))
 
 
 def _write_state(run_dir: Path, state: dict) -> dict:
@@ -256,49 +299,55 @@ def build_zip(run_dir: Path, manifest: dict) -> Path:
 
 def export_layers(run_dir: Path, brand_key: dict, generate_fn=None,
                   per_image_usd: float = PER_IMAGE_USD_DEFAULT) -> dict:
-    """The orchestrator. 015 spend semantics: no-op on done and on a STARTED exporting
-    (zero calls, even mid-flight); retry accepted ONLY from failed; refuses unless the run's
-    confirm gate reached done; export_state.json state="exporting" is on disk BEFORE the
-    first paid call; the manifest is appended progressively so a crash leaves a truthful
-    partial; any exception after spend starts = state "failed" + error, fail loud.
+    """The orchestrator. 015 spend semantics: no-op on done and on an exporting owned by a
+    LIVE worker (zero calls, even mid-flight); retry accepted from failed AND from
+    verifiably-stuck exporting states (unadopted reservation, dead worker pid: a crash must
+    not brick the run's only export); refuses unless the run's confirm gate reached done;
+    export_state.json state="exporting" is on disk BEFORE the first paid call; the manifest
+    is appended progressively so a crash leaves a truthful partial; ANY interruption after
+    spend starts, KeyboardInterrupt included, = state "failed" + error, fail loud.
 
     The reservation handoff: frontend.server.decide_export writes state="exporting" WITHOUT
     `started_at` (state-before-launch) and then launches this module as a subprocess; the
-    worker ADOPTS that reservation (sets started_at) instead of no-oping. A second worker
-    (or a repeat CLI call) sees started_at and no-ops."""
+    worker ADOPTS that reservation (sets started_at + its pid). Liveness is the recorded
+    pid: state_blocks_new_export is the single arbiter."""
     run_dir = Path(run_dir)
 
-    state = read_state(run_dir)
-    if state and (state.get("state") == "done"
-                  or (state.get("state") == "exporting" and state.get("started_at"))):
+    try:
+        state = read_state(run_dir)
+    except Exception:
+        raise SystemExit("export refused: export_state.json exists but is unreadable; "
+                         "delete it to start over") from None
+    if state_blocks_new_export(state):
         return {"state": state["state"],
                 "note": "already exporting/exported; no second spend"}
 
-    if state and state.get("state") == "exporting":   # the decider's reservation: adopt it
+    if state and state.get("state") == "exporting":   # reservation or stuck: reclaim it
         plan = state.get("plan") or export_plan(run_dir, brand_key,
                                                 per_image_usd=per_image_usd)
-        state["plan"] = plan
-        state["started_at"] = _now()
+        state.update(plan=plan, started_at=_now(), pid=os.getpid())
         state = _write_state(run_dir, state)
     else:                                             # absent or failed: the full CLI path
         gate_path = run_dir / "gate_state.json"
         gate = _read_json(gate_path).get("state") if gate_path.is_file() else None
         if gate != "done":
             raise SystemExit(f"export refused: gate_state is {gate!r}, not 'done' "
-                             "(no browser spend without a confirmed, generated run)")
+                             "(export decomposes a confirmed, generated, judged run)")
         plan = export_plan(run_dir, brand_key, per_image_usd=per_image_usd)
         state = _write_state(run_dir, {"state": "exporting", "plan": plan,
                                        "cost_stated": f"${plan['cost_usd']:.2f}",
-                                       "created": _now(),
-                                       "started_at": _now()})   # BEFORE any paid call
-
-    if generate_fn is None:
-        from generate import generate_variant as generate_fn  # lazy: the paid client
+                                       "created": _now(), "started_at": _now(),
+                                       "pid": os.getpid()})    # BEFORE any paid call
 
     manifest = {"source_image": plan["source_image"], "size": plan["size"],
                 "layers": [], "background": None}
-    _write_manifest(run_dir, manifest)
     try:
+        # EVERYTHING that can fail after the started_at write lives inside this try, the
+        # lazy paid-client import and the first manifest write included: a failure anywhere
+        # past this point must land in "failed", never strand "exporting".
+        if generate_fn is None:
+            from generate import generate_variant as generate_fn  # lazy: the paid client
+        _write_manifest(run_dir, manifest)
         source = plan["source_image"]
         for element in plan["elements"]:
             prompt = isolation_prompt(element)
@@ -329,7 +378,7 @@ def export_layers(run_dir: Path, brand_key: dict, generate_fn=None,
         _write_state(run_dir, state)
         return {"state": "done", "zip": str(zip_path),
                 "layers": [{"id": l["id"], "status": l["status"]} for l in manifest["layers"]]}
-    except (Exception, SystemExit) as exc:
+    except BaseException as exc:   # incl. KeyboardInterrupt/SystemExit: NEVER strand "exporting"
         state.update(state="failed", error=f"{type(exc).__name__}: {exc}")
         _write_state(run_dir, state)
         raise

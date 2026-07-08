@@ -705,7 +705,7 @@ def check13_zero_guess_and_legacy():
         v = rv.run_view(td)
         # 2026-07-08 (feature 016): the pinned key set gains exactly ONE additive stage,
         # "export" (its honest null on an unexported dir is asserted here and, in depth,
-        # by test_export_layers check8). Everything pre-016 stays byte-comparable.
+        # by test_export_layers check10_byte_identity). Everything pre-016 stays byte-comparable.
         c = (v["gate"]["present"] is False and v["brief"]["present"] is True
              and set(v.keys()) == {"run_id", "brief", "register", "prompt", "image",
                                    "gate", "export", "manifest_notes", "error"}

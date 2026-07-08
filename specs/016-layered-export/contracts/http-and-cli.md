@@ -2,22 +2,33 @@
 
 ## HTTP (frontend/server.py; all handlers are thin over HTTP-free deciders, 015 style)
 
-### GET /run/<id>/export/plan  (FREE, zero spend)
+### GET /run/<id>/export/plan  (FREE, zero spend, zero writes)
 - 200: the export plan JSON (see data-model). Powers the button label.
 - 404: run dir or source image missing (named reason).
-- 409: `gate_state.state != "done"` (no generated image to decompose yet), or zero elements
-  (named: "no enumerable elements; layered export would be a paid no-op").
+- 409: `gate_state.state != "done"` (no generated image to decompose yet), zero elements
+  (named: "no enumerable elements; layered export would be a paid no-op"), or an unreadable
+  brand key / run artifact / export state (named; never a socket abort).
+- Shares `_export_preflight` with the spending route: preconditions and status codes are
+  identical BY CONSTRUCTION.
 
 ### POST /run/<id>/export  (the ONLY layered-export spending route)
-- Preconditions identical to the plan endpoint, evaluated by `decide_export(run_dir,
-  per_image_usd)` (HTTP-free, unit-tested directly).
-- On accept: writes `export_state.json` state="exporting" (BEFORE launch), acquires the
+- Preconditions identical to the plan endpoint (the shared `_export_preflight`), evaluated by
+  `decide_export(run_dir, per_image_usd)` (HTTP-free, unit-tested directly).
+- On accept: clears any stale `export_error.txt`, writes `export_state.json`
+  state="exporting" as a RESERVATION (no `started_at`; BEFORE launch), acquires the
   `_inflight` single-flight lock, launches `.venv/bin/python harness/export_layers.py
-  --run-dir <dir>` as a background subprocess. 202 `{"state": "exporting", "cost_stated": ...}`.
-- Repeat while exporting/done: 200 `{"state": ..., "note": "already exporting/exported; no
-  second spend"}`, ZERO calls.
-- From failed: accepted as a fresh export (cost restated in the response).
-- 503 if `_inflight` is held by a generation (one paid thing at a time).
+  --run-dir <dir>` as a background subprocess (which ADOPTS the reservation: `started_at` +
+  its `pid`). 202 `{"state": "exporting", "cost_stated": ..., "retry_after_failure": bool,
+  "recovered_stuck": bool}`.
+- Repeat while a LIVE worker owns the state (or state done): 200 `{"state": ..., "note":
+  "already exporting/exported; no second spend"}`, ZERO calls
+  (`export_layers.state_blocks_new_export` is the one arbiter).
+- From failed, an unadopted reservation, or a dead-pid exporting (hard-killed worker):
+  accepted as a fresh export (cost restated); a stuck state must never brick the run's
+  only export.
+- 409 (in-flight) if `_inflight` is held by a generation (one paid thing at a time).
+- Export failures land in `export_error.txt` + export_state "failed"; `run_error.txt` stays
+  the conductor's marker (an export failure never masquerades as a run failure).
 
 ### GET /run/<id>/layers.zip
 - 200 (application/zip) when state=done; 404 otherwise.
