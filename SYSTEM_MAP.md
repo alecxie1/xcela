@@ -1,7 +1,44 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 
-> **▶ BUILD STATUS 2026-07-08 (latest): feature 015 (pre-spend confirm gate) is BUILT + structurally green.**
+> **▶ BUILD STATUS 2026-07-08 (latest): feature 016 (layered export) is BUILT + structurally green; its paid eye-gate T009 is PENDING.**
+> Richard's ask delivered: the run view's stage 6 exports the approved design as PER-ELEMENT LAYERS in
+> layers.zip. The load-bearing fact: gpt-image-2 CANNOT emit layered or transparent output (flat
+> PNG/JPEG/WebP only; gpt-image-1.5's transparency was removed), so layers are BUILT, not requested:
+> one images.edit call per element repaints ONLY that element (identical position/size/colors, exact
+> canvas) on the proven chroma green #00B140, and the EXISTING strip_chroma (reused unchanged, one
+> out_dir per layer) keys it to a true RGBA cutout; plus ONE background call (elements removed,
+> flagged model_continued in the manifest, plausible-not-truth); white-bg JPG previews satisfy the
+> literal 多个JPG ask. Elements are enumerated DETERMINISTICALLY from run artifacts (verbatim message
+> lines; the logo ONLY if run_manifest generation.reference_image actually fed it; product photos;
+> zero elements = loud refusal, never a paid background-only export). HONEST NULLS per layer:
+> thresholds on the keying stats (opaque_frac > 0.95 = chroma directive ignored, < 0.001 = empty,
+> green residual > 2000 = dirty field) mark a layer null; the zip then ships the RAW model output +
+> a named manifest note, never a fabricated cutout. The audit manifest carries per layer: prompt,
+> 4 keying stats, opaque bbox (position drift is MEASURED, accepted for v1 per the draft charter),
+> files. SPEND: the 015 contract applied whole: free GET /run/<id>/export/plan labels the button
+> (N+1 calls, exact $) BEFORE any click; POST /run/<id>/export is the only spending route;
+> decide_export writes an "exporting" RESERVATION pre-launch (state-before-spend) which the
+> subprocess worker ADOPTS via started_at; repeats no-op even mid-flight; retry ONLY from failed (a
+> crash must not brick the run's only export); 409 unless the run's confirm gate reached done; a
+> server restart re-renders from disk; the manifest is appended progressively so a crash leaves a
+> truthful partial. New: harness/export_layers.py (CLI: --run-dir [--plan-only], injectable
+> generate_fn so tests never touch the paid client), server decide_export + export_plan_view + 3
+> routes, ONE additive run_view export stage (honest null on unexported/pre-016 dirs), the stage-6
+> opt-in button (starts disabled until the free plan labels it; exactly one spending POST;
+> never-automatic form-grep pinned). Tests: test_export_layers 10/10 (real strip_chroma on synthetic
+> #00B140 fixtures with probed alpha + bbox; stubbed orchestrator: N+1 calls, contract refs,
+> progressive manifest, exact zip member set; state machine incl. reservation adoption;
+> decide contract triples; full audit schema; tree-hash byte-identity incl. real pre-016 run dirs);
+> the FULL 30-suite sweep green (test_confirm_gate's pinned run_view key set gains exactly the one
+> additive export stage, 14/14). FREE live proof: --plan-only on run_CJXQ_20260708_151506 enumerates
+> 3 text lines + logo + product_1 = 6 calls, $0.48. PENDING: **T009, the ONE paid eye-gate (SC-007)**:
+> on a real judged CJXQ run click Export, download layers.zip, stack cutouts over background.png in
+> an editor, judge element fidelity / position drift / null honesty; record the verdict here.
+> Operator note: RESTART frontend/server.py to pick up the new routes.
+> Spec: `specs/016-layered-export/`.
+
+> **▶ BUILD STATUS 2026-07-08: feature 015 (pre-spend confirm gate) is BUILT + structurally green.**
 > The dimension interview, scoped to the evidence: the tool now SHOWS ITS GUESSES BEFORE YOU PAY. Every
 > browser run stops after deriving its plan (`conductor --phase derive`: calibrate + derive_register +
 > scene_author `--prompt-only`, zero image spend) at a gate showing the derived register, anchors/flexes,

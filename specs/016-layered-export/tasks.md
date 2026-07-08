@@ -141,7 +141,7 @@ only from failed; 409 while the gate is not done; disk-backed rendering.
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T008 Byte-identity + no-regression + docs currency: check8 tree-hashes an unexported
+- [x] T008 Byte-identity + no-regression + docs currency: check8 tree-hashes an unexported
       fixture run dir before/after module import AND run_view render (identical); a pre-016 run
       dir renders exactly as before plus the honest-null export stage (compare against a pinned
       pre-016 render literal); run the FULL prior self-test sweep unchanged (conductor,

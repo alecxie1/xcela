@@ -142,21 +142,27 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `016-layered-export` - SPEC + PLAN written (2026-07-08), implementation
-starting. Richard's ask: at the final step, split the approved design into per-element layers,
-zipped. gpt-image-2 CANNOT emit layers or transparency natively, so layers are BUILT: one paid
-edit call per deterministically enumerated element (message lines from inputs.json, the logo only
-if it was in generation.reference_image, product photos) repainting ONLY that element on the
-proven chroma green #00B140, keyed to a true RGBA PNG by the EXISTING strip_chroma
-(closed_loop_composite.py, reused unchanged), plus ONE background call (elements removed,
-flagged model-continued); layers.zip = RGBA cutouts + white-bg JPG previews + raw outputs for
-honest-null layers + audit manifest (prompts, keying stats, bboxes for drift measurement).
-Spend follows the 015 contract: free plan endpoint states N+1 calls + cost BEFORE the click,
-export_state.json written pre-spend, repeats no-op, retry only from failed, 409 unless the gate
-is done, disk-backed. New harness/export_layers.py (injectable generate_fn; --plan-only free
-surface) + decide_export/3 routes + additive run_view stage + opt-in button. All self-tests
-free; the one paid step is the SC-007 eye-gate (operator stacks layers in an editor).
-Spec/plan: `specs/016-layered-export/`.
+**Active feature:** `016-layered-export` - BUILT (US1-US3) + structurally green
+(test_export_layers 10/10; the FULL 30-suite prior sweep passes, test_confirm_gate's pinned
+run_view key set gaining exactly the ONE additive export stage). Richard's ask: at the final
+step, split the approved design into per-element layers, zipped. gpt-image-2 CANNOT emit layers
+or transparency natively, so layers are BUILT: one paid edit call per deterministically
+enumerated element (verbatim message lines from inputs.json, the logo ONLY if it was in the
+run's generation.reference_image, product photos; zero elements = loud refusal) repainting ONLY
+that element on the proven chroma green #00B140, keyed to a true RGBA PNG by the EXISTING
+strip_chroma (closed_loop_composite.py, reused unchanged), plus ONE background call (elements
+removed, flagged model_continued); layers.zip = RGBA cutouts + white-bg JPG previews + raw
+outputs for honest-null layers (thresholds on the keying stats; never a fabricated cutout) +
+the audit manifest (prompts, keying stats, bboxes for drift measurement). Spend follows the 015
+contract: the free plan endpoint states N+1 calls + cost BEFORE the click; decide_export writes
+an exporting RESERVATION pre-launch which the subprocess worker ADOPTS (started_at); repeats
+no-op even mid-flight; retry ONLY from failed; 409 unless the gate is done; disk-backed
+(restart-safe); byte-identity tree-hash-proven for unexported runs and real pre-016 dirs.
+New harness/export_layers.py (injectable generate_fn; `--plan-only` free surface, proven live
+on run_CJXQ_20260708_151506: 5 elements, 6 calls, $0.48) + decide_export/export_plan_view + 3
+routes + additive run_view stage + the opt-in stage-6 button (form-grep pinned never-automatic).
+PENDING: T009, the ONE paid eye-gate (SC-007: export a judged CJXQ run, stack layers in an
+editor, judge readability/drift/nulls). Spec/plan/tasks: `specs/016-layered-export/`.
 
 Prior feature `015-pre-spend-confirm-gate` - BUILT (US1-US3) + structurally green
 (test_confirm_gate 14/14; the FULL 26-suite prior sweep passes UNCHANGED). The dimension

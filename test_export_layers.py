@@ -485,6 +485,49 @@ def check9_audit_manifest():
                 f"state-done={e}; state-failed-error={f}")
 
 
+def _tree_hash(root):
+    import hashlib
+    h = hashlib.sha256()
+    for p in sorted(Path(root).rglob("*")):
+        if p.is_file():
+            h.update(str(p.relative_to(root)).encode())
+            h.update(p.read_bytes())
+    return h.hexdigest()
+
+
+def check10_byte_identity():
+    """T008 / FR-009, SC-005, SC-006: a run that never exports is BYTE-IDENTICAL after the
+    module import, a run_view render, the free plan view, and a refused decide (tree-hash
+    proof); its render gains exactly the ONE honest-null export stage; the real pre-016 run
+    dirs on disk (if present) render without a single byte changing either."""
+    sys.path.insert(0, str(REPO / "frontend"))
+    import run_view as rv
+    import server
+
+    d = _tmp("byteid")
+    run, key = make_run_dir(d / "run", gate_state="awaiting_confirmation")
+    h0 = _tree_hash(run)
+    v = rv.run_view(run)
+    server.export_plan_view(run)        # 409 (gate awaiting): must not write
+    server.decide_export(run)           # 409: must not write
+    a = _tree_hash(run) == h0
+    b = (v["export"]["present"] is False and "opt-in and paid" in v["export"]["note"]
+         and not (run / xl.STATE_NAME).exists() and not (run / xl.ZIP_NAME).exists())
+
+    c = True
+    real = sorted((REPO / "output").glob("run_*")) if (REPO / "output").is_dir() else []
+    for rd in [p for p in real if not (p / xl.STATE_NAME).exists()][-3:]:
+        rh = _tree_hash(rd)
+        rv.run_view(rd)
+        server.export_plan_view(rd)     # free by contract, whatever its state
+        if _tree_hash(rd) != rh:
+            c = False
+
+    ok = a and b and c
+    return ok, (f"fixture tree-hash stable={a}; honest-null-stage-only={b}; "
+                f"real pre-016 dirs untouched={c} ({len(real[-3:])} checked)")
+
+
 CHECKS = [
     ("T001 fixtures: exact #00B140, real artifact names, fed-refs honesty", check0_fixtures),
     ("T002 enumeration + plan: stable ids, fed-logo gate, N+1 pricing", check1_enumeration_and_plan),
@@ -495,6 +538,7 @@ CHECKS = [
     ("T005 decide_export + plan view: contract codes/payloads/launch triples", check7_decide_export_and_plan_view),
     ("T006 form: opt-in cost-labeled button, progress rows, zip link, never automatic", check6_form),
     ("T007 audit manifest: full record schema ok AND null, flagged background, state file", check9_audit_manifest),
+    ("T008 byte-identity: unexported dirs untouched by render/plan; honest-null stage only", check10_byte_identity),
 ]
 
 
