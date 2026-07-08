@@ -299,12 +299,122 @@ def check4_orchestrator_and_zip():
                 f"null packaging={f}")
 
 
+def check5_state_machine():
+    """T005 / FR-007, SC-003: state ON DISK before the first paid call; done => a second
+    invocation makes ZERO calls; a mid-flight crash lands in failed (with the partial
+    manifest intact) and ONLY failed accepts a retry; an unconfirmed gate refuses with zero
+    spend; the decider's reservation (exporting, no started_at) is ADOPTED by the worker
+    while a STARTED exporting state no-ops."""
+    d = _tmp("state")
+    run, key = make_run_dir(d / "run", messages=1, logo_fed=False, products=0)
+    stub = RecordingStub(run)
+    xl.export_layers(run, key, generate_fn=stub)
+    a = stub.calls and stub.calls[0]["state_on_disk"] == "exporting"
+
+    stub2 = RecordingStub(run)
+    res2 = xl.export_layers(run, key, generate_fn=stub2)
+    b = len(stub2.calls) == 0 and res2["state"] == "done" and "no second spend" in res2["note"]
+
+    run3, key3 = make_run_dir(d / "crash", messages=2, logo_fed=False, products=0)
+
+    class Crash(RecordingStub):
+        def __call__(self, *a, **k):
+            if len(self.calls) == 1:
+                raise RuntimeError("simulated mid-flight crash")
+            return super().__call__(*a, **k)
+
+    crash = Crash(run3)
+    try:
+        xl.export_layers(run3, key3, generate_fn=crash)
+        c = False
+    except RuntimeError:
+        st = xl.read_state(run3)
+        man = json.loads((run3 / xl.MANIFEST_NAME).read_text(encoding="utf-8"))
+        c = (st["state"] == "failed" and "simulated mid-flight crash" in st["error"]
+             and len(man["layers"]) == 1)   # the truthful partial
+    retry = RecordingStub(run3)
+    res_r = xl.export_layers(run3, key3, generate_fn=retry)
+    e = res_r["state"] == "done" and len(retry.calls) == 3
+
+    run4, key4 = make_run_dir(d / "gate", messages=1, gate_state="awaiting_confirmation")
+    f = False
+    g4 = RecordingStub(run4)
+    try:
+        xl.export_layers(run4, key4, generate_fn=g4)
+    except SystemExit as exc:
+        f = "not 'done'" in str(exc) and len(g4.calls) == 0
+
+    run5, key5 = make_run_dir(d / "resv", messages=1, logo_fed=False, products=0)
+    plan5 = xl.export_plan(run5, key5)
+    xl._write_state(run5, {"state": "exporting", "plan": plan5,
+                           "cost_stated": "$0.16", "created": "t"})   # reservation, no started_at
+    s5 = RecordingStub(run5)
+    res5 = xl.export_layers(run5, key5, generate_fn=s5)
+    g = res5["state"] == "done" and len(s5.calls) == 2   # adopted, not no-oped
+    run6, key6 = make_run_dir(d / "started", messages=1, logo_fed=False, products=0)
+    xl._write_state(run6, {"state": "exporting", "plan": None, "started_at": "t"})
+    s6 = RecordingStub(run6)
+    res6 = xl.export_layers(run6, key6, generate_fn=s6)
+    h = len(s6.calls) == 0 and "no second spend" in res6["note"]
+
+    ok = a and b and c and e and f and g and h
+    return ok, (f"state-before-call={a}; done-noop={b}; crash->failed+partial={c}; "
+                f"failed-retry={e}; gate-refusal={f}; reservation-adopted={g}; "
+                f"started-noop={h}")
+
+
+def check7_decide_export_and_plan_view():
+    """T005 / FR-007, FR-008 contract rows: decide_export + export_plan_view HTTP-free.
+    Asserted as (code, payload, launch) VALUES: 404 no run; 409 awaiting gate (zero state
+    written); 202 + reservation WITHOUT started_at on accept; repeat => 200 no-op, launch
+    False; failed => retry accepted with cost restated; zero elements => 409 named; the
+    plan view 200 carries calls/cost and never writes state."""
+    sys.path.insert(0, str(REPO / "frontend"))
+    import server  # noqa: PLC0415
+
+    d = _tmp("decide")
+    code, payload, launch = server.decide_export(d / "nope")
+    a = code == 404 and not launch
+
+    run, _ = make_run_dir(d / "wait", messages=2, gate_state="awaiting_confirmation")
+    code2, payload2, launch2 = server.decide_export(run)
+    b = (code2 == 409 and "not 'done'" in payload2["error"] and not launch2
+         and xl.read_state(run) is None)
+
+    run3, _ = make_run_dir(d / "ok", messages=2, logo_fed=False, products=0)
+    pcode, pview = server.export_plan_view(run3)
+    c = (pcode == 200 and pview["calls"] == 3 and pview["export_state"] is None
+         and xl.read_state(run3) is None)   # the plan view never writes state
+
+    code3, payload3, launch3 = server.decide_export(run3)
+    st3 = xl.read_state(run3)
+    e = (code3 == 202 and launch3 and payload3["state"] == "exporting"
+         and st3["state"] == "exporting" and "started_at" not in st3
+         and payload3["cost_stated"] == st3["cost_stated"])
+    code4, payload4, launch4 = server.decide_export(run3)
+    f = code4 == 200 and not launch4 and "no second spend" in payload4["note"]
+
+    xl._write_state(run3, {"state": "failed", "error": "boom", "created": "t"})
+    code5, payload5, launch5 = server.decide_export(run3)
+    g = code5 == 202 and launch5 and payload5["retry_after_failure"] is True
+
+    run6, _ = make_run_dir(d / "zero", messages=0, logo_fed=False, products=0)
+    code6, payload6, launch6 = server.decide_export(run6)
+    h = code6 == 409 and "no enumerable elements" in payload6["error"] and not launch6
+
+    ok = a and b and c and e and f and g and h
+    return ok, (f"404={a}; 409-gate={b}; plan-view={c}; 202+reservation={e}; "
+                f"repeat-noop={f}; failed-retry={g}; zero-el-409={h}")
+
+
 CHECKS = [
     ("T001 fixtures: exact #00B140, real artifact names, fed-refs honesty", check0_fixtures),
     ("T002 enumeration + plan: stable ids, fed-logo gate, N+1 pricing", check1_enumeration_and_plan),
     ("T002 prompts + refusals: verbatim/value clauses, named SystemExits", check2_prompts_and_refusals),
     ("T003 real keying: probed alpha + bbox, named honest nulls", check3_real_keying),
     ("T004 orchestrator: N+1 calls, contract refs, progressive manifest, exact zip", check4_orchestrator_and_zip),
+    ("T005 state machine: state-before-spend, no-ops, failed-only retry, reservation", check5_state_machine),
+    ("T005 decide_export + plan view: contract codes/payloads/launch triples", check7_decide_export_and_plan_view),
 ]
 
 

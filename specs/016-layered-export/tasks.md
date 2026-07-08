@@ -93,7 +93,7 @@ the expected members and exactly N+1 recorded calls.
 **Independent Test**: all free: plan endpoint spends nothing; repeats make zero calls; retry
 only from failed; 409 while the gate is not done; disk-backed rendering.
 
-- [ ] T005 [US2] Finish the state machine in `harness/export_layers.py` (exporting/done no-op
+- [x] T005 [US2] Finish the state machine in `harness/export_layers.py` (exporting/done no-op
       return with zero calls; failed accepts retry; refuse unless `gate_state.state == "done"`)
       and add to `frontend/server.py`: `decide_export(run_dir, per_image_usd)` (HTTP-free,
       mirrors `decide_confirm`: 404 missing run/source, 409 gate-not-done or zero elements,

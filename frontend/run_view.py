@@ -61,6 +61,23 @@ def run_view(run_dir, sign_id: str = "s1") -> dict:
             "state_note": gate_state.get("note"),
         }}
 
+    # Feature 016: the layered-export stage. present=false is the honest null for every
+    # unexported run (pre-016 dirs included): export is opt-in and paid, never assumed.
+    export_state = _load_json(run_dir / "export_state.json")
+    export_manifest = _load_json(run_dir / "export_manifest.json")
+    if export_state is None:
+        export = {"present": False, "content": None,
+                  "note": "not exported; export is opt-in and paid"}
+    else:
+        export = {"present": True, "note": None, "content": {
+            "state": export_state.get("state"),
+            "cost_stated": export_state.get("cost_stated"),
+            "calls": (export_state.get("plan") or {}).get("calls"),
+            "error": export_state.get("error"),
+            "layers": (export_manifest or {}).get("layers") or [],
+            "zip_ready": (run_dir / "layers.zip").is_file(),
+        }}
+
     return {
         "run_id": run_dir.name,
         "brief": stage(brief is not None, brief),
@@ -68,6 +85,7 @@ def run_view(run_dir, sign_id: str = "s1") -> dict:
         "prompt": stage(prompt is not None, prompt),
         "image": stage(image_present, f"sign_{sign_id}/generated.png" if image_present else None),
         "gate": gate,
+        "export": export,
         "manifest_notes": notes,
         "error": error.strip() if error else None,
     }

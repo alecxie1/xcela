@@ -256,28 +256,41 @@ def build_zip(run_dir: Path, manifest: dict) -> Path:
 
 def export_layers(run_dir: Path, brand_key: dict, generate_fn=None,
                   per_image_usd: float = PER_IMAGE_USD_DEFAULT) -> dict:
-    """The orchestrator. 015 spend semantics: no-op on exporting/done (zero calls, even
-    mid-flight); retry accepted ONLY from failed; refuses unless the run's confirm gate
-    reached done; export_state.json state="exporting" is on disk BEFORE the first paid call;
-    the manifest is appended progressively so a crash leaves a truthful partial; any
-    exception after spend starts = state "failed" + error, fail loud."""
+    """The orchestrator. 015 spend semantics: no-op on done and on a STARTED exporting
+    (zero calls, even mid-flight); retry accepted ONLY from failed; refuses unless the run's
+    confirm gate reached done; export_state.json state="exporting" is on disk BEFORE the
+    first paid call; the manifest is appended progressively so a crash leaves a truthful
+    partial; any exception after spend starts = state "failed" + error, fail loud.
+
+    The reservation handoff: frontend.server.decide_export writes state="exporting" WITHOUT
+    `started_at` (state-before-launch) and then launches this module as a subprocess; the
+    worker ADOPTS that reservation (sets started_at) instead of no-oping. A second worker
+    (or a repeat CLI call) sees started_at and no-ops."""
     run_dir = Path(run_dir)
 
     state = read_state(run_dir)
-    if state and state.get("state") in ("exporting", "done"):
+    if state and (state.get("state") == "done"
+                  or (state.get("state") == "exporting" and state.get("started_at"))):
         return {"state": state["state"],
                 "note": "already exporting/exported; no second spend"}
 
-    gate_path = run_dir / "gate_state.json"
-    gate = _read_json(gate_path).get("state") if gate_path.is_file() else None
-    if gate != "done":
-        raise SystemExit(f"export refused: gate_state is {gate!r}, not 'done' "
-                         "(no browser spend without a confirmed, generated run)")
-
-    plan = export_plan(run_dir, brand_key, per_image_usd=per_image_usd)
-    state = _write_state(run_dir, {"state": "exporting", "plan": plan,
-                                   "cost_stated": f"${plan['cost_usd']:.2f}",
-                                   "created": _now()})   # BEFORE any paid call
+    if state and state.get("state") == "exporting":   # the decider's reservation: adopt it
+        plan = state.get("plan") or export_plan(run_dir, brand_key,
+                                                per_image_usd=per_image_usd)
+        state["plan"] = plan
+        state["started_at"] = _now()
+        state = _write_state(run_dir, state)
+    else:                                             # absent or failed: the full CLI path
+        gate_path = run_dir / "gate_state.json"
+        gate = _read_json(gate_path).get("state") if gate_path.is_file() else None
+        if gate != "done":
+            raise SystemExit(f"export refused: gate_state is {gate!r}, not 'done' "
+                             "(no browser spend without a confirmed, generated run)")
+        plan = export_plan(run_dir, brand_key, per_image_usd=per_image_usd)
+        state = _write_state(run_dir, {"state": "exporting", "plan": plan,
+                                       "cost_stated": f"${plan['cost_usd']:.2f}",
+                                       "created": _now(),
+                                       "started_at": _now()})   # BEFORE any paid call
 
     if generate_fn is None:
         from generate import generate_variant as generate_fn  # lazy: the paid client

@@ -703,9 +703,14 @@ def check13_zero_guess_and_legacy():
         (Path(td) / "sign_s1").mkdir(parents=True)
         (Path(td) / "inputs.json").write_text("{}", encoding="utf-8")
         v = rv.run_view(td)
+        # 2026-07-08 (feature 016): the pinned key set gains exactly ONE additive stage,
+        # "export" (its honest null on an unexported dir is asserted here and, in depth,
+        # by test_export_layers check8). Everything pre-016 stays byte-comparable.
         c = (v["gate"]["present"] is False and v["brief"]["present"] is True
              and set(v.keys()) == {"run_id", "brief", "register", "prompt", "image",
-                                   "gate", "manifest_notes", "error"})
+                                   "gate", "export", "manifest_notes", "error"}
+             and v["export"]["present"] is False
+             and "opt-in and paid" in v["export"]["note"])
 
     passed = a and b and c
     return passed, f"zero_records_end_to_end={a}; ui_empty_branch={b}; pre015_stages_as_today={c}"

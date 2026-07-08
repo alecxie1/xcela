@@ -29,6 +29,8 @@ import runner  # noqa: E402
 import onboard as onboard_mod  # noqa: E402  (feature 006: the web onboarding wizard)
 import multipart  # noqa: E402  (feature 006: stdlib multipart upload parsing)
 import uploads  # noqa: E402  (feature 007: the shared save-upload home, 004 reference + 006 logo)
+sys.path.insert(0, str(REPO_ROOT / "harness"))
+import export_layers as export_mod  # noqa: E402  (feature 016: the layered exporter)
 
 HERE = Path(__file__).resolve().parent
 OUTPUT = REPO_ROOT / "output"
@@ -197,6 +199,91 @@ def decide_answer(run_dir: Path, payload: dict):
         "style_notes": meta.get("style_notes")}
 
 
+def _gate_state(run_dir: Path):
+    p = Path(run_dir) / "gate_state.json"
+    try:
+        return json.loads(p.read_text(encoding="utf-8")).get("state")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def export_plan_view(run_dir: Path, per_image_usd: float = PER_RUN_COST_USD):
+    """Feature 016: the FREE pre-spend plan for the export button label (contracts/
+    http-and-cli.md). HTTP-free, zero paid calls. Returns (status_code, payload)."""
+    run_dir = Path(run_dir)
+    if not run_dir.is_dir():
+        return 404, {"error": "no such run"}
+    if _gate_state(run_dir) != "done":
+        return 409, {"error": "export needs a generated, judged image: the run's gate is "
+                              f"{_gate_state(run_dir)!r}, not 'done'"}
+    if export_mod.find_source_image(run_dir) is None:
+        return 404, {"error": "no final.png/generated.png in this run (nothing to decompose)"}
+    brand = export_mod._brand_from_run(run_dir)
+    if not brand:
+        return 409, {"error": "run_meta.json missing/unreadable; cannot resolve the brand"}
+    try:
+        plan = export_mod.export_plan(run_dir, export_mod.load_brand(brand),
+                                      per_image_usd=per_image_usd)
+    except SystemExit as exc:   # zero elements: a layered export would be a paid no-op
+        return 409, {"error": str(exc)}
+    state = export_mod.read_state(run_dir)
+    return 200, {**plan, "export_state": state.get("state") if state else None}
+
+
+def decide_export(run_dir: Path, per_image_usd: float = PER_RUN_COST_USD):
+    """Feature 016: HTTP-free export decision, mirroring decide_confirm. Returns
+    (status_code, payload, launch: bool). When launch is True, export_state.json has
+    ALREADY been written as an "exporting" RESERVATION (state-before-launch, WITHOUT
+    started_at: the launched worker adopts it; see export_layers.export_layers). Repeats
+    no-op with no second spend, even mid-flight; retry is accepted ONLY from failed (an
+    export crash must not brick the run's only export)."""
+    run_dir = Path(run_dir)
+    if not run_dir.is_dir():
+        return 404, {"error": "no such run"}, False
+    state = export_mod.read_state(run_dir)
+    if state and state.get("state") in ("exporting", "done"):
+        return 200, {"ok": True, "state": state["state"],
+                     "note": "already exporting/exported; no second spend"}, False
+    gate = _gate_state(run_dir)
+    if gate != "done":
+        return 409, {"error": "export needs a generated, judged image: the run's gate is "
+                              f"{gate!r}, not 'done'"}, False
+    brand = export_mod._brand_from_run(run_dir)
+    if not brand:
+        return 409, {"error": "run_meta.json missing/unreadable; cannot resolve the brand"}, False
+    try:
+        plan = export_mod.export_plan(run_dir, export_mod.load_brand(brand),
+                                      per_image_usd=per_image_usd)
+    except SystemExit as exc:
+        return 409, {"error": str(exc)}, False
+    cost = f"${plan['cost_usd']:.2f}"
+    retrying = bool(state and state.get("state") == "failed")
+    export_mod._write_state(run_dir, {"state": "exporting", "plan": plan,
+                                      "cost_stated": cost,
+                                      "created": datetime.now().isoformat(timespec="seconds")})
+    return 202, {"ok": True, "state": "exporting", "cost_stated": cost,
+                 "calls": plan["calls"], "retry_after_failure": retrying}, True
+
+
+def _launch_export_async(run_dir: Path):
+    """Feature 016: run the exporter as a background subprocess (crash isolation, the
+    _launch_async pattern). The worker owns the _inflight release; a nonzero exit surfaces
+    in run_error.txt AND in export_state.json (the module marks failed itself)."""
+    argv = [sys.executable, "harness/export_layers.py", "--run-dir", str(run_dir)]
+
+    def _work():
+        try:
+            proc = subprocess.run(argv, cwd=str(REPO_ROOT), capture_output=True, text=True)
+            if proc.returncode != 0:
+                err = (proc.stderr or proc.stdout or "").strip()
+                tail = "\n".join(err.splitlines()[-12:]) or f"export exited {proc.returncode}"
+                (run_dir / "run_error.txt").write_text(tail, encoding="utf-8")
+        finally:
+            _inflight.release()
+
+    threading.Thread(target=_work, daemon=True).start()
+
+
 def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes, phase=None):
     """Run the conductor in a background thread so /stages can poll progressively. We append
     --out <run_dir> so the server can address the run while it runs; build_conductor_argv
@@ -249,6 +336,18 @@ class Handler(BaseHTTPRequestHandler):
             if not img.exists():
                 return self._send(404, {"error": "image not ready"})
             return self._send(200, img.read_bytes(), "image/png")
+        # --- Feature 016: the layered exporter's free surfaces ---
+        if path.startswith("/run/") and path.endswith("/export/plan"):
+            run_id = path[len("/run/"):-len("/export/plan")]
+            code, payload = export_plan_view(OUTPUT / run_id)
+            return self._send(code, payload)
+        if path.startswith("/run/") and path.endswith("/layers.zip"):
+            run_id = path[len("/run/"):-len("/layers.zip")]
+            zp = OUTPUT / run_id / export_mod.ZIP_NAME
+            state = export_mod.read_state(OUTPUT / run_id)
+            if not zp.is_file() or not state or state.get("state") != "done":
+                return self._send(404, {"error": "layers.zip not ready (export not done)"})
+            return self._send(200, zp.read_bytes(), "application/zip")
         return self._send(404, {"error": "not found"})
 
     def _read_body(self):
@@ -268,6 +367,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._run_confirm(path[len("/run/"):-len("/confirm")])
         if path.startswith("/run/") and path.endswith("/answer"):
             return self._run_answer(path[len("/run/"):-len("/answer")])
+        # --- Feature 016: the layered exporter's spending route ---
+        if path.startswith("/run/") and path.endswith("/export"):
+            return self._run_export(path[len("/run/"):-len("/export")])
         # --- Feature 004: the back-half run ---
         if path != "/run":
             return self._send(404, {"error": "not found"})
@@ -323,6 +425,30 @@ class Handler(BaseHTTPRequestHandler):
                               relaunch["style_notes"], phase="derive")
                 launched = True  # the worker releases the lock
             return self._send(code, body)
+        except Exception as exc:  # noqa: BLE001
+            return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
+        finally:
+            if not launched and _inflight.locked():
+                _inflight.release()
+
+    def _run_export(self, run_id):
+        """Feature 016 (FR-007): opt-in, cost-stated layered export with the 015 spend
+        semantics. The no-op states answer BEFORE the single-flight lock, so a repeat click
+        mid-export gets the graceful no-op, not a 409."""
+        run_dir = OUTPUT / run_id
+        state = export_mod.read_state(run_dir) if run_dir.is_dir() else None
+        if state and state.get("state") in ("exporting", "done"):
+            return self._send(200, {"ok": True, "state": state["state"],
+                                    "note": "already exporting/exported; no second spend"})
+        if not _inflight.acquire(blocking=False):
+            return self._send(409, {"error": "a run is already in flight (single-flight); wait"})
+        launched = False
+        try:
+            code, payload, launch = decide_export(run_dir)
+            if launch:
+                _launch_export_async(run_dir)   # the worker releases the lock
+                launched = True
+            return self._send(code, payload)
         except Exception as exc:  # noqa: BLE001
             return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
         finally:
