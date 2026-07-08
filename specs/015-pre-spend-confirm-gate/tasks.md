@@ -64,7 +64,7 @@
 
 **Independent test**: a zero-guess brief renders a gate with zero rows + confirm; the full prior suite sweep is green (quickstart step 2).
 
-- [ ] T013 [P] [US3] Zero-guess and legacy rendering: gate with `assumptions == []` shows summary + confirm only, manufactures no questions (FR-008, SC-004); pre-015 run dirs render exactly as today (honest-null gate stage). Checks in `test_confirm_gate.py` over synthetic run dirs (one empty-assumptions, one pre-015 shape).
+- [x] T013 [P] [US3] Zero-guess and legacy rendering: gate with `assumptions == []` shows summary + confirm only, manufactures no questions (FR-008, SC-004); pre-015 run dirs render exactly as today (honest-null gate stage). Checks in `test_confirm_gate.py` over synthetic run dirs (one empty-assumptions, one pre-015 shape).
 - [ ] T014 [US3] Byte-identity + no-regression closure: assert `--phase full` thin artifacts byte-identical to the T001 baseline; kit/legacy plan argv untouched; `derive_register` without `--assumptions-out` byte-identical (profile + trace) INCLUDING post-T009 (formal-row inertness); nudge rerun argv lands on phase derive (new run dir, gate present). Then run the full prior sweep (quickstart step 2 list: conductor, render_and_scrub, thin_route, render_modes, register_render_aware, explicit_usage_wins, lossless_brief, product_refs, reference_upload, frontend_intake/runner/stages, frontend_nav, multipart, onboard) and update ONLY the tests whose flow intentionally changed (e.g. `test_frontend_runner.py` argv shape), each updated assertion staying falsifiable (§III), never weakened to token presence.
 
 ---

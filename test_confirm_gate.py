@@ -646,6 +646,50 @@ def check10_answer_route():
     return passed, f"apply_and_provenance={a}; slider_merge_keeps_warmth={b}; refusals_leave_untouched={c}; confirmed_rejects_answers={d}; pre015_404={e}"
 
 
+def check13_zero_guess_and_legacy():
+    """T013 (FR-008, SC-004): (a) a fully explicit + recognized brief with calibration emits
+    ZERO assumption records end to end (engine sink AND conductor records), so the gate
+    stage carries assumptions == [] and the UI's empty branch (one confirm click, the
+    'No assumptions were needed' summary, no control ids) renders; (b) the UI's empty
+    branch and control-free rendering are structurally present (grep); (c) a pre-015 run
+    dir renders every stage exactly as before with the honest gate null (re-asserted here
+    as the US3 contract even though check7 covers the mechanics)."""
+    import tempfile
+    import format_size as fmtsize
+    sys.path.insert(0, str(REPO / "frontend"))
+    import run_view as rv
+
+    inputs = _gate_inputs("ref.png")  # wall-posted usage: matches a rule; 60x40cm; flat vector
+    sf = conductor.build_subfields(inputs, thin=True)
+    sink = []
+    dr.derive_register(sf, {}, calibration={"register_target": {"formality": 3, "playfulness": 7}},
+                       assumptions_sink=sink)
+    conductor_recs = conductor.build_conductor_assumptions(
+        inputs, fmtsize.resolve_size(inputs["format_size"]))
+    a = sink == [] and conductor_recs == []
+
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / "assumptions.json").write_text("[]", encoding="utf-8")
+        conductor.write_gate_state(td, "awaiting_confirmation")
+        v = rv.run_view(td)
+        a = a and v["gate"]["content"]["assumptions"] == []
+
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    b = ("No assumptions were needed" in html
+         and "rows.length" in html)  # the zero-rows branch is a real conditional, not filler
+
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / "sign_s1").mkdir(parents=True)
+        (Path(td) / "inputs.json").write_text("{}", encoding="utf-8")
+        v = rv.run_view(td)
+        c = (v["gate"]["present"] is False and v["brief"]["present"] is True
+             and set(v.keys()) == {"run_id", "brief", "register", "prompt", "image",
+                                   "gate", "manifest_notes", "error"})
+
+    passed = a and b and c
+    return passed, f"zero_records_end_to_end={a}; ui_empty_branch={b}; pre015_stages_as_today={c}"
+
+
 def check12_round_trip_identity():
     """T012 (FR-006, the load-bearing sweep): for EVERY shipped option of EVERY record type,
     write-back + re-derive == a fresh run whose inputs carried that value from the start
@@ -742,6 +786,8 @@ CHECKS = [
      check11_gate_controls),
     ("T012 FR-006 round-trip identity: every shipped option, applied == fresh, row killed",
      check12_round_trip_identity),
+    ("T013 zero-guess gate: summary + one confirm, no manufactured questions; pre-015 as today",
+     check13_zero_guess_and_legacy),
 ]
 
 
