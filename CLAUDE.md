@@ -142,7 +142,23 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `015-pre-spend-confirm-gate` - BUILT (US1-US3) + structurally green
+**Active feature:** `016-layered-export` - SPEC + PLAN written (2026-07-08), implementation
+starting. Richard's ask: at the final step, split the approved design into per-element layers,
+zipped. gpt-image-2 CANNOT emit layers or transparency natively, so layers are BUILT: one paid
+edit call per deterministically enumerated element (message lines from inputs.json, the logo only
+if it was in generation.reference_image, product photos) repainting ONLY that element on the
+proven chroma green #00B140, keyed to a true RGBA PNG by the EXISTING strip_chroma
+(closed_loop_composite.py, reused unchanged), plus ONE background call (elements removed,
+flagged model-continued); layers.zip = RGBA cutouts + white-bg JPG previews + raw outputs for
+honest-null layers + audit manifest (prompts, keying stats, bboxes for drift measurement).
+Spend follows the 015 contract: free plan endpoint states N+1 calls + cost BEFORE the click,
+export_state.json written pre-spend, repeats no-op, retry only from failed, 409 unless the gate
+is done, disk-backed. New harness/export_layers.py (injectable generate_fn; --plan-only free
+surface) + decide_export/3 routes + additive run_view stage + opt-in button. All self-tests
+free; the one paid step is the SC-007 eye-gate (operator stacks layers in an editor).
+Spec/plan: `specs/016-layered-export/`.
+
+Prior feature `015-pre-spend-confirm-gate` - BUILT (US1-US3) + structurally green
 (test_confirm_gate 14/14; the FULL 26-suite prior sweep passes UNCHANGED). The dimension
 interview in its evidence-scoped form: every BROWSER run stops at a pre-spend gate.
 `POST /run` launches `conductor --phase derive` (calibrate + derive_register + scene_author
@@ -286,5 +302,5 @@ key operator-judged in the 011/012/014 gates).
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/015-pre-spend-confirm-gate/plan.md
+at specs/016-layered-export/plan.md
 <!-- SPECKIT END -->
