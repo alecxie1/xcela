@@ -461,6 +461,63 @@ def check6_server_confirm_flow():
     return passed, f"argv_shapes={a}; pre015_404={b}; confirm_launches_once={c}; repeat_noop={d}; no_prompt_409_stays_awaiting={e}; no_meta_409={f}"
 
 
+def check8_us1_end_to_end_free():
+    """T008: the REAL (subprocess, zero paid calls) US1 flow. A no-reference thin derive run
+    produces register_profile + final_prompt + assumptions.json + gate_state awaiting + the
+    honest no-spend manifest note and NO generated.png; decide_confirm flips it to confirmed
+    with a generate launch; a generate phase over TAMPERED inputs trips --verify-prompt
+    BEFORE any generation (free), resetting the gate with the confirmation cleared. A build
+    that generates during derive, or generates despite drift, fails here."""
+    import subprocess
+    import tempfile
+    sys.path.insert(0, str(REPO / "frontend"))
+    import server as server_mod
+
+    with tempfile.TemporaryDirectory() as td:
+        inputs = {"asset_type": "marketing post", "render_style": "flat vector",
+                  "format_size": "60x40cm", "mandatory_elements": [], "forbidden_elements": [],
+                  "context": {"usage_context": "goes viral on rednote",
+                              "vibe": {"formality": 2, "playfulness": 8, "warmth": 5}},
+                  "signs": [{"id": "s1", "messages": ["测试标语"]}]}
+        ip = Path(td) / "inputs.json"
+        ip.write_text(json.dumps(inputs, ensure_ascii=False), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(REPO / "harness" / "conductor.py"),
+                            "--brand", "aia", "--thin", "--no-approve", "--phase", "derive",
+                            "--inputs", str(ip), "--out", td],
+                           capture_output=True, text=True, cwd=str(REPO))
+        gs = _load(Path(td) / "gate_state.json")
+        assumptions = _load(Path(td) / "assumptions.json")
+        manifest = _load(Path(td) / "conductor_manifest.json")
+        a = (r.returncode == 0
+             and (Path(td) / "register_profile.json").exists()
+             and (Path(td) / "sign_s1" / "final_prompt.txt").exists()
+             and not (Path(td) / "sign_s1" / "generated.png").exists()
+             and gs["state"] == "awaiting_confirmation"
+             and any(rec["id"] == "register_lane" for rec in assumptions)
+             and "derived, awaiting confirmation; no image spend" in manifest["notes"])
+
+        (Path(td) / "run_meta.json").write_text(
+            json.dumps({"brand": "aia", "style_notes": None}), encoding="utf-8")
+        code, _, launch = server_mod.decide_confirm(Path(td), "$0.08")
+        b = code == 200 and launch is not None and _load(Path(td) / "gate_state.json")["state"] == "confirmed"
+
+        tampered = dict(inputs)
+        tampered["signs"] = [{"id": "s1", "messages": ["完全不同的标语"]}]
+        ip.write_text(json.dumps(tampered, ensure_ascii=False), encoding="utf-8")
+        r2 = subprocess.run([sys.executable, str(REPO / "harness" / "conductor.py"),
+                             "--brand", "aia", "--thin", "--no-approve", "--phase", "generate",
+                             "--inputs", str(ip), "--out", td],
+                            capture_output=True, text=True, cwd=str(REPO))
+        gs2 = _load(Path(td) / "gate_state.json")
+        c = (not (Path(td) / "sign_s1" / "generated.png").exists()
+             and gs2["state"] == "awaiting_confirmation"
+             and gs2["confirmation"] is None
+             and "drift" in gs2.get("note", ""))
+
+    passed = a and b and c
+    return passed, f"real_derive_no_spend={a}; confirm_flips={b}; tampered_generate_blocked_free={c}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
@@ -476,6 +533,8 @@ CHECKS = [
      check6_server_confirm_flow),
     ("T007 gate stage in run_view + gate panel present in index.html",
      check7_gate_stage_and_panel),
+    ("T008 US1 end to end, free: real derive stops pre-spend; tampered generate blocked",
+     check8_us1_end_to_end_free),
 ]
 
 
