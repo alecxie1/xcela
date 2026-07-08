@@ -183,8 +183,47 @@ function renderPreGate(g, cost) {
     <div class="note">Nothing is spent until you confirm. Walking away keeps this draft on disk, unspent.</div>
     <div id="pregateNote" class="note"></div></div></div>`;
   $("confirm").onclick = confirmRun;
+  (c.assumptions || []).forEach((a, i) => {
+    const btn = $(`a_${i}_apply`);
+    if (!btn) return;
+    btn.onclick = () => {
+      if ($(`a_${i}_f`)) {  // the magnitude row carries two numeric fields
+        applyAnswer(a, a.options[0].label,
+                    { formality: +$(`a_${i}_f`).value, playfulness: +$(`a_${i}_p`).value });
+      } else {
+        applyAnswer(a, $(`a_${i}_sel`).value);
+      }
+    };
+  });
 }
-function renderAssumptionControl(a, i) { return ""; }  // controls arrive with the answer route (US2)
+function renderAssumptionControl(a, i) {
+  // 015 US2: constrained controls ONLY (a pick of the shipped options, or bounded numbers
+  // for the magnitude row); never a free-text retype loop (clarification Q1).
+  const opts = a.options || [];
+  if (!opts.length) return "";
+  const isSlider = opts.length === 1 && typeof opts[0].writes.value === "object";
+  if (isSlider) {
+    return `<label>set it yourself (0-10):</label>
+      formality <input type="number" id="a_${i}_f" min="0" max="10" value="5" style="width:4.5em">
+      playfulness <input type="number" id="a_${i}_p" min="0" max="10" value="7" style="width:4.5em">
+      <button id="a_${i}_apply" style="width:auto;background:#777">Apply (free, re-derives)</button>`;
+  }
+  return `<select id="a_${i}_sel" style="width:auto">${opts.map(o => `<option>${esc(o.label)}</option>`).join("")}</select>
+    <button id="a_${i}_apply" style="width:auto;background:#777">Apply (free, re-derives)</button>`;
+}
+async function applyAnswer(a, label, value) {
+  const body = { assumption_id: a.id, label };
+  if (value) body.value = value;
+  const r = await fetch(`/run/${currentRun}/answer`, { method: "POST",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) {  // fail loud; the previous derivation stays (US2 scenario 3)
+    $("pregateNote").textContent = j.error || "answer failed"; return;
+  }
+  $("pregateNote").textContent = "applied; re-deriving (free)...";
+  if (poller) clearInterval(poller);
+  poller = setInterval(poll, 1000); poll();
+}
 async function confirmRun() {
   const r = await fetch(`/run/${currentRun}/confirm`, { method: "POST" });
   const j = await r.json();

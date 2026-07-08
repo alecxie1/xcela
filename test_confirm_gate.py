@@ -551,6 +551,25 @@ def check9_formal_hard_row():
     return passed, f"formal_hard_despite_vibe={a} (failures={failures[:2]}); event_precedence={b}; pinned_inert={c}; option_shipped={d}"
 
 
+def check11_gate_controls():
+    """T011 (presence greps, the weakest gate, declared per the 010 precedent; the browser
+    dry pass T017 is the real proof): the assumption rows carry constrained controls posting
+    to the answer route, errors surface and keep the previous derivation, no free-text
+    retype control exists on the gate, and no em-dash rides in the new strings."""
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    needed = ["renderAssumptionControl", "applyAnswer", "/answer", "Apply (free, re-derives)",
+              'type="number"', "a_${i}_sel"]
+    a = all(s in html for s in needed)
+    # the gate panel must not offer a free-text retype (clarification Q1): the only textareas
+    # belong to the FORM and the taste-gate nudge, never to renderAssumptionControl
+    control_fn = html.split("function renderAssumptionControl")[1].split("async function")[0]
+    b = "textarea" not in control_fn and 'type="text"' not in control_fn
+    new_js = html.split("renderPreGate")[1]
+    c = "—" not in new_js.split("loadBrands()")[0]
+    passed = a and b and c
+    return passed, f"controls_present={a}; no_free_text_on_gate={b}; no_emdash={c}"
+
+
 def check10_answer_route():
     """T010: decide_answer applies EXACTLY the shipped option (never raw client fields),
     appends provenance, returns the free derive relaunch, and every refusal (unknown id,
@@ -648,6 +667,8 @@ CHECKS = [
      check9_formal_hard_row),
     ("T010 answer route: shipped options only, provenance, refusals leave files untouched",
      check10_answer_route),
+    ("T011 gate controls present in index.html (greps, the weakest gate)",
+     check11_gate_controls),
 ]
 
 
