@@ -518,6 +518,39 @@ def check8_us1_end_to_end_free():
     return passed, f"real_derive_no_spend={a}; confirm_flips={b}; tampered_generate_blocked_free={c}"
 
 
+def check9_formal_hard_row():
+    """T009: (a) each new formal keyword derives register=formal as a HARD base even under a
+    maximally playful vibe (formality 0, playfulness 10), on flat AND absent render lanes,
+    with zero suppression lines (the statement never fights the promotion; a vibe-resolved
+    formal_leaning build fails this); (b) event rows keep precedence ('official notice photo'
+    -> event_prop via 'photo'); (c) the pinned wall-posted baseline stays byte-identical (the
+    row is inert for every input lacking the phrases; also re-proven by checks 1/4 each run);
+    (d) REGISTER_LANE_OPTIONS now carries the formal pick with the canonical write-back."""
+    failures = []
+    for kw in ("formal document", "official notice"):
+        for render in (None, "flat vector"):
+            sf = _subfields(render, usage=f"an {kw} for the branch")
+            sf["vibe"] = {"formality": 0, "playfulness": 10, "warmth": 5}
+            p = dr.derive_register(sf, {})
+            sup = [t for t in p["_derivation_trace"] if "SUPPRESSED" in t]
+            if not (p["inferred_register"] == "formal" and not sup):
+                failures.append((kw, render, p["inferred_register"]))
+    a = not failures
+
+    p = dr.derive_register(_subfields(usage="official notice photo"), {})
+    b = (p["inferred_register"] == "event_prop"
+         and any("matched 'photo'" in t for t in p["_derivation_trace"]))
+
+    absent = json.dumps(dr.derive_register(_subfields(), {}), ensure_ascii=False, sort_keys=True)
+    c = absent == EXPECTED_PREFEATURE_PROFILE
+
+    d = ({"field": "context.usage_context", "value": "formal document"}
+         in [o["writes"] for o in dr.REGISTER_LANE_OPTIONS])
+
+    passed = a and b and c and d
+    return passed, f"formal_hard_despite_vibe={a} (failures={failures[:2]}); event_precedence={b}; pinned_inert={c}; option_shipped={d}"
+
+
 CHECKS = [
     ("T001 pre-015 baselines hold (profile pin, thin plan pin, 173925 fixture)",
      check1_baselines_hold),
@@ -535,6 +568,8 @@ CHECKS = [
      check7_gate_stage_and_panel),
     ("T008 US1 end to end, free: real derive stops pre-spend; tampered generate blocked",
      check8_us1_end_to_end_free),
+    ("T009 formal lane hard row: deterministic despite vibe, inert for pinned inputs",
+     check9_formal_hard_row),
 ]
 
 

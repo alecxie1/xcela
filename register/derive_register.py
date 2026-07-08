@@ -34,6 +34,12 @@ USAGE_RULES = [
     # through to the unmatched default. Appended LAST so every earlier row (including the
     # explicit event-prop phrases, the human's hard signal) keeps its precedence.
     (MARKETING_USAGE_KEYWORDS, "marketing"),
+    # Feature 015 (T009): a HARD formal row so the gate's formal-lane pick has a
+    # deterministic write-back (unlike formal_leaning, which resolves by vibe). Appended
+    # LAST: no existing keyword collides, every pinned baseline lacks these phrases (their
+    # profiles stay byte-identical), and a hard formal base skips every vibe branch below
+    # (they key on formal_leaning/event_prop/marketing), so the statement always wins.
+    (("formal document", "official notice"), "formal"),
 ]
 
 # Feature 015 (pre-spend gate): the register-lane assumption row's constrained picks. Each
@@ -45,6 +51,8 @@ REGISTER_LANE_OPTIONS = [
      "writes": {"field": "context.usage_context", "value": "marketing"}},
     {"label": "hand-held event prop",
      "writes": {"field": "context.usage_context", "value": "held for photos"}},
+    {"label": "formal piece",
+     "writes": {"field": "context.usage_context", "value": "formal document"}},
 ]
 
 # register -> design-language hints (the leap's payload).
