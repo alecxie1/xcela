@@ -47,10 +47,19 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 > schema; tree-hash byte-identity incl. real pre-016 run dirs); the FULL 30-suite sweep green
 > (test_confirm_gate's pinned run_view key set gains exactly the one additive export stage,
 > 14/14). FREE live proof: --plan-only on run_CJXQ_20260708_151506 enumerates
-> 3 text lines + logo + product_1 = 6 calls, $0.48. PENDING: **T009, the ONE paid eye-gate (SC-007)**:
-> on a real judged CJXQ run click Export, download layers.zip, stack cutouts over background.png in
-> an editor, judge element fidelity / position drift / null honesty; record the verdict here.
-> Operator note: RESTART frontend/server.py to pick up the new routes.
+> 3 text lines + logo + product_1 = 6 calls, $0.48. T009 ATTEMPT 1 (2026-07-08, that run, $0.48,
+> operator-judged): **PARTIAL FAIL**. Strong: text_1 verbatim + position-faithful, product_1
+> near-perfect (1px stray), background continuation clean (mascots kept, no hallucinated text/cups),
+> every spend/manifest mechanism exact. Failures: text_2's cutout lost `COCONUT"` (largest-component
+> keep dropped 38,541px, 39%, under the null bar, shipped "ok"); the logo layer painted 茶救星球 as
+> large text instead of copying the JO'S CHA lockup (the known thin-route logo softness, isolation
+> form), ~3x scale. T009-v2 FIXES applied 2026-07-09: (1) strip_chroma gains keep_all_components
+> (DEFAULT False = die-cut path byte-identical, render_and_scrub 5/5; export layers pass True: an
+> element is legitimately multi-part), the majority-drop null stays armed for the legacy mode;
+> (2) the logo isolation desc demands a literal COPY of the asset ("copied EXACTLY ... do NOT
+> redraw/restyle/translate/substitute", same position + size as the finished design).
+> PENDING: **T009 attempt 2** (the paid rerun, judged the same way; attempt-1 artifacts archived
+> as export_attempt1/ in the run dir). Operator note: RESTART frontend/server.py for new routes.
 > Spec: `specs/016-layered-export/`.
 
 > **▶ BUILD STATUS 2026-07-08: feature 015 (pre-spend confirm gate) is BUILT + structurally green.**

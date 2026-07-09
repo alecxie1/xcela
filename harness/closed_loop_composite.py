@@ -426,14 +426,22 @@ DESPILL_BAND_PX = 3   # how deep inside the cutout edge green-dominant spill is 
 
 
 def strip_chroma(final_png: str | Path, out_dir: Path,
-                 key_hex: str = "#00B140") -> dict:
+                 key_hex: str = "#00B140", keep_all_components: bool = False) -> dict:
     """Finalize a chroma-key contained sign: a 手举牌 gets physically die-cut,
     so green must not survive. From the composited RGB image, produce:
       <out_dir>/cutout.png        — RGBA, key backdrop -> alpha 0, defringed
       <out_dir>/preview_white.png — cutout flattened onto white (human-gradeable)
     Defringe = erode the opaque mask CHROMA_DEFRINGE_PX (drops the AA halo) +
     despill (green-dominant pixels in the edge band get G clamped to max(R,B)).
-    Returns a record dict for the placement report."""
+    Returns a record dict for the placement report.
+
+    keep_all_components (016 T009-v2, default False = byte-identical die-cut behavior):
+    a die-cut sign is ONE object, so the default keeps only the largest connected
+    component (stray specks would survive as floating crumbs in the physical cut). A
+    LAYERED-EXPORT element is the opposite: a multi-glyph text line or a logo lockup IS
+    many disconnected components, and the largest-only keep erased 'COCONUT"' from a
+    two-word line on the first paid export. True keeps every component; the caller's
+    preview is the speck check."""
     from scipy import ndimage
 
     img = Image.open(final_png).convert("RGB")
@@ -446,7 +454,7 @@ def strip_chroma(final_png: str | Path, out_dir: Path,
     # would otherwise survive as floating crumbs in the die-cut.
     labels, n = ndimage.label(opaque)
     dropped_px = 0
-    if n > 1:
+    if n > 1 and not keep_all_components:
         sizes = np.asarray(ndimage.sum(opaque, labels, range(1, n + 1)))
         keep = labels == (int(np.argmax(sizes)) + 1)
         dropped_px = int(opaque.sum() - keep.sum())

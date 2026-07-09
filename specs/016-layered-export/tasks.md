@@ -155,6 +155,15 @@ only from failed; 409 while the gate is not done; disk-backed rendering.
       stack each `<id>.png` over `background.png` in an image editor; judge: each layer reads as
       its element, position drift acceptable for a draft decomposition, nulls honest (raw shows
       why). Record the verdict + run id in SYSTEM_MAP and here.
+      ATTEMPT 1 (2026-07-08, `run_CJXQ_20260708_151506`, 6 calls $0.48, operator-judged):
+      PARTIAL FAIL. Strong: text_1 verbatim + position-faithful, product_1 near-perfect (1px
+      stray), background clean (mascots kept, nothing hallucinated), all spend/manifest
+      machinery exact. Failures: (a) text_2 cutout lost `COCONUT"` to the largest-component
+      keep (38,541px dropped, 39%, under the null threshold, shipped ok); (b) the logo layer
+      painted 茶救星球 as big text instead of copying the lockup asset, ~3x scale. v2 fixes
+      applied same day: keep-all-components keying for export layers (strip_chroma gains the
+      default-off flag; die-cut path byte-identical, render_and_scrub 5/5) + a copy-EXACTLY
+      logo isolation desc (do NOT redraw/restyle/translate/substitute). Attempt 2 rerun owed.
 
 ---
 

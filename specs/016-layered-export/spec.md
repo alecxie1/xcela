@@ -139,12 +139,12 @@ frame each produce status null with the correct named note, a shipped raw image,
   with a named reason, zero spend.
 - An element that is itself green (near #00B140) cannot be keyed; the isolation prompt forbids
   key-colored elements, and the null thresholds catch non-compliance (dirty key field note).
-- Detached marks in one element (a multi-glyph text line, a logo with separate symbols): the
-  keying's largest-component behavior may drop pieces; when the dropped pixels OUTNUMBER the
-  kept pixels the layer is an honest null (the raw output ships for salvage, per FR-005);
-  a minority drop stays visible via the dropped-pixels stat in the manifest. The keying itself
-  is unchanged in v1 (the die-cut path stays byte-identical); a keep-all-components option is
-  a possible v2.
+- Detached marks in one element (a multi-glyph text line, a logo with separate symbols):
+  RESOLVED by the T009-v2 fix after attempt 1 lost half of a two-word line. Export layers
+  now key with keep-all-components (an element is legitimately multi-part); the die-cut
+  path keeps the largest-only default byte-identically (the option is default-off at the
+  keying layer). The majority-drop honest null stays armed for any future keying-policy
+  change; a minority drop stays visible via the dropped-pixels stat in the manifest.
 - Every isolation call fails or nulls: the export completes honestly (state done, zip with raw
   images + notes); the operator judges whether anything is salvageable. Money spent is recorded
   either way.
@@ -244,8 +244,9 @@ frame each produce status null with the correct named note, a shipped raw image,
   previews; silent auto-correction is out of scope.
 - Layer granularity v1: one layer per message line (the finisher's editable unit, deterministic
   from the brief), revisable if the eye-gate shows per-line drift is too costly.
-- The existing chroma keying is reused as-is, including its largest-component behavior; its
-  stats make any dropped pieces visible. Changing the keying is out of scope for v1.
+- The existing chroma keying is reused with ONE default-off option added after the T009
+  attempt-1 eye-gate (keep-all-components, export layers only; the die-cut path is
+  byte-identical); its stats make any dropped pieces visible.
 - Per-image cost is assumed at the same rate the 015 gate states for generation (one shared
   constant; if pricing changes, one place moves).
 - The export writes only new files (export state, manifest, per-layer directories, layers.zip)

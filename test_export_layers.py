@@ -185,7 +185,11 @@ def check2_prompts_and_refusals():
 
     lp = xl.isolation_prompt(els[2])   # logo
     pp = xl.isolation_prompt(els[3])   # product
-    b = "SECOND supplied image" in lp and "SECOND supplied image" in pp and line not in lp
+    # T009-v2: the logo desc demands a literal COPY of the asset (the first paid export
+    # substituted brand-name text for the lockup); value clauses, not token presence
+    b = ("SECOND supplied image" in lp and "SECOND supplied image" in pp
+         and "copied EXACTLY" in lp and "do NOT redraw" in lp
+         and line not in lp)
 
     bg = xl.background_prompt(els)
     # the background call passes ONLY the source image, so its element descriptions must
@@ -241,17 +245,26 @@ def check3_real_keying():
     r3 = xl.key_layer(empty, d / "L_empty")
     e = r3["status"] == "null" and "empty frame" in r3["note"]
 
-    # majority-drop honest null: 3 disconnected equal blobs -> largest-component keep
-    # erases 2/3 of the content; that layer must NOT ship as an unqualified "ok" cutout
+    # T009-v2: export layers key with keep_all_components (a multi-glyph element IS many
+    # components; attempt 1 lost 'COCONUT"'). 3 disconnected equal blobs: the DEFAULT
+    # key_layer keeps all three (alpha probed at each center, bbox spans first to last,
+    # zero dropped); the legacy largest-only mode still nulls on the majority drop (the
+    # fourth threshold stays armed for any future keying-policy change).
     multi = make_chroma_png(d / "multi.png", content="multi")
     r4 = xl.key_layer(multi, d / "L_multi")
-    f = (r4["status"] == "null" and "MAJORITY" in r4["note"]
-         and r4["stray_component_px_dropped"] > 0)
+    cut4 = Image.open(r4["cutout"])
+    f = (r4["status"] == "ok" and r4["stray_component_px_dropped"] == 0
+         and all(cut4.getpixel(p)[3] == 255 for p in ((288, 512), (672, 512), (1056, 512)))
+         and r4["bbox"][0] < 300 and r4["bbox"][2] > 1000)
+    r5 = xl.key_layer(multi, d / "L_multi_legacy", keep_all_components=False)
+    g = (r5["status"] == "null" and "MAJORITY" in r5["note"]
+         and r5["stray_component_px_dropped"] > 0)
 
-    ok = a and b and c and e and f
+    ok = a and b and c and e and f and g
     return ok, (f"rect ok={a} bbox={bx}; full-null={c} (frac={r2['opaque_frac']}); "
-                f"empty-null={e} (frac={r3['opaque_frac']}); majority-drop-null={f} "
-                f"(dropped={r4['stray_component_px_dropped']})")
+                f"empty-null={e} (frac={r3['opaque_frac']}); keep-all-3-blobs={f} "
+                f"(bbox={r4['bbox']}); legacy majority-drop-null={g} "
+                f"(dropped={r5['stray_component_px_dropped']})")
 
 
 class RecordingStub:

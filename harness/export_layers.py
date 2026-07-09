@@ -102,7 +102,13 @@ def _element_desc(element: dict, with_ref_hint: bool = True) -> str:
     if kind == "text":
         return f'the text "{element["text"]}" with its exact typography'
     if kind == "logo":
-        return ("the brand logo (the SECOND supplied image is the original logo asset)"
+        # T009-v2 hardening: the first paid export repainted the logo as large brand-name
+        # TEXT instead of the lockup. The desc now demands a literal COPY of the asset.
+        return ("the brand logo lockup, copied EXACTLY from the SECOND supplied image "
+                "(that image IS the logo: reproduce its exact artwork, lettering, colors "
+                "and proportions; do NOT redraw it, restyle it, translate it, or "
+                "substitute any other brand text for it), at the same position and the "
+                "same size it occupies in the finished design"
                 if with_ref_hint else "the brand logo")
     if kind == "product":
         return ("the product shown in the SECOND supplied image, as it appears in the "
@@ -158,17 +164,22 @@ def export_plan(run_dir: Path, brand_key: dict,
             "source_image": str(source), "size": size}
 
 
-def key_layer(isolated_png: Path, layer_dir: Path) -> dict:
-    """Key one isolation output to a layer via the REAL strip_chroma (reused unchanged),
-    then judge it honestly (research.md D4): a layer is OK only when the keying stats say a
-    clean chroma field surrounded real content. On ok: preview.jpg (white-flattened, the JPG
-    deliverable) + the opaque bbox (position-drift measurement). On null: a named note; the
-    caller ships the raw output, NEVER a cutout (constitution V)."""
+def key_layer(isolated_png: Path, layer_dir: Path, keep_all_components: bool = True) -> dict:
+    """Key one isolation output to a layer via the REAL strip_chroma, then judge it honestly
+    (research.md D4): a layer is OK only when the keying stats say a clean chroma field
+    surrounded real content. On ok: preview.jpg (white-flattened, the JPG deliverable) + the
+    opaque bbox (position-drift measurement). On null: a named note; the caller ships the
+    raw output, NEVER a cutout (constitution V).
+
+    keep_all_components defaults True here (T009-v2): an element is legitimately MULTI-part
+    (a multi-glyph line, a logo lockup), unlike a die-cut sign; the first paid export lost
+    'COCONUT"' to the largest-only keep. The die-cut path keeps its own default (False)."""
     from closed_loop_composite import strip_chroma  # lazy: pulls numpy/scipy
 
     layer_dir = Path(layer_dir)
     layer_dir.mkdir(parents=True, exist_ok=True)
-    rec = dict(strip_chroma(isolated_png, layer_dir, key_hex=CHROMA_KEY_HEX))
+    rec = dict(strip_chroma(isolated_png, layer_dir, key_hex=CHROMA_KEY_HEX,
+                            keep_all_components=keep_all_components))
 
     frac = rec["opaque_frac"]
     residual = rec["green_residual_px_in_preview"]

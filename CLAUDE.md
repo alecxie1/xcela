@@ -166,8 +166,11 @@ UI stale-fetch/latch/poller fixes, cost-constant drift guard now real.
 New harness/export_layers.py (injectable generate_fn; `--plan-only` free surface, proven live
 on run_CJXQ_20260708_151506: 5 elements, 6 calls, $0.48) + decide_export/export_plan_view + 3
 routes + additive run_view stage + the opt-in stage-6 button (form-grep pinned never-automatic).
-PENDING: T009, the ONE paid eye-gate (SC-007: export a judged CJXQ run, stack layers in an
-editor, judge readability/drift/nulls). Spec/plan/tasks: `specs/016-layered-export/`.
+T009 attempt 1 (2026-07-08, $0.48): operator-judged PARTIAL FAIL (text_2 lost a word to the
+largest-only keep; the logo layer redrew brand text instead of copying the lockup); v2 fixes
+applied 2026-07-09 (strip_chroma keep_all_components, default-off so die-cut stays
+byte-identical, export layers opt in; copy-EXACTLY logo isolation desc). PENDING: T009
+attempt 2, the paid rerun. Spec/plan/tasks: `specs/016-layered-export/`.
 
 Prior feature `015-pre-spend-confirm-gate` - BUILT (US1-US3) + structurally green
 (test_confirm_gate 14/14; the FULL 26-suite prior sweep passes UNCHANGED). The dimension

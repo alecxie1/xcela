@@ -50,16 +50,20 @@ and current API documentation on 2026-07-08.
   > the surrounding textures, colors and lighting. Change NOTHING else: identical canvas size,
   > identical remaining composition. Add no new elements and no text.
 
-## D3. Keying reuse: `strip_chroma` as-is
+## D3. Keying reuse: `strip_chroma` + one default-off option (revised after T009 attempt 1)
 
 - **Decision**: call `harness/closed_loop_composite.py:strip_chroma(final_png, out_dir,
-  key_hex)` (:428) unchanged, one out_dir per layer.
+  key_hex, keep_all_components)` (:428), one out_dir per layer; export layers pass
+  `keep_all_components=True`, every other caller keeps the False default (die-cut path
+  byte-identical, guarded by test_render_and_scrub).
 - **Rationale**: proven on the die-cut path; already returns the exact honesty stats needed
   (`opaque_frac`, `stray_component_px_dropped`, `despilled_px`,
   `green_residual_px_in_preview`) plus `cutout.png` (RGBA) and `preview_white.png`.
-- **Known limitation accepted**: largest-component keep can drop detached glyph clusters on a
-  text layer; `stray_component_px_dropped` exposes it in the manifest. Changing the keying would
-  risk the die-cut path's byte-identity, so v1 does not.
+- **History**: v1 accepted the largest-component keep; the T009 attempt-1 eye-gate
+  (2026-07-08, operator-judged partial fail) showed it erasing `COCONUT"` from a two-word
+  text layer that then shipped status ok. A layered element is legitimately multi-part, so
+  keep-all is the correct semantics there; the die-cut sign remains ONE object and keeps
+  the speck-killing default.
 
 ## D4. Honest-null thresholds (deterministic, falsifiable)
 
