@@ -121,10 +121,25 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 > it changes zero pixels (it reuses the 013 feed path verbatim, only where paths come from), its whole
 > value is skipping re-upload of evergreen shots, and observed usage so far is campaign-specific
 > products ("this launch's watermelon cups are not next month's mooncakes", the 013 plan's own seam
-> note). Revisit when re-upload friction is actually felt. NEXT NAMED FEATURE: **016-layered-export**
-> (Richard's ask: at the final step, each design element as a separate layer, zipped; gpt-image-2 has
-> NO native layer output and no transparent background, so layers are built via per-element chroma
-> repaint + the existing strip_chroma keying, opt-in and paid per the 015 gate philosophy).
+> note). Revisit when re-upload friction is actually felt. 016-layered-export shipped and closed
+> (see the latest build-status block). NEXT NAMED FEATURE: **017-deployment-readiness**
+> (2026-07-10): deploy the tool for Richard's team in mainland China + a Chinese playbook. BLOCKED
+> on Richard's answers to `docs/DEPLOYMENT_QUESTIONS.md` (18 bilingual questions, forwarded
+> 2026-07-10: team size/roles, taste-gate ownership, volume/budget, office network reach to
+> foreign-hosted sites, brand assets + VI PDFs, cloud account ownership, login style, feedback
+> channel, timeline). PROVISIONAL PLAN pending those answers (portability audit done): a small
+> Ubuntu VM in Singapore or Tokyo (OpenAI/Anthropic are blocked from the mainland AND unsupported
+> in Hong Kong, so egress must come from a supported region the team can reach); Caddy reverse
+> proxy with auto-TLS + basic auth in front (today the server binds 127.0.0.1 with ZERO auth and
+> every visitor could spend); 017 code scope: portable answer-key logo_path (the committed keys
+> carry absolute /home/alecx paths into the gitignored brands/), kill the /mnt/c LOGO_PATH
+> fallback (scene_author.py:125), pinned requirements.txt (none exists; deps live only in the
+> local .venv; opencv needs headless/libgl1), bind/port via env (default byte-identical), upload
+> size cap + worker wall-clock timeout, GET /runs + URL-hash resume (the UI currently loses the
+> run view on refresh: session-only attempts[]), deploy/ (systemd unit + Caddyfile + bootstrap
+> script; secrets and brands/ provisioned out-of-band, never committed); Chinese-primary playbook
+> served at /playbook. Deployment eye/flow gate: one end-to-end run driven by a team member in
+> China before calling it done.
 > Known taste backlog: thin-route logo LOCKUP softness (stray character in the 014 run; nudge today, the
 > licensed/composite moat is the real fix).
 

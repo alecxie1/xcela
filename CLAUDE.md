@@ -112,11 +112,13 @@ brand once via the `/onboard` wizard (005/006), fill the guided run form (004/01
 reference + optional product photos (007/013), `conductor --phase derive` composes the plan (003)
 with render modes (009), a render-aware + explicit-usage register (011/014), and role-aware palette
 (008), then STOPS at the 015 pre-spend gate (derived plan + every recorded assumption, answers
-re-derive free); the operator confirms (the only spend) and judges final.png. Paid eye-gates passed
-on CJXQ (011/012/014/015, plus the 013 T009 photographic product run 2026-07-08: 013 fully closed).
-Next named feature: **016-layered-export** (Richard's ask: each design element as a separate layer
-in a zip; gpt-image-2 CANNOT output layers or transparency natively, so layers = per-element chroma
-repaint keyed by the existing `strip_chroma`, opt-in + paid per the 015 gate philosophy). Brand-key
+re-derive free); the operator confirms (the only spend) and judges final.png; approved runs export
+per-element layers.zip (016, eye-verified 2026-07-10). Paid eye-gates passed on CJXQ
+(011/012/014/015/016, plus the 013 T009 photographic product run: 013 fully closed).
+Next named feature: **017-deployment-readiness** (deploy for Richard's team in China; BLOCKED on
+the answers in `docs/DEPLOYMENT_QUESTIONS.md`, forwarded 2026-07-10; provisional plan in the
+SYSTEM_MAP housekeeping block: Singapore/Tokyo VM for API egress, Caddy TLS + auth, portable
+asset paths + requirements.txt + run-list page, Chinese playbook at /playbook). Brand-key
 enrichment (the brand-level product library) is DEFERRED 2026-07-08: zero pixel change, convenience
 only, products so far are campaign-specific (rationale in the SYSTEM_MAP housekeeping block). Known taste gap:
 thin-route logo lockups are model-probabilistic (nudge today; the licensed/composite moat is the
