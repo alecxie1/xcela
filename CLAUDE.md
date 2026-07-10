@@ -169,8 +169,14 @@ routes + additive run_view stage + the opt-in stage-6 button (form-grep pinned n
 T009 attempt 1 (2026-07-08, $0.48): operator-judged PARTIAL FAIL (text_2 lost a word to the
 largest-only keep; the logo layer redrew brand text instead of copying the lockup); v2 fixes
 applied 2026-07-09 (strip_chroma keep_all_components, default-off so die-cut stays
-byte-identical, export layers opt in; copy-EXACTLY logo isolation desc). PENDING: T009
-attempt 2, the paid rerun. Spec/plan/tasks: `specs/016-layered-export/`.
+byte-identical, export layers opt in; copy-EXACTLY logo isolation desc). EYE-GATE T009
+ATTEMPT 2 PASSED 2026-07-10 (same run rerun, $0.48, operator-judged): zero dropped pixels on
+every layer, the full "WATERMELON COCONUT" line, the real lockup on the logo layer; the
+individual layers ARE the deliverable and read handoff-quality (the stacked recomposition's
+logo collision is not a defect: the original has no standalone lockup instance, so its
+position is model-invented, and drift is accepted by the draft charter). Feature COMPLETE.
+Known follow-on candidates, not scheduled: brand-key enrichment (deferred), the
+licensed/composite moat (the real logo fix). Spec/plan/tasks: `specs/016-layered-export/`.
 
 Prior feature `015-pre-spend-confirm-gate` - BUILT (US1-US3) + structurally green
 (test_confirm_gate 14/14; the FULL 26-suite prior sweep passes UNCHANGED). The dimension

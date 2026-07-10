@@ -150,11 +150,20 @@ only from failed; 409 while the gate is not done; disk-backed rendering.
       structurally green) + SYSTEM_MAP (016 build-status block) in this same commit.
       Commit: `test(016): byte-identity + full sweep + docs currency (T008)`.
 
-- [ ] T009 HUMAN EYE-GATE (SC-007, quickstart §4; the ONE paid step, operator-scheduled, never
+- [x] T009 HUMAN EYE-GATE (SC-007, quickstart §4; the ONE paid step, operator-scheduled, never
       automated): on a real judged CJXQ run, click Export (cost as stated), download layers.zip,
       stack each `<id>.png` over `background.png` in an image editor; judge: each layer reads as
       its element, position drift acceptable for a draft decomposition, nulls honest (raw shows
       why). Record the verdict + run id in SYSTEM_MAP and here.
+      ATTEMPT 2 PASSED 2026-07-10 (`run_CJXQ_20260708_151506`, rerun with the v2 fixes, 6 calls
+      $0.48, operator-judged): every layer reads as its element with ZERO dropped pixels
+      (keep-all keying: text_2 carries the full `"WATERMELON COCONUT"`; the logo layer is the
+      real 茶救星球 / JO'S CHA 蔬果茶 lockup, not redrawn text); background clean. The operator's
+      verdict: "the individual files look good, but the stacked isn't right. i don't think that
+      is a problem however": the recomposition collision comes from the logo having NO standalone
+      instance in the original (it exists only on cup labels, so its painted position is
+      model-invented) plus accepted draft-charter drift; the layers themselves, the deliverable,
+      are handoff-quality. Feature 016 COMPLETE.
       ATTEMPT 1 (2026-07-08, `run_CJXQ_20260708_151506`, 6 calls $0.48, operator-judged):
       PARTIAL FAIL. Strong: text_1 verbatim + position-faithful, product_1 near-perfect (1px
       stray), background clean (mascots kept, nothing hallucinated), all spend/manifest

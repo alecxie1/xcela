@@ -1,7 +1,7 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 
-> **▶ BUILD STATUS 2026-07-08 (latest): feature 016 (layered export) is BUILT + structurally green; its paid eye-gate T009 is PENDING.**
+> **▶ BUILD STATUS 2026-07-10 (latest): feature 016 (layered export) is COMPLETE: built, structurally green, eye-gate T009 PASSED (attempt 2).**
 > Richard's ask delivered: the run view's stage 6 exports the approved design as PER-ELEMENT LAYERS in
 > layers.zip. The load-bearing fact: gpt-image-2 CANNOT emit layered or transparent output (flat
 > PNG/JPEG/WebP only; gpt-image-1.5's transparency was removed), so layers are BUILT, not requested:
@@ -58,9 +58,15 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-08._
 > element is legitimately multi-part), the majority-drop null stays armed for the legacy mode;
 > (2) the logo isolation desc demands a literal COPY of the asset ("copied EXACTLY ... do NOT
 > redraw/restyle/translate/substitute", same position + size as the finished design).
-> PENDING: **T009 attempt 2** (the paid rerun, judged the same way; attempt-1 artifacts archived
-> as export_attempt1/ in the run dir). Operator note: RESTART frontend/server.py for new routes.
-> Spec: `specs/016-layered-export/`.
+> T009 ATTEMPT 2 PASSED 2026-07-10 (the same run rerun with the v2 fixes, $0.48, attempt-1
+> artifacts archived as export_attempt1/ in the run dir): ZERO dropped pixels on every layer
+> (text_2 carries the full `"WATERMELON COCONUT"`), the logo layer is the real 茶救星球 / JO'S CHA
+> 蔬果茶 lockup, product/texts/background all read as their elements. Operator verdict: the
+> INDIVIDUAL layer files are good, the stacked recomposition is not right but that is NOT a
+> problem: the logo has no standalone instance in the original (it exists only on cup labels, so
+> its painted position is model-invented) and positional drift is accepted by the draft charter;
+> the layers ARE the deliverable, a finisher places them. **Feature 016 COMPLETE.** Operator
+> note: RESTART frontend/server.py for the new routes. Spec: `specs/016-layered-export/`.
 
 > **▶ BUILD STATUS 2026-07-08: feature 015 (pre-spend confirm gate) is BUILT + structurally green.**
 > The dimension interview, scoped to the evidence: the tool now SHOWS ITS GUESSES BEFORE YOU PAY. Every
