@@ -195,11 +195,48 @@ def check3_deploy_artifacts():
                 f"readme-handoff={f}; no-secrets={g}")
 
 
+def check4_run_listing():
+    """T005 / FR-008: list_runs over a fixture output dir: newest-first by id timestamp;
+    exact per-entry flags (gated done+image, pre-015 dir with null gate, exported run);
+    a corrupt gate_state lists with null instead of crashing; empty dir = []; limit
+    honored. GET /runs wiring exercised HTTP-free via the pure function the route calls."""
+    import shutil
+    sys.path.insert(0, str(REPO / "frontend"))
+    import run_view as rv
+
+    d = _tmp("list")
+    out = d / "output"
+    out.mkdir()
+    # newest (exported), middle (pre-015: no gate/meta), oldest (gated, corrupt gate later)
+    r_new, _ = make_run_dir(out / "run_CJXQ_20260712_120000", messages=1)
+    (r_new / "export_state.json").write_text('{"state": "done"}', encoding="utf-8")
+    r_mid = out / "run_aia_20260711_110000"
+    (r_mid / "sign_s1").mkdir(parents=True)
+    Image.new("RGB", (8, 8)).save(r_mid / "sign_s1" / "generated.png")
+    r_old, _ = make_run_dir(out / "run_CJXQ_20260710_100000", messages=1)
+    (r_old / "gate_state.json").write_text("{corrupt", encoding="utf-8")
+
+    runs = rv.list_runs(out)
+    a = [r["id"] for r in runs] == ["run_CJXQ_20260712_120000", "run_aia_20260711_110000",
+                                    "run_CJXQ_20260710_100000"]
+    new, mid, old = runs
+    b = (new["brand"] == "CJXQ" and new["gate_state"] == "done" and new["image"] is True
+         and new["export_state"] == "done" and new["created"] == "2026-07-12T12:00:00")
+    c = mid["brand"] is None and mid["gate_state"] is None and mid["image"] is True
+    e = old["gate_state"] is None and old["export_state"] is None   # corrupt tolerated
+
+    f = rv.list_runs(d / "does-not-exist") == [] and rv.list_runs(out, limit=2) == runs[:2]
+    shutil.rmtree(d)
+    ok = a and b and c and e and f
+    return ok, f"order={a}; gated-flags={b}; pre015-nulls={c}; corrupt-null={e}; empty+limit={f}"
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
     ("T003 portable wiring: keys, scene sites, export soft-null, persist, validator", check2_portable_wiring),
     ("T004 requirements + deploy artifacts: pins, syntax, placeholders, no secrets", check3_deploy_artifacts),
+    ("T005 run listing: newest-first flags, pre-015 nulls, corrupt tolerance, limit", check4_run_listing),
 ]
 
 

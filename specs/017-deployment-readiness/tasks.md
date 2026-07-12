@@ -86,7 +86,7 @@ missing logo refuses named; existing suites green.
 **Independent Test**: list_runs over a fixture output dir; hash-open + picker greps; no-hash
 behavior byte-identical.
 
-- [ ] T005 [US2] `frontend/run_view.py` NEW pure `list_runs(output_dir, limit=50)` per
+- [x] T005 [US2] `frontend/run_view.py` NEW pure `list_runs(output_dir, limit=50)` per
       data-model (id, brand, created from the id timestamp with mtime fallback, gate_state,
       image, export_state; newest-first; tolerant `_load_json`; never raises) +
       `frontend/server.py` `GET /runs` -> `{"runs": [...]}`. Tests check4: a fixture output

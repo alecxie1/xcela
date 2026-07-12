@@ -347,6 +347,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (HERE / "onboard.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/brands":
             return self._send(200, {"brands": _brands(), "per_run_cost_usd": PER_RUN_COST_USD})
+        if path == "/runs":  # 017 (US2): the recent-runs picker's free listing
+            return self._send(200, {"runs": run_view_mod.list_runs(OUTPUT)})
         if path.startswith("/run/") and path.endswith("/stages"):
             run_id = path[len("/run/"):-len("/stages")]
             return self._send(200, {**run_view_mod.run_view(OUTPUT / run_id),

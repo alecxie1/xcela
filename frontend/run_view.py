@@ -36,6 +36,43 @@ def _pid_alive(pid):
     return True
 
 
+def list_runs(output_dir, limit: int = 50) -> list:
+    """Feature 017 (US2): every run on the server, newest-first, for the recent-runs picker
+    (a remote tester's refresh must be able to REOPEN a run). PURE + tolerant like the rest
+    of this module: a corrupt/partial run dir lists with nulls, never raises. `created`
+    parses the run id's own timestamp (run_<brand>_YYYYMMDD_HHMMSS), dir mtime fallback."""
+    from datetime import datetime
+    out = []
+    root = Path(output_dir)
+    dirs = [p for p in root.glob("run_*") if p.is_dir()] if root.is_dir() else []
+    for d in dirs:
+        created = None
+        parts = d.name.rsplit("_", 2)
+        if len(parts) == 3:
+            try:
+                created = datetime.strptime(parts[1] + parts[2], "%Y%m%d%H%M%S") \
+                    .isoformat(timespec="seconds")
+            except ValueError:
+                pass
+        if created is None:
+            created = datetime.fromtimestamp(d.stat().st_mtime).isoformat(timespec="seconds")
+        meta = _load_json(d / "run_meta.json") or {}
+        gate = _load_json(d / "gate_state.json") or {}
+        export = _load_json(d / "export_state.json") or {}
+        out.append({
+            "id": d.name,
+            "brand": meta.get("brand"),
+            "created": created,
+            "gate_state": gate.get("state"),
+            "image": (d / "sign_s1" / "generated.png").is_file(),
+            "export_state": export.get("state"),
+        })
+    # newest-first by the PARSED timestamp, never the dir name: lexicographic names would
+    # sort run_aia above run_CJXQ regardless of date (ASCII case), caught by check4
+    out.sort(key=lambda r: r["created"], reverse=True)
+    return out[:limit]
+
+
 def run_view(run_dir, sign_id: str = "s1") -> dict:
     """A run dir -> {run_id, brief, register, prompt, image, manifest_notes}. Each stage is
     {present, content, note}; an absent stage carries the manifest notes as its note (honest null).
