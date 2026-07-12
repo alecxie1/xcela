@@ -29,9 +29,12 @@ def key_exists(brand: str) -> bool:
 
 
 def place_logo(brand: str, src) -> str:
-    """Copy the logo `src` (a path) under gitignored brands/<brand>/ and return the destination path.
-    Returns "" if `src` is falsy / not a file (the caller validate-louds on an empty logo_path).
-    NEVER substitutes a default (the taichi-logo landmine)."""
+    """Copy the logo `src` (a path) under gitignored brands/<brand>/ and return the
+    BRANDS-RELATIVE destination "<brand>/<basename>" (017: keys are born portable and
+    resolve through harness/asset_paths on any machine; absolute paths in legacy keys keep
+    working via the resolver's passthrough). Returns "" if `src` is falsy / not a file (the
+    caller validate-louds on an empty logo_path). NEVER substitutes a default (the
+    taichi-logo landmine)."""
     src = str(src or "").strip()
     if not src or not Path(src).is_file():
         return ""
@@ -40,7 +43,7 @@ def place_logo(brand: str, src) -> str:
     dest = brand_dir / Path(src).name
     if Path(src).resolve() != dest.resolve():
         shutil.copyfile(src, dest)
-    return str(dest)
+    return f"{brand}/{dest.name}"
 
 
 def write_key(brand: str, key: dict) -> Path:

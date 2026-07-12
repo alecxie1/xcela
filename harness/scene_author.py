@@ -17,6 +17,7 @@ load_dotenv(Path.home() / ".hermes" / ".env", override=True)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kit as kitlib  # noqa: E402  (stdlib-only kit loader; used by the kit reserve-box mode)
 import prompt_elements  # noqa: E402  (stdlib mandatory/forbidden clause, feature 002)
+from asset_paths import resolve_brand_asset  # noqa: E402  (017: portable brand-asset paths)
 
 TIER2_INTENT = {
     "subject": "new limited-edition garden fresh tomato cheeseburger",
@@ -122,7 +123,9 @@ HEADLINE_RESERVATION_DEF = (
     "Composition % rules (text dominance) still apply."
 )
 
-LOGO_PATH = "/mnt/c/Users/Alecx/Downloads/taichi burger real logo.jpg"
+# 017: the machine-specific LOGO_PATH fallback is GONE. Brand keys carry brands-relative
+# paths resolved by asset_paths.resolve_brand_asset; a missing logo refuses LOUDLY (never a
+# silent substitute), and resolution happens only when the logo is actually fed.
 
 CANVAS = (1536, 1024)
 
@@ -1122,7 +1125,11 @@ def run_thin_mode(args) -> None:
     from generate import generate_variant
     out_png = str(out_dir / "generated.png")
     logo_omit = "logo:omit" in (register_profile or {}).get("brand_locks_flexed", [])
-    logo_path = brand_key.get("logo_path", LOGO_PATH)
+    # 017: resolve only when the logo will actually be fed: always when not omitted, and in
+    # the omit corner where it remains the required images.edit reference (no ref, no
+    # products). An omit run with a reference needs no logo file at all.
+    logo_needed = (not logo_omit) or (not args.ref_image and not product_images)
+    logo_path = resolve_brand_asset(brand_key.get("logo_path")) if logo_needed else ""
     refs = _thin_generation_refs(args.ref_image, logo_path, logo_omit, product_images)
     if refs == [logo_path] and logo_omit and not args.ref_image:
         print("  [note] logo:omit + no --ref-image — logo file passed as the required reference; "
@@ -1385,7 +1392,7 @@ def run_kit_mode(args) -> None:
     sys.path.insert(0, str(Path(__file__).parent))
     from generate import generate_variant
     out_png = str(out_dir / "generated.png")
-    logo_path = brand_key.get("logo_path", LOGO_PATH)
+    logo_path = resolve_brand_asset(brand_key.get("logo_path"))  # 017: always fed here
     gen_meta = generate_variant(prompt, [logo_path], out_png,
                                 size=f"{canvas_wh[0]}x{canvas_wh[1]}", quality="high")
 
@@ -1624,13 +1631,17 @@ def main():
     sys.path.insert(0, str(Path(__file__).parent))
     from generate import generate_variant
     out_png = str(out_dir / "generated.png")
-    logo_path = brand_key.get("logo_path", LOGO_PATH)
-    refs = [logo_path] + ([args.ref_image] if args.ref_image else [])
-    if register_profile and "logo:omit" in register_profile.get("brand_locks_flexed", []):
-        if args.ref_image:
-            refs = [args.ref_image]
-            print("  register flexes logo:omit — logo NOT passed as reference (ref image only)")
-        else:
+    _legacy_omit = bool(register_profile
+                        and "logo:omit" in register_profile.get("brand_locks_flexed", []))
+    if _legacy_omit and args.ref_image:
+        # 017: the logo is not fed on this branch, so it need not resolve (a logo-less
+        # brand can run omit); every branch that FEEDS it resolves loudly.
+        refs = [args.ref_image]
+        print("  register flexes logo:omit — logo NOT passed as reference (ref image only)")
+    else:
+        logo_path = resolve_brand_asset(brand_key.get("logo_path"))
+        refs = [logo_path] + ([args.ref_image] if args.ref_image else [])
+        if _legacy_omit:
             print("  [warn] logo:omit flexed but no --ref-image — logo file still passed as "
                   "the required reference; prompt forbids rendering it", file=sys.stderr)
     gen_meta = generate_variant(final_prompt, refs, out_png, size="1536x1024", quality="high")

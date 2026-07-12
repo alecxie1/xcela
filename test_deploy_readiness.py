@@ -101,9 +101,71 @@ def check1_resolver():
                 f"repo-relative={f}; empty-none={g}")
 
 
+def check2_portable_wiring():
+    """T003 / FR-001, FR-002: the rewritten committed keys resolve to the same files as the
+    old absolute literals on this machine; scene_author has NO fallback constant and exactly
+    the three resolver call sites; export enumeration resolves relative keys (element
+    present) and soft-nulls dangling ones; place_logo returns the brands-relative form;
+    validate_lean_key accepts the committed relative key and rejects a dangling one."""
+    import os
+    import asset_paths as ap
+    import export_layers as xl017
+    sys.path.insert(0, str(REPO / "brand_intake"))
+    import persist
+    import validate_key as vk
+
+    cjxq = json.loads((REPO / "answer_keys" / "CJXQ.json").read_text(encoding="utf-8"))
+    a = (cjxq["logo_path"] == "CJXQ/jos cha logo.png"
+         and ap.try_resolve_brand_asset(cjxq["logo_path"])
+         == str(REPO / "brands" / "CJXQ" / "jos cha logo.png"))
+
+    src = (REPO / "harness" / "scene_author.py").read_text(encoding="utf-8")
+    b = ("LOGO_PATH" not in src.replace("the machine-specific LOGO_PATH fallback", "")
+         and src.count("resolve_brand_asset(brand_key") == 3)
+
+    d = _tmp("wire")
+    base, _keys = make_brands(d)
+    run, runkey = make_run_dir(d / "run", messages=1, logo_fed=True, products=0)
+    # the fixture manifest fed the fixture's ABSOLUTE logo; a RELATIVE key must resolve to
+    # that same file for the element to appear
+    os.environ["XCELA_BRANDS_DIR"] = str(Path(runkey["logo_path"]).parent.parent)
+    try:
+        rel_key = {"logo_path": f"{Path(runkey['logo_path']).parent.name}/"
+                                f"{Path(runkey['logo_path']).name}"}
+        els = xl017.enumerate_elements(run, rel_key)
+        c = any(e["id"] == "logo" for e in els)
+        els2 = xl017.enumerate_elements(run, {"logo_path": "TESTBRAND/dangling.png"})
+        e = not any(el["id"] == "logo" for el in els2)   # soft null, no crash
+    finally:
+        del os.environ["XCELA_BRANDS_DIR"]
+
+    logo_src = base / "TESTBRAND" / "logo file.png"
+    rel = persist.place_logo("TESTBRAND", str(logo_src))
+    f = rel == "TESTBRAND/logo file.png" and (persist.BRANDS / rel).is_file()
+
+    g = False
+    try:
+        vk.validate_lean_key(cjxq)   # committed relative key must validate
+        g = True
+    except Exception:  # noqa: BLE001
+        pass
+    h = False
+    bad = dict(cjxq); bad["logo_path"] = "CJXQ/does-not-exist.png"
+    try:
+        vk.validate_lean_key(bad)
+    except vk.KeyValidationError as exc:
+        h = "does not resolve" in str(exc)
+
+    ok = a and b and c and e and f and g and h
+    return ok, (f"key-resolves={a}; no-fallback+3-sites={b}; rel-key-element={c}; "
+                f"dangling-soft-null={e}; place_logo-relative={f}; committed-validates={g}; "
+                f"dangling-rejected={h}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
+    ("T003 portable wiring: keys, scene sites, export soft-null, persist, validator", check2_portable_wiring),
 ]
 
 

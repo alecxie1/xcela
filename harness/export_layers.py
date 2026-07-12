@@ -34,6 +34,7 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from asset_paths import try_resolve_brand_asset  # noqa: E402  (017: portable asset paths)
 from scene_author import CHROMA_KEY_HEX, load_brand  # noqa: E402
 
 EXPORT_DIRNAME = "export"
@@ -85,7 +86,10 @@ def enumerate_elements(run_dir: Path, brand_key: dict) -> list:
         elements.append({"id": f"text_{i}", "kind": "text", "text": str(line)})
 
     fed = [str(r) for r in manifest.get("generation", {}).get("reference_image", [])]
-    logo = str(brand_key.get("logo_path") or "")
+    # 017: keys carry brands-relative paths; the manifest records the RESOLVED absolute
+    # path the run fed. Soft form on purpose: an unresolvable logo means this run
+    # demonstrably did not feed it, so there is no logo element (honest null, not a refusal).
+    logo = try_resolve_brand_asset(brand_key.get("logo_path")) or ""
     if logo and any(logo == r or Path(logo).resolve() == Path(r).resolve() for r in fed):
         elements.append({"id": "logo", "kind": "logo", "ref": logo})
 

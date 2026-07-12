@@ -45,7 +45,7 @@ anywhere in tests; the one paid step is the human flow gate (T012).
 **Independent Test**: scratch-clone bootstrap boots the server; rewritten keys resolve;
 missing logo refuses named; existing suites green.
 
-- [ ] T003 [US1] Wire the resolver + kill the fallback + rewrite the keys:
+- [x] T003 [US1] Wire the resolver + kill the fallback + rewrite the keys:
       `harness/scene_author.py` DELETE `LOGO_PATH` (:125) and switch the three consumer
       sites (:1125 thin, :1388, :1627) to `resolve_brand_asset`, LAZY wrt use
       (logo_treatment=omit never resolves; a fed logo with a missing/dangling key refuses
