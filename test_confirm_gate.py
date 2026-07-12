@@ -396,8 +396,10 @@ def check7_gate_stage_and_panel():
              and v["brief"]["present"] is False and "gate" not in v["brief"])
 
     html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
-    new_bits = ["renderPreGate", "confirmRun", "Confirm and generate (paid",
-                'id="pregate"', "free preview"]
+    # 2026-07-12 (017): the UI chrome is simplified Chinese; the pins moved to the
+    # CHINESE values (same contract: a labeled paid confirm + a free-preview run button).
+    new_bits = ["renderPreGate", "confirmRun", "确认并生成（收费",
+                'id="pregate"', "免费预览"]
     c = (all(s in html for s in new_bits)
          and "Run (paid" not in html
          and "Nudge and rerun" not in html)
@@ -557,8 +559,8 @@ def check11_gate_controls():
     to the answer route, errors surface and keep the previous derivation, no free-text
     retype control exists on the gate, and no em-dash rides in the new strings."""
     html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
-    needed = ["renderAssumptionControl", "applyAnswer", "/answer", "Apply (free, re-derives)",
-              'type="number"', "a_${i}_sel"]
+    needed = ["renderAssumptionControl", "applyAnswer", "/answer", "应用（免费，重新推导）",
+              'type="number"', "a_${i}_sel"]  # 017: the apply label is Chinese now
     a = all(s in html for s in needed)
     # the gate panel must not offer a free-text retype (clarification Q1): the only textareas
     # belong to the FORM and the taste-gate nudge, never to renderAssumptionControl
@@ -696,7 +698,7 @@ def check13_zero_guess_and_legacy():
         a = a and v["gate"]["content"]["assumptions"] == []
 
     html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
-    b = ("No assumptions were needed" in html
+    b = ("无需任何假设" in html  # 017: the zero-rows branch text is Chinese
          and "rows.length" in html)  # the zero-rows branch is a real conditional, not filler
 
     with tempfile.TemporaryDirectory() as td:

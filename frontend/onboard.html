@@ -38,35 +38,36 @@
 <header class="topnav">
   <span class="brandmark">Handyprint</span>
   <nav>
-    <a href="/">Generate a sign</a>
-    <a href="/onboard" class="active" aria-current="page">Onboard a brand</a>
+    <a href="/">生成设计</a>
+    <a href="/onboard" class="active" aria-current="page">录入品牌</a>
+    <a href="/playbook">使用手册</a>
   </nav>
 </header>
 <main>
   <div class="step" id="s1">
-    <h3>1. Upload the brand guideline PDF</h3>
+    <h3>1. 上传品牌 VI 手册 PDF</h3>
     <input type="file" id="pdf" accept="application/pdf">
-    <button id="uploadBtn">Upload and suggest pages</button>
+    <button id="uploadBtn">上传并自动定位规范页</button>
     <div id="s1err" class="err"></div>
   </div>
 
   <div class="step" id="s2" style="display:none">
-    <h3>2. Confirm the spec pages (1-indexed; correct if wrong)</h3>
-    <label>Color page(s), comma-separated</label><input type="text" id="colorPages">
-    <label>Brand-name page(s), comma-separated</label><input type="text" id="namePages">
-    <button id="extractBtn">Extract (local, no cost, takes a few seconds)</button>
+    <h3>2. 确认规范页页码（从 1 开始数；不对就改）</h3>
+    <label>颜色规范页（多页用逗号分隔）</label><input type="text" id="colorPages">
+    <label>品牌名称页（多页用逗号分隔）</label><input type="text" id="namePages">
+    <button id="extractBtn">提取（本地运行，免费，需要几秒钟）</button>
     <div id="s2err" class="err"></div>
-    <div id="s2busy" class="pending" style="display:none">extracting (running OCR locally)...</div>
+    <div id="s2busy" class="pending" style="display:none">提取中（本地 OCR 识别）...</div>
   </div>
 
   <div class="step" id="s3" style="display:none">
-    <h3>3. Verify the locks, then save</h3>
-    <label>Brand id (folder + key name)</label><input type="text" id="brandId">
-    <label>Brand name (CN)</label><input type="text" id="brandCn">
-    <label>Brand name (EN)</label><input type="text" id="brandEn">
+    <h3>3. 核对品牌要素，然后保存</h3>
+    <label>品牌 ID（英文/拼音，作为文件夹和档案名）</label><input type="text" id="brandId">
+    <label>品牌名（中文）</label><input type="text" id="brandCn">
+    <label>品牌名（英文）</label><input type="text" id="brandEn">
     <div id="colors"></div>
-    <label>Logo file</label><input type="file" id="logo" accept="image/*">
-    <button id="saveBtn">Validate and save</button>
+    <label>Logo 文件</label><input type="file" id="logo" accept="image/*">
+    <button id="saveBtn">校验并保存</button>
     <div id="s3err" class="err"></div>
     <div id="s3ok" class="ok"></div>
   </div>
@@ -84,12 +85,12 @@ async function jpost(url, body, isForm) {
 $("uploadBtn").onclick = async () => {
   $("s1err").textContent = "";
   const f = $("pdf").files[0];
-  if (!f) { $("s1err").textContent = "Pick a PDF first."; return; }
+  if (!f) { $("s1err").textContent = "请先选择一个 PDF 文件。"; return; }
   $("uploadBtn").disabled = true;
   const fd = new FormData(); fd.append("pdf", f, f.name);
   const { ok, data } = await jpost("/onboard/upload", fd, true);
   $("uploadBtn").disabled = false;
-  if (!ok) { $("s1err").textContent = data.error || "upload failed"; return; }
+  if (!ok) { $("s1err").textContent = data.error || "上传失败"; return; }
   draftId = data.draft_id;
   $("colorPages").value = (data.suggestions.color || []).join(",");
   $("namePages").value = (data.suggestions.brand_name || []).join(",");
@@ -103,7 +104,7 @@ $("extractBtn").onclick = async () => {
   const { ok, data } = await jpost(`/onboard/${draftId}/extract`,
     { color: pages("colorPages"), name: pages("namePages") });
   $("s2busy").style.display = "none"; $("extractBtn").disabled = false;
-  if (!ok) { $("s2err").textContent = data.error || "extract failed"; return; }
+  if (!ok) { $("s2err").textContent = data.error || "提取失败"; return; }
   if (data.block) { $("s2err").textContent = data.block; return; }  // zero colors -> stay on step 2
   locks = data.locks;
   renderColors();
@@ -115,18 +116,18 @@ $("extractBtn").onclick = async () => {
 };
 
 function renderColors() {
-  $("colors").innerHTML = "<label>Colors (assign exactly one primary; the others secondary / accent / background / text; acknowledge any flag)</label>" +
+  $("colors").innerHTML = "<label>颜色（必须指定且只指定一个 primary 主色；其余选 secondary/accent/background/text；有标记的需要确认）</label>" +
     locks.map((c, i) => `<div class="color-row">
       <span class="swatch" style="background:${c.hex}"></span><code>${c.hex}</code>
       <select data-role="${i}">
-        <option value="">role...</option><option value="primary">primary</option>
+        <option value="">选择角色...</option><option value="primary">primary</option>
         <option value="secondary">secondary</option><option value="accent">accent</option>
         <option value="background">background</option><option value="text">text</option>
       </select>
       ${c.needs_review ? `<span class="flag">needs_review</span>
-        <select data-ack="${i}"><option value="">acknowledge...</option>
-        <option value="confirm">confirm</option><option value="edit">edit</option>
-        <option value="keep-flagged">keep-flagged</option></select>` : ""}
+        <select data-ack="${i}"><option value="">如何处理...</option>
+        <option value="confirm">确认无误</option><option value="edit">需要修改</option>
+        <option value="keep-flagged">保留标记</option></select>` : ""}
     </div>`).join("");
 }
 
@@ -143,19 +144,19 @@ $("saveBtn").onclick = async () => {
     })),
   };
   const logoFile = $("logo").files[0];
-  if (!logoFile) { $("s3err").textContent = "A logo file is required."; return; }
+  if (!logoFile) { $("s3err").textContent = "必须上传 Logo 文件。"; return; }
   $("saveBtn").disabled = true;
   const fd = new FormData();
   fd.append("verified", JSON.stringify(verified));
   fd.append("logo", logoFile, logoFile.name);
   const { ok, data } = await jpost(`/onboard/${draftId}/save`, fd, true);
   $("saveBtn").disabled = false;
-  if (!ok) { $("s3err").textContent = data.error || "save failed"; return; }
+  if (!ok) { $("s3err").textContent = data.error || "保存失败"; return; }
   // feature 010: handoff - render the saved message PLUS a link to the live-runner with this brand
   // preselected (innerHTML so the <a> renders as a link, not literal text).
   const b = data.brand;
-  $("s3ok").innerHTML = `Saved ${b}. ${data.message}. ` +
-    `<a class="handoff" href="/?brand=${encodeURIComponent(b)}">Generate a sign for this brand</a>`;
+  $("s3ok").innerHTML = `已保存 ${b}。${data.message} ` +
+    `<a class="handoff" href="/?brand=${encodeURIComponent(b)}">用这个品牌去生成设计</a>`;
   $("s3").classList.add("done");
 };
 </script>

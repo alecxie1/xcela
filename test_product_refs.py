@@ -274,14 +274,16 @@ def check9_form_controls():
     upload; an optional multiple-file product control capped client-side; the JS appends
     DISTINCT part names product_1..N; no em-dash in the new labels."""
     html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
-    style_label = "Style reference (required" in html and "how the asset should feel" in html
+    # 2026-07-12 (017): Chinese labels; same contract (required style ref, optional
+    # up-to-6 product shots that must appear).
+    style_label = "风格参考图（必选" in html and "这张图决定整体感觉" in html
     control = ('id="product_images" multiple' in html
-               and "Product shots (optional, up to 6)" in html
-               and "must appear in the design" in html)
+               and "产品实拍图（可选，最多 6 张）" in html
+               and "必须出现的真实产品照片" in html)
     distinct = ('fd.append("product_" + (i + 1), f, f.name)' in html
                 and "prodFiles.length > 6" in html)
     new_lines = [l for l in html.splitlines()
-                 if "Style reference" in l or "Product shots" in l or "product shots are supported" in l]
+                 if "风格参考图" in l or "产品实拍图" in l or "产品实拍图最多 6 张" in l]
     no_emdash = bool(new_lines) and not any("—" in l for l in new_lines)
     passed = style_label and control and distinct and no_emdash
     return passed, (f"style_label={style_label}; multi_control={control}; "

@@ -186,12 +186,14 @@ def check6_message_label():
     """T007 contract rows 11-12: no sign-era message label; the new label states the
     verbatim-text contract; no em-dash in the new 012 labels."""
     html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    # 2026-07-12 (017): the labels are simplified Chinese; the pins moved to the
+    # CHINESE values (same contract: the verbatim-text promise is STATED on the label).
     row11 = ("Sign message" not in html
-             and "Text on the asset (one per line, rendered exactly as written" in html
-             and "the only words that will appear" in html)
+             and "画面上的文字（每行一条，逐字呈现" in html
+             and "画面上只会出现这些字" in html)
     new_labels = [l for l in html.splitlines()
-                  if "Text on the asset" in l or "Design notes" in l or "Extend it:" in l
-                  or "Match its style:" in l or "Mood only:" in l]
+                  if "画面上的文字" in l or "设计要求" in l or "延续：" in l
+                  or "同风格：" in l or "仅氛围：" in l]
     row12 = bool(new_labels) and not any("—" in l for l in new_labels)
     passed = row11 and row12
     return passed, f"verbatim_contract_label={row11}; no_emdash_in_new_text={row12}"

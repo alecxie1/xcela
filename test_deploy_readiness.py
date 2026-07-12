@@ -293,6 +293,45 @@ def check6_chinese_input():
                 f"garbage-honest-default={h}")
 
 
+def check7_chinese_chrome():
+    """T008 / FR-011: the load-bearing labels are simplified Chinese; every select that lost
+    its English display text kept its canonical VALUE via an explicit value= attribute (a
+    build that translates option text without value attrs silently changes submitted briefs
+    and fails here); formState still submits the same keys; every REGISTER_LANE_OPTIONS
+    label has a ZH entry (drift guard: a new lane option without a translation fails)."""
+    import re
+    import derive_register as dr
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    ob = (REPO / "frontend" / "onboard.html").read_text(encoding="utf-8")
+
+    a = ("付费前确认" in html and "确认并生成" in html and "分层导出" in html
+         and "风格参考图" in html and "画面上的文字" in html and "满意（就用这张）" in html)
+    b = ('<option value="omit">' in html and '<option value="faithful">' in html
+         and '<option value="expressive departure">' in html
+         and '<option value="strict VI">' in html
+         and '<option value="flat vector">' in html
+         and '<option value="photographic">' in html
+         and '<option value="extend">' in html and '<option value="mood">' in html)
+    keys = ["brand:", "asset_type:", "render_style:", "format_size:",
+            "reference_relationship:", "logo_treatment:", "brand_strictness:",
+            "occasion:", "usage_context:", "mandatory_elements:", "messages:"]
+    form = html[html.index("function formState"):html.index("function renderStage")]
+    c = all(k in form.replace(" $", "$").replace(": $", ":$") or k.rstrip(":") in form
+            for k in keys)
+
+    zh_block = html[html.index("const ZH = {"):html.index("function zh(")]
+    e = all(f'"{o["label"]}"' in zh_block for o in dr.REGISTER_LANE_OPTIONS)
+
+    f = ("上传品牌 VI 手册" in ob and "校验并保存" in ob
+         and '<option value="primary">primary</option>' in ob   # role VALUES stay canonical
+         and '<option value="keep-flagged">' in ob)
+    g = html.count('href="/playbook"') == 1 and ob.count('href="/playbook"') == 1
+
+    ok = a and b and c and e and f and g
+    return ok, (f"labels-zh={a}; option-values-kept={b}; formState-keys={c}; "
+                f"lane-dict-complete={e}; onboard-zh={f}; playbook-nav={g}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
@@ -301,6 +340,7 @@ CHECKS = [
     ("T005 run listing: newest-first flags, pre-015 nulls, corrupt tolerance, limit", check4_run_listing),
     ("T006 resume wiring: hash guard, replaceState sync, /runs picker, default path", check5_resume_wiring),
     ("T007 Chinese input: lanes + suppression + byte-identity + fullwidth sizes", check6_chinese_input),
+    ("T008 Chinese chrome: labels, unchanged submit values, ZH dict drift guard", check7_chinese_chrome),
 ]
 
 

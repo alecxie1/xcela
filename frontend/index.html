@@ -42,78 +42,79 @@
 <header class="topnav">
   <span class="brandmark">Handyprint</span>
   <nav>
-    <a href="/" class="active" aria-current="page">Generate a sign</a>
-    <a href="/onboard">Onboard a brand</a>
+    <a href="/" class="active" aria-current="page">生成设计</a>
+    <a href="/onboard">录入品牌</a>
+    <a href="/playbook">使用手册</a>
   </nav>
 </header>
 <main>
   <section class="panel form">
-    <fieldset><legend>Brand &amp; asset</legend>
-      <label>Brand</label>
+    <fieldset><legend>品牌与产出物</legend>
+      <label>品牌 Brand</label>
       <select id="brand"></select>
-      <label>Asset type</label>
+      <label>产出物类型（可自由中文描述，例如：朋友圈海报、门店物料）</label>
       <input id="asset_type" value="手举牌 hand-held event sign">
-      <label>Render style</label>
-      <select id="render_style"><option value="flat vector">flat vector</option><option value="photographic">photographic</option></select>
-      <label>Format / size</label>
+      <label>渲染风格</label>
+      <select id="render_style"><option value="flat vector">扁平插画 flat vector</option><option value="photographic">摄影质感 photographic</option></select>
+      <label>尺寸（如 60x40cm，中文单位也可以：６０×４０厘米）</label>
       <input id="format_size" value="60x40cm">
     </fieldset>
 
-    <fieldset><legend>Reference</legend>
-      <label>Style reference (required, upload a file): how the asset should feel</label>
+    <fieldset><legend>参考图</legend>
+      <label>风格参考图（必选，上传文件）：这张图决定整体感觉</label>
       <input type="file" id="reference_image">
-      <label>Product shots (optional, up to 6): photos of the real products that must appear in the design</label>
+      <label>产品实拍图（可选，最多 6 张）：设计中必须出现的真实产品照片</label>
       <input type="file" id="product_images" multiple>
-      <label>Reference relationship</label>
+      <label>参考图的用法</label>
       <select id="reference_relationship">
-        <option value="extend">Extend it: keep this exact look and DNA, change only the message</option>
-        <option value="match style">Match its style: same visual language, fresh layout</option>
-        <option value="mood">Mood only: a loose tone cue, free composition</option>
+        <option value="extend">延续：保持这张图的外观和基因，只换文案</option>
+        <option value="match style">同风格：同一视觉语言，全新排版</option>
+        <option value="mood">仅氛围：只作调性参考，构图自由</option>
       </select>
     </fieldset>
 
-    <fieldset><legend>Voice &amp; vibe</legend>
+    <fieldset><legend>语气与氛围</legend>
       <div class="row">
-        <div><label>Formality <span class="slider-val" id="fv">2</span></label><input type="range" id="formality" min="0" max="10" value="2"></div>
-        <div><label>Playfulness <span class="slider-val" id="pv">8</span></label><input type="range" id="playfulness" min="0" max="10" value="8"></div>
+        <div><label>正式程度 <span class="slider-val" id="fv">2</span></label><input type="range" id="formality" min="0" max="10" value="2"></div>
+        <div><label>活泼程度 <span class="slider-val" id="pv">8</span></label><input type="range" id="playfulness" min="0" max="10" value="8"></div>
       </div>
-      <label>Logo treatment</label>
-      <select id="logo_treatment"><option>omit</option><option>subtle</option><option>faithful</option></select>
-      <label>Brand strictness</label>
-      <select id="brand_strictness"><option>expressive departure</option><option>brand + accents</option><option>strict VI</option></select>
+      <label>Logo 处理</label>
+      <select id="logo_treatment"><option value="omit">不出现</option><option value="subtle">低调出现</option><option value="faithful">忠实呈现</option></select>
+      <label>品牌规范强度</label>
+      <select id="brand_strictness"><option value="expressive departure">大胆发挥</option><option value="brand + accents">品牌色为主</option><option value="strict VI">严格遵守 VI</option></select>
     </fieldset>
 
-    <fieldset><legend>Context</legend>
-      <label>Occasion</label>
+    <fieldset><legend>场景</legend>
+      <label>活动或主题（不会出现在画面文字里）</label>
       <input id="occasion" value="防范非法金融宣传">
-      <label>Usage context</label>
+      <label>用途（可自由中文描述，例如：朋友圈推广、活动现场手举牌）</label>
       <input id="usage_context" value="held for photos / posed with">
     </fieldset>
 
-    <fieldset><legend>Elements &amp; message</legend>
-      <label>Mandatory elements (one per line, verbatim)</label>
+    <fieldset><legend>元素与文案</legend>
+      <label>必须出现的元素（每行一个，按原文执行）</label>
       <textarea id="mandatory_elements" rows="2">分别画叉</textarea>
-      <label>Forbidden elements (one per line)</label>
+      <label>禁止出现的元素（每行一个）</label>
       <textarea id="forbidden_elements" rows="1"></textarea>
-      <label>Text on the asset (one per line, rendered exactly as written: the only words that will appear)</label>
+      <label>画面上的文字（每行一条，逐字呈现：画面上只会出现这些字）</label>
       <textarea id="messages" rows="2">守住钱袋子
 护好幸福家</textarea>
-      <label>Design notes (optional; binding instructions the design must obey, e.g. "products realistic, background cartoon")</label>
+      <label>设计要求（可选；必须遵守的指令，例如"产品要写实，背景卡通"）</label>
       <textarea id="design_notes" rows="2"></textarea>
     </fieldset>
 
-    <button id="run">Run (free preview: derive the plan, confirm before any spend)</button>
+    <button id="run">开始（免费预览：先推导方案，确认后才收费）</button>
     <div id="formNote" class="note"></div>
   </section>
 
   <section class="panel">
     <div id="recentruns"></div>
     <div id="attempts"></div>
-    <div class="stage"><h3><span class="dot wait" id="d_brief"></span>1. Brief (what the pipeline received)</h3><div class="body" id="brief"><span class="pending">waiting for a run...</span></div></div>
-    <div class="stage"><h3><span class="dot wait" id="d_register"></span>2. Register / dial</h3><div class="body" id="register"><span class="pending">not yet</span></div></div>
-    <div class="stage"><h3><span class="dot wait" id="d_prompt"></span>3. Assembled prompt</h3><div class="body" id="prompt"><span class="pending">not yet</span></div></div>
+    <div class="stage"><h3><span class="dot wait" id="d_brief"></span>1. 需求（系统收到的内容）</h3><div class="body" id="brief"><span class="pending">等待运行...</span></div></div>
+    <div class="stage"><h3><span class="dot wait" id="d_register"></span>2. 风格判定 Register</h3><div class="body" id="register"><span class="pending">尚未开始</span></div></div>
+    <div class="stage"><h3><span class="dot wait" id="d_prompt"></span>3. 生成指令 Prompt</h3><div class="body" id="prompt"><span class="pending">尚未开始</span></div></div>
     <div id="pregate"></div>
-    <div class="stage"><h3><span class="dot wait" id="d_image"></span>4. Generated sign</h3><div class="body" id="image"><span class="pending">not yet (appears only after you confirm the plan)</span></div></div>
+    <div class="stage"><h3><span class="dot wait" id="d_image"></span>4. 生成的画面</h3><div class="body" id="image"><span class="pending">尚未生成（确认方案后才会出现）</span></div></div>
     <div id="gate"></div>
     <div id="exportstage"></div>
   </section>
@@ -125,10 +126,30 @@ for (const [s, v] of [["formality","fv"],["playfulness","pv"]]) {
 }
 let currentRun = null, poller = null, attempts = [];
 
+// --- 017 (US3): the gate panel's CLOSED server vocabulary rendered in Chinese. Server
+// payloads and submitted values are UNCHANGED; unmapped strings fall back to English
+// (honest: never guess a translation). Keys must track the server vocabulary; check7
+// drift-guards the lane option labels. ---
+const ZH = {
+  "marketing piece": "营销物料", "hand-held event prop": "手举活动道具", "formal piece": "正式物料",
+  "flat vector": "扁平插画", "photographic": "摄影质感",
+  "extend the reference family": "延续参考图风格", "match its style": "同风格新排版", "mood only": "仅作氛围参考",
+  "60x40cm landscape": "60x40cm 横版", "40x60cm portrait": "40x60cm 竖版", "square": "正方形",
+  "keep 1536x1024": "保持 1536x1024", "set directly": "自行设定",
+  "job register": "任务类型", "output size": "输出尺寸", "reference relationship": "参考图用法",
+  "render mode": "渲染方式", "style intensity": "风格强度",
+};
+function zh(s) {
+  s = String(s ?? "");
+  if (ZH[s]) return ZH[s];
+  for (const k in ZH) if (s.startsWith(k)) return ZH[k] + s.slice(k.length);
+  return s;   // English fallback: unmapped vocabulary stays honest
+}
+
 async function loadBrands() {
   const r = await fetch("/brands"); const j = await r.json();
   $("brand").innerHTML = j.brands.map(b => `<option>${b}</option>`).join("");
-  $("run").textContent = `Run (free preview; confirming the plan pays about $${j.per_run_cost_usd.toFixed(2)})`;
+  $("run").textContent = `开始（免费预览；确认方案后才收费，约 $${j.per_run_cost_usd.toFixed(2)}）`;
   // feature 010: preselect the brand handed off from onboarding (/?brand=<id>); graceful if absent/unknown
   const want = new URLSearchParams(location.search).get("brand");
   if (want && j.brands.includes(want)) $("brand").value = want;
@@ -150,10 +171,10 @@ function renderStage(key, st) {
   dot.className = "dot " + (st.present ? "ok" : "wait");
   if (key === "image") {
     body.innerHTML = st.present ? `<img src="/run/${currentRun}/image?t=${Date.now()}">`
-      : `<span class="pending">rendering...</span>` + (st.note ? `<div class="note">${st.note}</div>` : "");
+      : `<span class="pending">生成中...</span>` + (st.note ? `<div class="note">${st.note}</div>` : "");
     return;
   }
-  if (!st.present) { body.innerHTML = `<span class="pending">not yet</span>` + (st.note ? `<div class="note">${st.note}</div>` : ""); return; }
+  if (!st.present) { body.innerHTML = `<span class="pending">尚未开始</span>` + (st.note ? `<div class="note">${st.note}</div>` : ""); return; }
   const c = st.content;
   body.innerHTML = `<pre>${typeof c === "string" ? c : JSON.stringify(c, null, 2)}</pre>`;
 }
@@ -164,25 +185,25 @@ function renderPreGate(g, cost) {
   if (!g || !g.content || g.content.state === "done") { $("pregate").innerHTML = ""; return; }
   const c = g.content;
   if (c.state === "confirmed" || c.state === "generating") {
-    $("pregate").innerHTML = `<div class="stage"><h3>3b. Plan confirmed</h3><div class="body"><span class="pending">generating the image (paid)...</span></div></div>`;
+    $("pregate").innerHTML = `<div class="stage"><h3>3b. 方案已确认</h3><div class="body"><span class="pending">正在生成画面（已收费）...</span></div></div>`;
     return;
   }
   if (c.state !== "awaiting_confirmation") { $("pregate").innerHTML = ""; return; }
   const rows = (c.assumptions || []).map((a, i) =>
     `<div style="margin:6px 0;padding:6px;border:1px solid #b84;border-radius:4px">
-       <b>${esc(a.dimension)}</b>: the tool assumed <i>${esc(a.assumed_value)}</i>
-       <div class="note">because <code>${esc(a.cause.input)}</code> was ${esc(a.cause.reason)}${a.cause.value ? ` (you gave: "${esc(a.cause.value)}")` : ""}</div>
+       <b>${esc(zh(a.dimension))}</b>：系统替你假设了 <i>${esc(zh(a.assumed_value))}</i>
+       <div class="note">原因：<code>${esc(a.cause.input)}</code> ${esc(a.cause.reason)}${a.cause.value ? `（你填的是："${esc(a.cause.value)}"）` : ""}</div>
        <div id="assumpctl_${i}">${renderAssumptionControl(a, i)}</div>
      </div>`).join("");
   const applied = (c.answers_applied || []).length
-    ? `<div class="note">answers applied so far: ${c.answers_applied.map(x => esc(x.chosen_label || x.assumption_id)).join(", ")}</div>` : "";
-  $("pregate").innerHTML = `<div class="stage"><h3>3b. Confirm before paying</h3><div class="body">
-    ${rows.length ? `<div>The tool made ${rows.length} assumption(s) on your behalf; confirm or change them:</div>${rows}`
-                  : `<div>No assumptions were needed: every field was explicit and recognized. Review the register (2) and prompt (3) above.</div>`}
+    ? `<div class="note">已应用的修改：${c.answers_applied.map(x => esc(zh(x.chosen_label || x.assumption_id))).join("，")}</div>` : "";
+  $("pregate").innerHTML = `<div class="stage"><h3>3b. 付费前确认</h3><div class="body">
+    ${rows.length ? `<div>系统替你做了 ${rows.length} 项假设，请确认或修改：</div>${rows}`
+                  : `<div>无需任何假设：每个字段都明确且被识别。请查看上方的风格判定（2）和生成指令（3）。</div>`}
     ${applied}
     ${c.state_note ? `<div class="note">${esc(c.state_note)}</div>` : ""}
-    <button id="confirm" style="background:#2a6">Confirm and generate (paid, about $${(cost ?? 0.08).toFixed(2)})</button>
-    <div class="note">Nothing is spent until you confirm. Walking away keeps this draft on disk, unspent.</div>
+    <button id="confirm" style="background:#2a6">确认并生成（收费，约 $${(cost ?? 0.08).toFixed(2)}）</button>
+    <div class="note">确认之前不花一分钱；直接离开的话，这份草案会留在服务器上，不产生费用。</div>
     <div id="pregateNote" class="note"></div></div></div>`;
   $("confirm").onclick = confirmRun;
   (c.assumptions || []).forEach((a, i) => {
@@ -205,13 +226,13 @@ function renderAssumptionControl(a, i) {
   if (!opts.length) return "";
   const isSlider = opts.length === 1 && typeof opts[0].writes.value === "object";
   if (isSlider) {
-    return `<label>set it yourself (0-10):</label>
-      formality <input type="number" id="a_${i}_f" min="0" max="10" value="5" style="width:4.5em">
-      playfulness <input type="number" id="a_${i}_p" min="0" max="10" value="7" style="width:4.5em">
-      <button id="a_${i}_apply" style="width:auto;background:#777">Apply (free, re-derives)</button>`;
+    return `<label>自行设定（0-10）：</label>
+      正式程度 <input type="number" id="a_${i}_f" min="0" max="10" value="5" style="width:4.5em">
+      活泼程度 <input type="number" id="a_${i}_p" min="0" max="10" value="7" style="width:4.5em">
+      <button id="a_${i}_apply" style="width:auto;background:#777">应用（免费，重新推导）</button>`;
   }
-  return `<select id="a_${i}_sel" style="width:auto">${opts.map(o => `<option>${esc(o.label)}</option>`).join("")}</select>
-    <button id="a_${i}_apply" style="width:auto;background:#777">Apply (free, re-derives)</button>`;
+  return `<select id="a_${i}_sel" style="width:auto">${opts.map(o => `<option value="${esc(o.label)}">${esc(zh(o.label))}</option>`).join("")}</select>
+    <button id="a_${i}_apply" style="width:auto;background:#777">应用（免费，重新推导）</button>`;
 }
 async function applyAnswer(a, label, value) {
   const body = { assumption_id: a.id, label };
@@ -220,16 +241,16 @@ async function applyAnswer(a, label, value) {
     headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) {  // fail loud; the previous derivation stays (US2 scenario 3)
-    $("pregateNote").textContent = j.error || "answer failed"; return;
+    $("pregateNote").textContent = j.error || "应用失败"; return;
   }
-  $("pregateNote").textContent = "applied; re-deriving (free)...";
+  $("pregateNote").textContent = "已应用；正在免费重新推导...";
   if (poller) clearInterval(poller);
   poller = setInterval(poll, 1000); poll();
 }
 async function confirmRun() {
   const r = await fetch(`/run/${currentRun}/confirm`, { method: "POST" });
   const j = await r.json();
-  if (!r.ok) { $("pregateNote").textContent = j.error || "confirm failed"; return; }
+  if (!r.ok) { $("pregateNote").textContent = j.error || "确认失败"; return; }
   $("run").disabled = true;
   if (poller) clearInterval(poller);
   poller = setInterval(poll, 1000); poll();
@@ -242,7 +263,7 @@ async function poll() {
   renderExport(v);  // 016: the layered-export stage (opt-in button / progress / download)
   if (v.error) {  // the conductor failed loud: surface it instead of hanging silently at 'brief'
     clearInterval(poller); poller = null; $("run").disabled = false;
-    $("formNote").textContent = "Run failed: " + v.error.split("\n").pop();
+    $("formNote").textContent = "运行失败：" + v.error.split("\n").pop();
     return;
   }
   // 016: keep polling while an export is LIVE (the worker also holds inflight); a stale
@@ -258,11 +279,11 @@ async function poll() {
 }
 async function startRun(style_notes) {
   const refFile = $("reference_image").files[0];
-  if (!refFile) { $("formNote").textContent = "A style reference image is required (pick a file)."; return; }
+  if (!refFile) { $("formNote").textContent = "必须上传一张风格参考图（请选择文件）。"; return; }
   // 013: product shots ride as DISTINCT parts product_1..N (the server parser is
   // last-wins per part name); client-side cap check mirrors the server's visible error.
   const prodFiles = Array.from($("product_images").files);
-  if (prodFiles.length > 6) { $("formNote").textContent = "At most 6 product shots are supported; remove some."; return; }
+  if (prodFiles.length > 6) { $("formNote").textContent = "产品实拍图最多 6 张，请删掉一些再试。"; return; }
   // 012: binding notes = first-run design notes + any nudge, ";"-joined (the channel's
   // multi-note contract); a nudge APPENDS to the brief-time notes, never replaces them.
   const notes = [$("design_notes").value, style_notes || ""].map(s => s.trim()).filter(Boolean).join("; ");
@@ -274,7 +295,7 @@ async function startRun(style_notes) {
   prodFiles.forEach((f, i) => fd.append("product_" + (i + 1), f, f.name));
   const r = await fetch("/run", { method: "POST", body: fd });
   const j = await r.json();
-  if (!r.ok) { $("formNote").textContent = j.error || "run failed"; $("run").disabled = false; return; }
+  if (!r.ok) { $("formNote").textContent = j.error || "启动失败"; $("run").disabled = false; return; }
   setCurrentRun(j.run_id);
   if (!attempts.includes(j.run_id)) { attempts.push(j.run_id); renderAttempts(); }
   if (poller) clearInterval(poller);
@@ -282,8 +303,8 @@ async function startRun(style_notes) {
 }
 function renderAttempts() {
   if (attempts.length < 2) { $("attempts").innerHTML = ""; return; }
-  $("attempts").innerHTML = `<div class="stage"><div class="body">Attempts (click to compare): ` +
-    attempts.map((id, i) => `<button style="width:auto;margin:2px;background:${id === currentRun ? '#2a6' : '#777'}" onclick="viewAttempt('${id}')">${i + 1}${id === currentRun ? ' (current)' : ''}</button>`).join("") +
+  $("attempts").innerHTML = `<div class="stage"><div class="body">历次尝试（点击对比）：` +
+    attempts.map((id, i) => `<button style="width:auto;margin:2px;background:${id === currentRun ? '#2a6' : '#777'}" onclick="viewAttempt('${id}')">${i + 1}${id === currentRun ? '（当前）' : ''}</button>`).join("") +
     `</div></div>`;
 }
 // --- 017 (US2): URL-hash resume + the recent-runs picker. The hash is the ONE piece of
@@ -325,9 +346,9 @@ async function renderExport(v) {
     // unexported, gate done: offer the opt-in button once per run (no refetch flicker)
     if (el.dataset.run === currentRun && $("exportbtn")) return;
     el.dataset.run = currentRun;
-    el.innerHTML = `<div class="stage"><h3>6. Layered export (optional, paid)</h3><div class="body">
-      <div class="note">Splits the generated image into per-element layers (transparent PNG + white-background JPG preview each, zipped). gpt-image-2 has no native layer output, so every layer is one extra paid image.</div>
-      <button id="exportbtn" type="button" disabled>Export layers (checking the cost...)</button>
+    el.innerHTML = `<div class="stage"><h3>6. 分层导出（可选，收费）</h3><div class="body">
+      <div class="note">把画面拆成逐元素图层（每层一张透明 PNG + 一张白底 JPG 预览，打包成 zip）。gpt-image-2 没有原生图层输出，所以每一层都是一次额外的付费生成。</div>
+      <button id="exportbtn" type="button" disabled>导出图层（正在核算费用...）</button>
       <div id="exportNote" class="note"></div></div></div>`;
     // the run this fetch belongs to: the continuation must never stamp another run's button
     const runAtFetch = currentRun;
@@ -337,13 +358,13 @@ async function renderExport(v) {
     if (runAtFetch !== currentRun || !$("exportbtn")) return; // switched runs mid-fetch: stale result, drop it
     if (!r.ok) {
       // never latch a transient failure: the button becomes a FREE retry-the-check click
-      $("exportbtn").textContent = "Export layers (cost check failed; click to retry the check, free)";
+      $("exportbtn").textContent = "导出图层（费用核算失败；点击免费重试核算）";
       $("exportbtn").disabled = false;
       $("exportbtn").onclick = () => { el.dataset.run = ""; el.innerHTML = ""; poll(); };
-      $("exportNote").textContent = j.error || "plan unavailable";
+      $("exportNote").textContent = j.error || "方案不可用";
       return;
     }
-    $("exportbtn").textContent = `Export layers (paid, ~$${j.cost_usd.toFixed(2)} for ${j.calls} images)`;
+    $("exportbtn").textContent = `导出图层（收费，${j.calls} 张图约 $${j.cost_usd.toFixed(2)}）`;
     $("exportbtn").disabled = false;
     $("exportbtn").onclick = doExport;
     return;
@@ -351,12 +372,12 @@ async function renderExport(v) {
   const c = ex.content;
   el.dataset.run = currentRun;
   const rows = (c.layers || []).map(l =>
-    `<div>${l.status === "ok" ? "✔" : "✖"} <b>${esc(l.id)}</b>${l.status === "ok" ? "" : `: NULL, ${esc(l.note)} (raw image kept in the zip for manual salvage)`}</div>`).join("");
+    `<div>${l.status === "ok" ? "✔" : "✖"} <b>${esc(l.id)}</b>${l.status === "ok" ? "" : `：无法抠图，${esc(l.note)}（原始图已留在 zip 里可手工处理）`}</div>`).join("");
   let head = "";
-  if (c.state === "exporting" && c.stale) head = `<div class="note">Export interrupted (${esc(c.error || "the worker died before finishing")}). Retrying is safe: nothing is running.</div><button id="exportretry" type="button">Retry export (paid, ${esc(c.cost_stated || "")})</button>`;
-  else if (c.state === "exporting") head = `<span class="pending">exporting (paid, ${esc(c.cost_stated || "")}; ${c.calls || "?"} images)...</span>`;
-  if (c.state === "failed") head = `<div class="note">Export FAILED: ${esc(c.error || "see export_error.txt")}</div><button id="exportretry" type="button">Retry export (paid, ${esc(c.cost_stated || "")})</button>`;
-  const zip = c.zip_ready ? `<div><a href="/run/${currentRun}/layers.zip" download>Download layers.zip</a></div>` : "";
+  if (c.state === "exporting" && c.stale) head = `<div class="note">导出中断（${esc(c.error || "任务进程未完成即退出")}）。可以放心重试：当前没有任务在跑。</div><button id="exportretry" type="button">重试导出（收费，${esc(c.cost_stated || "")}）</button>`;
+  else if (c.state === "exporting") head = `<span class="pending">导出中（收费 ${esc(c.cost_stated || "")}，共 ${c.calls || "?"} 张图）...</span>`;
+  if (c.state === "failed") head = `<div class="note">导出失败：${esc(c.error || "详见 export_error.txt")}</div><button id="exportretry" type="button">重试导出（收费，${esc(c.cost_stated || "")}）</button>`;
+  const zip = c.zip_ready ? `<div><a href="/run/${currentRun}/layers.zip" download>下载 layers.zip</a></div>` : "";
   el.innerHTML = `<div class="stage"><h3>6. Layered export</h3><div class="body">${head}${rows}${zip}<div id="exportNote" class="note"></div></div></div>`;
   const retry = $("exportretry");
   if (retry) retry.onclick = doExport;
@@ -369,7 +390,7 @@ async function doExport() {
   catch (err) { r = { ok: false }; j = { error: String(err) }; }
   if (!r.ok) {
     const note = $("exportNote");
-    if (note) note.textContent = j.error || "export refused";
+    if (note) note.textContent = j.error || "导出被拒绝";
     if (btn) btn.disabled = false;
     return;
   }
@@ -377,18 +398,18 @@ async function doExport() {
   poller = setInterval(poll, 1000); poll();
 }
 function showGate() {
-  $("gate").innerHTML = `<div class="stage"><h3>5. Your taste call (two actions)</h3><div class="body">
-    <button id="approve" style="background:#2a6">Approve (good, stop)</button>
-    <label>Nudge: a binding note that re-derives a new plan; you confirm its ~$0.08 spend at its own gate</label>
-    <textarea id="note" rows="2" placeholder="e.g. make the money bag bigger and bolder"></textarea>
-    <button id="nudge">Nudge and re-derive (free preview)</button>
+  $("gate").innerHTML = `<div class="stage"><h3>5. 你的判断（二选一）</h3><div class="body">
+    <button id="approve" style="background:#2a6">满意（就用这张）</button>
+    <label>调整：写一条必须遵守的修改意见，系统免费重新推导；新方案在它自己的确认页上收费（约 $0.08）</label>
+    <textarea id="note" rows="2" placeholder="例如：钱袋子画大一点、更醒目"></textarea>
+    <button id="nudge">按意见重新推导（免费预览）</button>
     <div id="gateNote" class="note"></div></div></div>`;
   $("approve").onclick = () => {
-    $("gate").innerHTML = `<div class="stage"><div class="body">Approved. Sign <b>${currentRun}</b> is the deliverable. Prior attempts stay available above to compare.</div></div>`;
+    $("gate").innerHTML = `<div class="stage"><div class="body">已定稿。<b>${currentRun}</b> 就是交付稿；之前的尝试仍保留在上方可对比。</div></div>`;
   };
   $("nudge").onclick = () => {
     const note = $("note").value.trim();
-    if (!note) { $("gateNote").textContent = "Type a binding note to nudge, or approve."; return; }
+    if (!note) { $("gateNote").textContent = "请先写下修改意见，或直接点满意。"; return; }
     startRun(note);
   };
 }

@@ -126,7 +126,7 @@ unchanged submit values; the served playbook.
       derives via the wall row's precedence (the spec's mixed edge case). Commit:
       `feat(017): Chinese usage vocabulary + size normalization (T007)`.
 
-- [ ] T008 [US3] Chinese chrome: `frontend/index.html` + `frontend/onboard.html` labels,
+- [x] T008 [US3] Chinese chrome: `frontend/index.html` + `frontend/onboard.html` labels,
       help, buttons, stage titles, and JS status strings -> simplified Chinese; ids/names/
       select VALUES unchanged; the `ZH` display dict renders the gate panel's closed server
       vocabulary (assumption dimensions, REGISTER_LANE_OPTIONS labels, render/dial names)

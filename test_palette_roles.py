@@ -102,7 +102,7 @@ def check6_gate_role_sync():
     pm = re.search(r"role \[([^\]]+)\]", intake)
     cli_roles = {s.strip() for s in pm.group(1).split("/")} if pm else set()
     sync = html_roles == expected and cli_roles == expected
-    instr = "exactly one primary" in html
+    instr = "只指定一个 primary" in html  # 017: the rule is stated in Chinese
     no_emdash = "—" not in html
     return sync and instr and no_emdash, \
         f"html_roles={sorted(html_roles)}; cli_roles={sorted(cli_roles)}; one_primary_instr={instr}; no_emdash={no_emdash}"
