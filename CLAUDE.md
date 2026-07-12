@@ -144,19 +144,32 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `017-deployment-readiness` - SPEC'D 2026-07-12 (plan/tasks next). The
-answer-independent deployment slice (hosting provisioning stays blocked on
-docs/DEPLOYMENT_QUESTIONS.md): portable answer-key logo paths (repo-relative against a
-configurable brands base; the /mnt/c LOGO_PATH fallback dies, missing logo = named refusal),
-pinned requirements.txt + deploy/ (bootstrap, systemd unit, Caddyfile, out-of-band secrets
-handoff README), bind/port from env (defaults byte-identical), upload size cap, worker
-wall-clock timeout (frees the single-flight lock), GET /runs + URL-hash resume + recent-runs
-picker (a refresh reopens the run), Chinese input robustness (ADDITIVE Chinese USAGE_RULES
-keyword rows per the 011/014 pattern, English derivations pinned byte-identical; format_size
-fullwidth/厘米 normalization), Chinese UI chrome (frontend-only; select values + server strings
-unchanged; gate vocabulary via a display dict), and the Chinese playbook served at /playbook.
-4 user stories, 13 FRs; SC-007 is one human flow gate through the Chinese UI.
-Spec: `specs/017-deployment-readiness/`.
+**Active feature:** `017-deployment-readiness` - BUILT (US1-US4) + structurally green
+(test_deploy_readiness 10/10; the FULL 30-suite sweep green with the pinned form-greps
+updated to the CHINESE values, dated in place, never weakened). The answer-independent
+deployment slice (hosting provisioning stays blocked on docs/DEPLOYMENT_QUESTIONS.md):
+portable brand-asset paths via `harness/asset_paths.py` (absolute-and-exists >
+XCELA_BRANDS_DIR-relative > repo-relative > named refusal; the /mnt/c LOGO_PATH fallback is
+GONE; the three committed keys rewritten brands-relative; resolution lazy wrt logo_treatment;
+export enumeration soft-nulls via try_resolve; validate_key resolves the same order);
+requirements.txt (verbatim 64-dep freeze, Python 3.11 + libgl1 header) + deploy/ (bootstrap
+with named out-of-band checks incl. per-key logo resolution, systemd unit LANG=C.UTF-8
+TimeoutStopSec=30, Caddyfile TLS+auth placeholders, handoff README); server env knobs
+(XCELA_BIND/PORT via pure _bind_config, MAX_UPLOAD_MB=32 as ONE do_POST 413 preamble that
+never drains the body, WORKER_TIMEOUT_S=1800 killing wedged workers, freeing the single-flight
+lock, and composing with the 016 dead-pid retry); GET /runs (run_view.list_runs, newest-first
+by the id's PARSED timestamp) + URL-hash resume (setCurrentRun is the one assignment home) +
+the recent-runs picker; Chinese input (keywords INSIDE the existing USAGE_RULES tuple literals
+so 014 identity-suppression inherits: 朋友圈/小红书/海报-class -> marketing, 手举牌-class ->
+event, never bare 活动; format_size fullwidth/厘米 normalization, identity on ASCII); Chinese
+UI chrome (value= attributes preserve every canonical submit value; the ZH dict renders the
+gate vocabulary with English fallback, lane-option drift-guarded); the Chinese playbook at
+/playbook (real server strings quoted in the message table; feedback placeholder pending
+Richard). SC-001 PROVEN live: a fresh /tmp clone bootstrapped, booted on env config, served
+/brands /runs /playbook, and its export --plan-only resolved the rewritten relative CJXQ key
+against XCELA_BRANDS_DIR from a foreign repo root. PENDING: T012, the ONE human flow gate
+(SC-007: one end-to-end run through the Chinese UI, ~$0.08; ideally China-side once
+provisioned). Spec/plan/tasks: `specs/017-deployment-readiness/`.
 
 Prior feature `016-layered-export` - BUILT (US1-US3) + structurally green
 (test_export_layers 10/10; the FULL 30-suite prior sweep passes, test_confirm_gate's pinned

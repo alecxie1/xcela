@@ -171,7 +171,7 @@ unchanged submit values; the served playbook.
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T011 Fresh-clone proof + full sweep + docs currency: run quickstart §2 (scratch clone,
+- [x] T011 Fresh-clone proof + full sweep + docs currency: run quickstart §2 (scratch clone,
       `deploy/bootstrap.sh`, server boot with `XCELA_BRANDS_DIR` pointing at the real
       brands dir, `/brands` + `/runs` + `/playbook` respond); run the FULL suite sweep in
       the main repo (green; only the explicitly updated Chinese pins changed); update

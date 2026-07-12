@@ -1,7 +1,57 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-07-08._
+_Single source of truth for "what is this whole thing." Updated 2026-07-12._
 
-> **▶ BUILD STATUS 2026-07-10 (latest): feature 016 (layered export) is COMPLETE: built, structurally green, eye-gate T009 PASSED (attempt 2).**
+> **▶ BUILD STATUS 2026-07-12 (latest): feature 017 (deployment readiness + Chinese-ready UI) is BUILT + structurally green; its human flow gate T012 is PENDING.**
+> The answer-independent deployment slice: everything a fresh Linux VM and a Chinese-speaking
+> testing team need that does NOT wait on Richard's answers (docs/DEPLOYMENT_QUESTIONS.md still
+> governs provisioning: provider/domain/auth/feedback-channel). PORTABLE ASSETS: the new
+> harness/asset_paths.py resolver (absolute-and-exists > XCELA_BRANDS_DIR-relative >
+> repo-relative > SystemExit naming every tried path); the /mnt/c LOGO_PATH fallback is DELETED
+> (a missing logo now refuses loudly, never silently substitutes); the three committed answer
+> keys rewritten brands-relative (proven resolving to the same files); resolution is lazy wrt
+> logo_treatment=omit; export enumeration soft-nulls via try_resolve; persist.place_logo writes
+> brands-relative so future keys are born portable; validate_key resolves the same order.
+> ENVIRONMENT: requirements.txt (verbatim 64-dep freeze; Python 3.11; libgl1 note) + deploy/
+> (bootstrap.sh with NAMED out-of-band checks incl. a per-key logo resolution report;
+> xcela.service LANG=C.UTF-8 TimeoutStopSec=30; Caddyfile TLS + basic_auth placeholders;
+> README with the exact secrets/brands handoff, never committed). GUARDS: XCELA_BIND/PORT (pure
+> _bind_config, defaults byte-identical), ONE do_POST 413 preamble (XCELA_MAX_UPLOAD_MB=32,
+> body never drained, Connection: close, proven against a real ephemeral server instance),
+> XCELA_WORKER_TIMEOUT_S=1800 (a wedged worker is killed, the error admits paid calls may have
+> completed, the single-flight lock FREES, and a killed export lands in the 016 dead-pid
+> retryable state by construction). REMOTE RESUME: run_view.list_runs (newest-first by the run
+> id's PARSED timestamp, never the dir name: lexicographic sorted run_aia above run_CJXQ, caught
+> red by the suite) + GET /runs + the recent-runs picker + URL-hash resume (setCurrentRun is the
+> ONE currentRun assignment home; a refresh or dropped cross-border connection reopens the run).
+> CHINESE INPUT: keywords INSIDE the existing USAGE_RULES tuple LITERALS (the 014
+> MARKETING_USAGE_KEYWORDS identity suppression inherits; 朋友圈/小红书/海报-class -> marketing,
+> 手举牌/活动现场-class -> event with row precedence, 上墙-class wall, 公告-class formal;
+> deliberately never bare 活动); format_size normalizes fullwidth digits/×/厘米/公分/毫米/英寸
+> (identity on ASCII, the 3:2 anchor pinned). CHINESE CHROME (frontend-only): every label/
+> button/stage/status string simplified Chinese; value-less selects gained value= attributes so
+> every canonical submit value is UNCHANGED (form-grep proven); the ZH dict renders the gate's
+> closed vocabulary with an honest English fallback (lane options drift-guarded); server strings
+> stay English by design, bridged by the playbook's message table. PLAYBOOK: /playbook serves
+> frontend/playbook.html (single source; docs/PLAYBOOK.md points at it): the draft charter, the
+> costed journey ($0.08 confirm, ~$0.5 export), field guidance, single-flight etiquette quoting
+> the real 409, a common-messages table quoting REAL server strings, FAQ, and the
+> feedback-channel placeholder. Tests: test_deploy_readiness 10/10 (resolver order by value,
+> wiring incl. scene_author's 3 sites + no-fallback grep, deploy artifact pins, run listing
+> incl. the cross-brand order trap, resume wiring incl. the one-assignment-home count, Chinese
+> lanes + suppression + byte-identity vs the imported 011 literal + fullwidth==ASCII sizes,
+> chrome + option-value preservation + ZH drift guard, playbook content by value, guards against
+> a REAL server instance); the FULL 30-suite sweep green (four suites' form-grep pins updated to
+> the CHINESE values, dated in place: confirm_gate, lossless_brief, product_refs,
+> palette_roles). SC-001 PROVEN live: a fresh /tmp clone bootstrapped from deploy/, booted on
+> env config, served /brands + /runs + /playbook, and its own export --plan-only resolved the
+> rewritten relative CJXQ key via XCELA_BRANDS_DIR from a foreign repo root (5 elements).
+> PENDING: **T012, the ONE human flow gate (SC-007)**: one end-to-end run through the CHINESE UI
+> (Chinese brief incl. a 朋友圈-class usage + a fullwidth size, gate, confirm ~$0.08, judge,
+> optional export, then a deliberate refresh resuming from the URL/picker); ideally driven by a
+> China-side tester over the deployed URL once provisioning happens. Operator note: RESTART
+> frontend/server.py. Spec: `specs/017-deployment-readiness/`.
+
+> **▶ BUILD STATUS 2026-07-10: feature 016 (layered export) is COMPLETE: built, structurally green, eye-gate T009 PASSED (attempt 2).**
 > Richard's ask delivered: the run view's stage 6 exports the approved design as PER-ELEMENT LAYERS in
 > layers.zip. The load-bearing fact: gpt-image-2 CANNOT emit layered or transparent output (flat
 > PNG/JPEG/WebP only; gpt-image-1.5's transparency was removed), so layers are BUILT, not requested:

@@ -400,6 +400,9 @@ class Handler(BaseHTTPRequestHandler):
         # or lock (an unbounded Content-Length was read straight into RAM).
         clen = int(self.headers.get("Content-Length") or 0)
         if clen > MAX_UPLOAD_BYTES:
+            # answer EARLY and close: the body is deliberately never read (the whole point
+            # is not to swallow it), so this connection cannot carry another request
+            self.close_connection = True
             return self._send(413, {"error": f"upload too large: {clen // (1024*1024)}MB "
                                              f"exceeds the {MAX_UPLOAD_BYTES // (1024*1024)}MB cap"})
         # --- Feature 006: onboarding wizard routes ---

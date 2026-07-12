@@ -387,16 +387,34 @@ def check9_guards():
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         port = srv.server_address[1]
         before = set(p.name for p in server.OUTPUT.glob("run_*")) if server.OUTPUT.is_dir() else set()
-        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
-        conn.request("POST", "/run", body=b"x" * (2 * 1024 * 1024),
-                     headers={"Content-Type": "multipart/form-data; boundary=x"})
-        resp = conn.getresponse()
-        payload = json.loads(resp.read())
-        conn.close()
+        # raw socket on purpose: the server answers 413 EARLY without draining the body,
+        # so the client's body send may hit EPIPE; that is the designed behavior, and the
+        # response must still be readable
+        import socket
+        sk = socket.create_connection(("127.0.0.1", port), timeout=10)
+        sk.sendall((f"POST /run HTTP/1.1\r\nHost: t\r\n"
+                    f"Content-Type: multipart/form-data; boundary=x\r\n"
+                    f"Content-Length: {2 * 1024 * 1024}\r\n\r\n").encode())
+        try:
+            sk.sendall(b"x" * (256 * 1024))
+        except (BrokenPipeError, ConnectionResetError):
+            pass   # the early 413 already ended the exchange
+        data = b""
+        try:
+            sk.settimeout(5)
+            while len(data) < 4096:
+                chunk = sk.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+        except (TimeoutError, OSError):
+            pass
+        sk.close()
         srv.shutdown()
         after = set(p.name for p in server.OUTPUT.glob("run_*")) if server.OUTPUT.is_dir() else set()
-        b = (resp.status == 413 and "exceeds the 1MB cap" in payload["error"]
-             and not server._inflight.locked() and before == after)
+        b = (data.startswith(b"HTTP/1.0 413") or data.startswith(b"HTTP/1.1 413")) \
+            and "exceeds the 1MB cap".encode() in data \
+            and not server._inflight.locked() and before == after
 
         # wedged worker: killed at the 1s wall clock, named error, lock freed
         d = _tmp("timeout")
