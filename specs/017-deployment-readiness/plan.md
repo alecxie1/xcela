@@ -62,18 +62,20 @@ rewrite + deploy artifacts.
   export_layers, brand_intake/persist):
   - `REPO_ROOT = Path(__file__).resolve().parent.parent`
   - `brands_dir() -> Path`: env `XCELA_BRANDS_DIR` else `REPO_ROOT / "brands"`.
-  - `resolve_brand_asset(p: str) -> str`: absolute and exists -> as-is; else try
-    `brands_dir()/p`; else try `REPO_ROOT/p`; else `SystemExit` naming every tried path
-    (FR-002; never a substitute). Pure given the filesystem; no side effects.
+  - `try_resolve_brand_asset(p: str) -> str | None`: absolute and exists -> as-is; else
+    `brands_dir()/p`; else `REPO_ROOT/p`; else None. Pure given the filesystem.
+  - `resolve_brand_asset(p: str) -> str`: the raising form over try_resolve: `SystemExit`
+    naming every tried path (FR-002; never a substitute).
 - `harness/scene_author.py`: DELETE `LOGO_PATH` (:125). At the three consumer sites
   (:1125 thin, :1388, :1627 legacy/kit), replace `brand_key.get("logo_path", LOGO_PATH)`
   with resolution that is LAZY with respect to use: when `logo_treatment=omit` skips feeding
   the logo, no resolution happens (a logo-less brand can still run with omit); when the logo
   IS fed, `resolve_brand_asset(brand_key["logo_path"])`, and a missing/dangling key refuses
   named.
-- `harness/export_layers.py enumerate_elements` (:88): resolve the key's logo through the
-  SAME resolver before the fed-refs membership compare (manifests record resolved absolute
-  paths); an unresolvable logo means no logo element (the run demonstrably did not feed it).
+- `harness/export_layers.py enumerate_elements` (:88): resolve the key's logo through
+  `asset_paths.try_resolve_brand_asset` (the non-raising form: same order, returns None
+  instead of SystemExit) before the fed-refs membership compare; an unresolvable logo means
+  no logo element (the run demonstrably did not feed it), asserted by value in check2.
 - `brand_intake/persist.py place_logo`: return/store the BRANDS-RELATIVE path
   (`<brand>/<basename>`) so newly onboarded keys are portable; `assemble_key`/`validate_key`
   tolerate both forms (absolute legacy keys keep working per FR-001).
@@ -92,7 +94,7 @@ rewrite + deploy artifacts.
   Never touches secrets.
 - `deploy/xcela.service`: systemd template (WorkingDirectory=repo, `LANG=C.UTF-8`,
   `Environment=XCELA_BIND=127.0.0.1 XCELA_PORT=8765`, ExecStart=.venv/bin/python
-  frontend/server.py, Restart=on-failure). Keys keep loading from `~/.hermes/.env` via the
+  frontend/server.py, Restart=on-failure, TimeoutStopSec=30 for a bounded stop). Keys keep loading from `~/.hermes/.env` via the
   app's existing dotenv (HOME set by the unit's User).
 - `deploy/Caddyfile`: reverse_proxy 127.0.0.1:8765 + `basic_auth` placeholder + auto-TLS
   domain placeholder.
@@ -105,8 +107,9 @@ rewrite + deploy artifacts.
 - `frontend/server.py main()`: bind from `XCELA_BIND` (default "127.0.0.1"), port from argv
   (existing contract, wins) else `XCELA_PORT` else 8765. Defaults byte-identical.
 - Upload cap: `MAX_UPLOAD_BYTES` (env `XCELA_MAX_UPLOAD_MB`, default 32MB). ONE check at the
-  top of `do_POST` against Content-Length -> 413 `{"error": "upload too large: ...MB > cap
-  ...MB"}` before any handler, run dir, or lock.
+  top of `do_POST` against Content-Length -> 413 `{"error": "upload too large: <n>MB
+  exceeds the <cap>MB cap"}` (the contract wording, pinned in check9) before any handler,
+  run dir, or lock.
 - Worker timeout: `_spawn_worker` gains `subprocess.run(..., timeout=WORKER_TIMEOUT_S)` (env
   `XCELA_WORKER_TIMEOUT_S`, default 1800); on `TimeoutExpired`, write the error file ("worker
   timed out after Ns; paid calls may already have completed, inspect the run dir") and fall
@@ -131,11 +134,13 @@ rewrite + deploy artifacts.
   rows), so precedence and the 014 suppression (which compares row identity to
   `MARKETING_USAGE_KEYWORDS`) hold with zero new logic. The spec's "additive rows" language
   is satisfied as additive RULE VOCABULARY; the falsifiable surface is FR-009's behavior.
-  - `MARKETING_USAGE_KEYWORDS += ("朋友圈", "小红书", "社交媒体", "公众号", "微博",
-    "营销", "宣传", "推广", "海报")` (suppression + REGISTER_LANE round-trip inherit).
-  - event row `+= ("手举牌", "举牌", "应援", "打卡", "活动现场")` (keeps first-row
+  - Extend the `MARKETING_USAGE_KEYWORDS` tuple LITERAL at its definition with ("朋友圈",
+    "小红书", "社交媒体", "公众号", "微博", "营销", "宣传", "推广", "海报") (NEVER a
+    later `+=`, which would rebind the name and break the 014 row-identity suppression);
+    suppression + REGISTER_LANE round-trip inherit.
+  - event row tuple extended in place with `("手举牌", "举牌", "应援", "打卡", "活动现场")` (keeps first-row
     precedence; deliberately NOT bare 活动, which appears inside 促销活动).
-  - wall row `+= ("上墙", "墙贴", "张贴")`; formal row `+= ("正式文件", "公告", "通知")`.
+  - wall row extended with `("上墙", "墙贴", "张贴")`; formal row with `("正式文件", "公告", "通知")`.
   - Multi-character keywords only (the spec's over-match edge case).
 - `harness/format_size.py resolve_size`: a normalization pre-pass on the raw string:
   fullwidth digits -> ASCII, `×`/`Ｘ`/`ｘ`/`＊` -> "x", fullwidth spaces stripped,

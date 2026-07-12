@@ -50,8 +50,8 @@ missing logo refuses named; existing suites green.
       sites (:1125 thin, :1388, :1627) to `resolve_brand_asset`, LAZY wrt use
       (logo_treatment=omit never resolves; a fed logo with a missing/dangling key refuses
       named); `harness/export_layers.py enumerate_elements` (:88) resolves the key's logo
-      through the SAME resolver before the fed-refs compare (unresolvable = no logo
-      element, honest); `brand_intake/persist.py place_logo` returns/stores the
+      through `try_resolve_brand_asset` (non-raising) before the fed-refs compare
+      (unresolvable = no logo element, soft honest-null asserted by value); `brand_intake/persist.py place_logo` returns/stores the
       brands-relative `<brand>/<basename>` (validate/assemble tolerate both forms); REWRITE
       `answer_keys/CJXQ.json`, `answer_keys/chajiuxingqiu.json`, `answer_keys/aia.json`
       logo_path to brands-relative, all other bytes unchanged. Tests check2: the rewritten
@@ -66,11 +66,11 @@ missing logo refuses named; existing suites green.
       `deploy/bootstrap.sh` (python3.11 check, venv, pip install -r, mkdir output, NAMED
       presence checks for `~/.hermes/.env` and the brands dir covering every committed
       key's logo, next-steps print; never touches secrets) + `deploy/xcela.service`
-      (LANG=C.UTF-8, XCELA_* env, Restart=on-failure) + `deploy/Caddyfile` (reverse_proxy
+      (LANG=C.UTF-8, XCELA_* env, Restart=on-failure, TimeoutStopSec=30) + `deploy/Caddyfile` (reverse_proxy
       127.0.0.1:8765, basic_auth + domain placeholders) + `deploy/README.md` (the exact
       out-of-band handoff per plan §2, incl. the restart-after-update note and output/
       retention). Tests check3: requirements parses and pins the core deps (openai,
-      anthropic, pillow, numpy, scipy, pymupdf, python-dotenv); `bash -n deploy/bootstrap.sh`
+      anthropic, pillow, numpy, scipy, pymupdf, python-dotenv, opencv-python); `bash -n deploy/bootstrap.sh`
       clean; unit/Caddyfile carry the placeholders; README names both out-of-band items;
       NO secret-shaped strings anywhere in deploy/ (grep). Commit:
       `feat(017): requirements + deploy artifacts (T004)`.
@@ -122,7 +122,8 @@ unchanged submit values; the served playbook.
       precedence); the wall-posted baseline profile stays byte-identical to the imported
       011 literal; ６０×４０厘米 resolves byte-identically to 60x40cm; a set of current
       ASCII size strings parse byte-identically (pinned); post-normalization garbage still
-      takes the honest default + note. Commit:
+      takes the honest default + note; one MIXED-language context (上墙 + "marketing")
+      derives via the wall row's precedence (the spec's mixed edge case). Commit:
       `feat(017): Chinese usage vocabulary + size normalization (T007)`.
 
 - [ ] T008 [US3] Chinese chrome: `frontend/index.html` + `frontend/onboard.html` labels,
@@ -139,7 +140,7 @@ unchanged submit values; the served playbook.
       `feat(017): Chinese UI chrome + gate display dict (T008)`.
 
 - [ ] T009 [US3] `frontend/playbook.html` (Chinese, app-styled, single source) + `GET
-      /playbook` in `frontend/server.py` + the nav link in the shared header of both pages.
+      /playbook` in `frontend/server.py` + the nav link in the shared header of both pages + the one-line docs/ pointer (FR-012).
       Content per FR-012: the draft charter, the journey with costs (~$0.08 confirm is the
       only spend; nudges re-derive free; layered export ~$0.5 opt-in), field guidance incl.
       which fields accept free Chinese, single-flight etiquette (busy 409 = wait), the
@@ -160,7 +161,7 @@ unchanged submit values; the served playbook.
       `_spawn_worker` subprocess timeout from `XCELA_WORKER_TIMEOUT_S` (default 1800) ->
       on TimeoutExpired the error file carries the named message ("paid calls may already
       have completed") and the finally frees the lock. Tests check9: empty env computes
-      ("127.0.0.1", 8765); an oversize Content-Length returns 413 with the named error and
+      ("127.0.0.1", 8765); an oversize Content-Length returns 413 with the pinned wording ("exceeds the ...MB cap") and
       creates no run dir and leaves the lock free; a stubbed sleeping worker with a tiny
       timeout writes the named error file and frees the lock; a timed-out EXPORT lands in
       the 016 dead-pid stuck state and decide_export accepts the retry (composition proof).

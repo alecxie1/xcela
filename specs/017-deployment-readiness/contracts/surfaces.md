@@ -31,9 +31,9 @@ Every existing route keeps its exact contract; run_view's per-run payload is unc
 
 ```python
 # harness/asset_paths.py (stdlib-only)
-brands_dir() -> Path            # env XCELA_BRANDS_DIR else <repo>/brands
-resolve_brand_asset(p) -> str   # absolute-and-exists > brands-relative > repo-relative
-                                # > SystemExit naming every tried path
+brands_dir() -> Path                 # env XCELA_BRANDS_DIR else <repo>/brands
+try_resolve_brand_asset(p) -> str|None  # absolute-and-exists > brands-relative > repo-relative > None
+resolve_brand_asset(p) -> str        # the raising form: SystemExit naming every tried path
 
 # frontend/run_view.py
 list_runs(output_dir, limit=50) -> list   # pure, tolerant, newest-first (see data-model)
@@ -42,8 +42,9 @@ list_runs(output_dir, limit=50) -> list   # pure, tolerant, newest-first (see da
 - `scene_author`: `LOGO_PATH` constant REMOVED. Logo resolution happens only when the logo is
   actually fed (logo_treatment=omit runs never resolve); missing/dangling logo_path = the
   resolver's named SystemExit.
-- `export_layers.enumerate_elements`: the key's logo resolves through the same resolver
-  before the fed-refs membership compare; unresolvable = no logo element.
+- `export_layers.enumerate_elements`: the key's logo resolves through
+  `try_resolve_brand_asset` (non-raising) before the fed-refs membership compare;
+  unresolvable = no logo element (soft honest-null, asserted by value).
 - `derive_register`: Chinese keywords INSIDE the existing tuples; row identities unchanged
   (MARKETING_USAGE_KEYWORDS remains THE marketing row object; 014 suppression inherits).
 - `format_size.resolve_size`: normalization pre-pass, identity on ASCII input.

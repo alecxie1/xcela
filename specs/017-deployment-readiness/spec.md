@@ -49,8 +49,8 @@ substituting anything.
 single generation (dangling absolute paths, no installable dependency list).
 
 **Independent Test**: free: bootstrap into a scratch directory (venv from the pinned
-requirements, dirs created), start the server, render existing run dirs, run the full self-test
-sweep; a fixture brand key with a repo-relative logo path resolves on a copied repo root; a key
+requirements, dirs created), start the server and probe its free routes (the full self-test sweep runs in the main
+repo); a fixture brand key with a repo-relative logo path resolves on a copied repo root; a key
 with a missing logo fails with the named error.
 
 **Acceptance Scenarios**:
@@ -196,8 +196,8 @@ from the environment with today's defaults byte-identical.
   runtime environment on a fresh Linux machine, with the Python version and any system-library
   prerequisites documented.
 - **FR-004**: A committed deploy directory MUST provide: a bootstrap script (environment +
-  directories), a service unit template (UTF-8 locale, key file from the environment, clean
-  termination), a reverse-proxy template (TLS + access control in front; the app itself stays
+  directories), a service unit template (UTF-8 locale, keys via the service user's environment file,
+  bounded-stop termination), a reverse-proxy template (TLS + access control in front; the app itself stays
   on localhost), and a README documenting the exact out-of-band handoff of secrets and brand
   assets. Nothing secret is committed.
 - **FR-005**: The server's bind address and port MUST come from the environment (or arguments)
@@ -210,8 +210,9 @@ from the environment with today's defaults byte-identical.
   time, gate state, and image/export presence; the UI MUST identify the current run in the URL
   and offer a recent-runs picker so a reload or reconnection reopens the run. With no run in
   the URL and no picker interaction, pre-017 behavior is byte-identical.
-- **FR-009**: The register engine's usage rules MUST gain ADDITIVE Chinese keyword rows
-  covering at least the marketing (朋友圈/小红书/海报/营销/宣传-class), event
+- **FR-009**: The register engine's usage rules MUST gain ADDITIVE Chinese keyword
+  VOCABULARY within the existing rules (inheriting each rule's precedence), covering at
+  least the marketing (朋友圈/小红书/海报/营销/宣传-class), event
   (手举牌/活动-class), wall-poster, and formal-document lanes; a Chinese match is an explicit
   human statement with the same standing as an English match (suppresses the vibe promotion per
   the 014 semantics). Every existing English derivation MUST stay byte-identical, pinned
@@ -223,7 +224,8 @@ from the environment with today's defaults byte-identical.
   stage titles in simplified Chinese; select controls MUST submit unchanged canonical values;
   the gate panel's closed server vocabulary MUST render in Chinese via a frontend display
   mapping. Server-side strings (errors, notes, traces) stay English in this feature.
-- **FR-012**: A Chinese-primary playbook MUST be served from the app and sourced in docs/,
+- **FR-012**: A Chinese-primary playbook MUST be served from the app as a single committed
+  source (with a pointer from docs/),
   covering: what the tool is (drafts a human finishes), the full journey with costs (the
   confirm click is the only spend, ~$0.08; nudges re-derive free; layered export ~$0.5,
   opt-in), field-by-field form guidance including which fields accept free Chinese,
@@ -239,11 +241,11 @@ from the environment with today's defaults byte-identical.
   asset paths resolve; provisioned out-of-band with the licensed/IP content.
 - **Run listing entry**: id, brand, created, gate state, image present, export state; derived
   purely from the run dir on disk.
-- **Chinese usage rows**: additive keyword-to-lane rows in the usage rules, same shape and
-  precedence semantics as the existing rows.
+- **Chinese usage vocabulary**: additive keywords within the existing usage rules,
+  inheriting each rule's precedence and explicit-statement semantics.
 - **Display mapping**: the frontend dictionary from the gate panel's closed English vocabulary
   to simplified Chinese display strings; server payloads unchanged.
-- **Playbook page**: the served Chinese guide plus its markdown source.
+- **Playbook page**: the served Chinese guide (single committed source; docs/ points to it).
 
 ## Success Criteria *(mandatory)*
 
@@ -253,7 +255,8 @@ from the environment with today's defaults byte-identical.
   and serves the app with zero code edits, given the two documented out-of-band items
   (provable free in a scratch dir/container).
 - **SC-002**: A brief typed entirely in Chinese (usage_context 朋友圈推广海报, size ６０×４０厘米)
-  derives the correct lane and size with ZERO gate assumption rows (provable free).
+  derives the correct lane and size with ZERO usage-context and size assumption rows
+  (provable free; rows this feature does not own, like magnitude, may still fire).
 - **SC-003**: Every existing English derivation, prompt, and parse is byte-identical; the full
   self-test sweep stays green with only explicitly additive pin changes (provable free).
 - **SC-004**: A browser refresh mid-run reopens the same run with its full state within one
