@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>使用手册 - Handyprint 设计工具</title>
+<style>
+  :root { --ink:#1a1a1a; --muted:#6b7280; --line:#e3e3e6; --nav:#23232a; --accent:#3b82f6; --paid:#c0392b; }
+  body { font: 14px/1.7 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: var(--ink); }
+  header.topnav { background: var(--nav); color: #fff; height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 22px; }
+  header.topnav .brandmark { font-weight: 700; letter-spacing: 0.3px; }
+  header.topnav nav { display: flex; gap: 4px; }
+  header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
+  header.topnav nav a:hover { background: #34343d; color: #fff; }
+  header.topnav nav a.active { background: var(--accent); color: #fff; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 20px 60px; }
+  section { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 16px; padding: 16px 22px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  h3 { font-size: 14px; margin: 16px 0 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #fafafa; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  .paid { color: var(--paid); font-weight: 700; }
+  .free { color: #2a6; font-weight: 700; }
+  .tip { color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="topnav">
+  <span class="brandmark">Handyprint</span>
+  <nav>
+    <a href="/">生成设计</a>
+    <a href="/onboard">录入品牌</a>
+    <a href="/playbook" class="active" aria-current="page">使用手册</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h2>这个工具是什么</h2>
+    <p>它把一份需求（文案、参考图、品牌）变成一份<b>可交付的设计草案</b>。注意：产出是
+    <b>给设计师收尾的草案，不是最终成品</b>。你的眼睛是唯一的质量标准：机器永远不替你判断"好不好看"。</p>
+  </section>
+
+  <section>
+    <h2>完整流程（费用都标在按钮上）</h2>
+    <ol>
+      <li><b>录入品牌</b>（每个品牌只做一次，<span class="free">免费</span>）：在"录入品牌"页上传
+        VI 手册 PDF + Logo 文件，确认颜色和名称。做完后品牌会出现在生成页的下拉框里。</li>
+      <li><b>填写需求表单</b>（<span class="free">免费</span>）：选品牌、写文案、上传风格参考图。
+        点"开始"后系统先<b>免费推导方案</b>，不生成图。</li>
+      <li><b>付费前确认（3b）</b>：系统列出它替你做的每一项假设，你可以修改（修改后<span class="free">免费</span>重新推导）。
+        点<span class="paid">"确认并生成"（约 $0.08）</span>才真正花钱出图。<b>不点确认就永远不收费。</b></li>
+      <li><b>用眼睛判断（5）</b>：满意就定稿；不满意就写一条修改意见，系统<span class="free">免费</span>重新推导，
+        新方案在它自己的确认页上再收费。</li>
+      <li><b>分层导出（6，可选）</b>：把定稿画面拆成逐元素图层（透明 PNG + 白底 JPG，打包 zip），
+        方便设计师在 PS 里继续加工。<span class="paid">按图层数收费，约 $0.5</span>，按钮上会先标明确切金额。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>表单字段说明（哪些可以直接写中文）</h2>
+    <table>
+      <tr><th>字段</th><th>怎么填</th></tr>
+      <tr><td>产出物类型</td><td>自由中文，如"朋友圈海报""门店手举牌"。会作为画面主题参考，不会被画成文字。</td></tr>
+      <tr><td>渲染风格</td><td>扁平插画（卡通/矢量感）或摄影质感（真实照片感），下拉选择。</td></tr>
+      <tr><td>尺寸</td><td>如 <code>60x40cm</code>；中文写法也行：<code>６０×４０厘米</code>。</td></tr>
+      <tr><td>风格参考图</td><td><b>必选</b>。整体感觉以这张图为准，选一张接近理想效果的。</td></tr>
+      <tr><td>产品实拍图</td><td>可选，最多 6 张。画面里会出现<b>真实的产品</b>（含印刷的标签、logo），不会瞎画。</td></tr>
+      <tr><td>用途</td><td>自由中文，如"朋友圈推广""活动现场手举牌"。系统据此判断做营销物料还是活动道具。</td></tr>
+      <tr><td>画面上的文字</td><td>每行一条，<b>逐字呈现</b>：画面上只会出现这些字，一个字都不会多。</td></tr>
+      <tr><td>设计要求</td><td>必须遵守的指令，如"产品要写实，背景卡通"。</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>排队规则（很重要）</h2>
+    <p>工具<b>一次只能跑一个生成任务</b>。如果点按钮时提示
+    <code>a run is already in flight</code>，说明有同事的任务正在跑：<b>等一两分钟再点</b>，
+    不要连点。右侧"最近的运行"列表能看到所有人的任务；刷新页面不会丢失任务，
+    网址会记住你正在看的那一个。</p>
+  </section>
+
+  <section>
+    <h2>常见英文提示对照表</h2>
+    <p class="tip">系统内部提示是英文的（工程约定）；对照如下：</p>
+    <table>
+      <tr><th>英文提示</th><th>意思</th></tr>
+      <tr><td><code>a run is already in flight (single-flight); wait</code></td><td>有任务正在跑，等它结束再操作。</td></tr>
+      <tr><td><code>already confirmed; no second spend</code></td><td>已经确认过了，不会重复收费（放心，连点不会多扣钱）。</td></tr>
+      <tr><td><code>already exporting/exported; no second spend</code></td><td>导出已在进行或已完成，不会重复收费。</td></tr>
+      <tr><td><code>export needs a generated, judged image</code></td><td>要先确认生成出图，才能导出图层。</td></tr>
+      <tr><td><code>upload too large: ... exceeds the ...MB cap</code></td><td>上传的文件太大，压缩后再试。</td></tr>
+      <tr><td><code>brand asset not found ...</code></td><td>品牌 Logo 文件缺失，联系管理员补齐素材。</td></tr>
+      <tr><td><code>Run failed / worker timed out ...</code></td><td>本次运行失败或超时；看"最近的运行"重开一次，反复失败就联系管理员。</td></tr>
+      <tr><td><code>could not parse a WxH size ...</code></td><td>尺寸没写明白；在确认页上直接选一个尺寸即可。</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>常见问题</h2>
+    <h3>画面上的字错了/多了怎么办？</h3>
+    <p>在第 5 步写修改意见（免费重新推导），例如"标题只保留'守住钱袋子'五个字"。文字类问题通常一次调整就能解决。</p>
+    <h3>Logo 画得不太对？</h3>
+    <p>这是已知的弱项：AI 重绘 logo 有概率出错。两个办法：写修改意见重试；或用"分层导出"拿到分层文件，
+    让设计师把真 logo 文件贴上去（几分钟的事）。</p>
+    <h3>刷新后页面空了？</h3>
+    <p>点右侧"最近的运行"里你的任务即可恢复；或直接用带 <code>#run_...</code> 的完整网址。</p>
+    <h3>页面一直转圈不动？</h3>
+    <p>生成一般 1-2 分钟。超过 5 分钟仍无变化，刷新页面重新打开该任务；如果显示失败，重开一次即可，
+    反复失败请联系管理员。</p>
+  </section>
+
+  <section>
+    <h2>反馈渠道</h2>
+    <p><b>[待定：反馈渠道确认后填写]</b>反馈时请附上：任务编号（如
+    <code>run_CJXQ_20260712_153000</code>，在"最近的运行"里能看到）、截图、以及一句话说明期望的效果。</p>
+  </section>
+</main>
+</body>
+</html>

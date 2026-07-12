@@ -345,6 +345,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/onboard":
             return self._send(200, (HERE / "onboard.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/playbook":  # 017 (US3): the Chinese usage guide, one click from the app
+            return self._send(200, (HERE / "playbook.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/brands":
             return self._send(200, {"brands": _brands(), "per_run_cost_usd": PER_RUN_COST_USD})
         if path == "/runs":  # 017 (US2): the recent-runs picker's free listing

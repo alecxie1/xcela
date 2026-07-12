@@ -139,7 +139,7 @@ unchanged submit values; the served playbook.
       options and grepping the dict). Commit:
       `feat(017): Chinese UI chrome + gate display dict (T008)`.
 
-- [ ] T009 [US3] `frontend/playbook.html` (Chinese, app-styled, single source) + `GET
+- [x] T009 [US3] `frontend/playbook.html` (Chinese, app-styled, single source) + `GET
       /playbook` in `frontend/server.py` + the nav link in the shared header of both pages + the one-line docs/ pointer (FR-012).
       Content per FR-012: the draft charter, the journey with costs (~$0.08 confirm is the
       only spend; nudges re-derive free; layered export ~$0.5 opt-in), field guidance incl.

@@ -332,6 +332,31 @@ def check7_chinese_chrome():
                 f"lane-dict-complete={e}; onboard-zh={f}; playbook-nav={g}")
 
 
+def check8_playbook():
+    """T009 / FR-012: the served playbook carries the VALUE-bearing content: both cost
+    figures, the single-flight etiquette naming the actual 409 string, at least three
+    common-message rows quoting the REAL server strings (a table of invented messages
+    fails), the draft charter, the feedback placeholder, and the docs/ pointer; the route
+    is wired in server.py."""
+    pb = (REPO / "frontend" / "playbook.html").read_text(encoding="utf-8")
+    a = "$0.08" in pb and "$0.5" in pb and "不点确认就永远不收费" in pb
+    b = "a run is already in flight" in pb and "一次只能跑一个" in pb
+    real_msgs = ["already confirmed; no second spend",
+                 "already exporting/exported; no second spend",
+                 "export needs a generated, judged image",
+                 "brand asset not found"]
+    c = sum(m in pb for m in real_msgs) >= 3
+    e = "给设计师收尾的草案" in pb and "[待定：反馈渠道确认后填写]" in pb
+
+    srv = (REPO / "frontend" / "server.py").read_text(encoding="utf-8")
+    f = 'path == "/playbook"' in srv and 'playbook.html' in srv
+    g = "frontend/playbook.html" in (REPO / "docs" / "PLAYBOOK.md").read_text(encoding="utf-8")
+
+    ok = a and b and c and e and f and g
+    return ok, (f"costs={a}; etiquette-409={b}; real-message-rows={c}; charter+placeholder={e}; "
+                f"route={f}; docs-pointer={g}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
@@ -341,6 +366,7 @@ CHECKS = [
     ("T006 resume wiring: hash guard, replaceState sync, /runs picker, default path", check5_resume_wiring),
     ("T007 Chinese input: lanes + suppression + byte-identity + fullwidth sizes", check6_chinese_input),
     ("T008 Chinese chrome: labels, unchanged submit values, ZH dict drift guard", check7_chinese_chrome),
+    ("T009 playbook: served route, costs, etiquette, message table, placeholder", check8_playbook),
 ]
 
 
