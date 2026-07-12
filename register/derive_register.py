@@ -22,12 +22,25 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 # Feature 014: the marketing-keywords row is NAMED so the vibe promotion below can recognize
 # by IDENTITY that the base came from an explicit human marketing statement (this exact tuple
 # object is the row in USAGE_RULES; identity comparison cannot drift from the matching logic).
-MARKETING_USAGE_KEYWORDS = ("marketing", "social", "instagram", "promotional")
+# Feature 017: Chinese vocabulary lives INSIDE this tuple LITERAL (never a later +=, which
+# would rebind the name and silently break the 014 identity suppression): a Chinese marketing
+# statement is the same explicit human signal as an English one. Multi-character keywords
+# only (single characters over-match inside unrelated words). English derivations are
+# byte-identical: these substrings never occur in English briefs (pinned by tests).
+MARKETING_USAGE_KEYWORDS = ("marketing", "social", "instagram", "promotional",
+                            "朋友圈", "小红书", "社交媒体", "公众号", "微博",
+                            "营销", "宣传", "推广", "海报")
 
 # usage_context keywords -> base register (first matching row wins; checked in order).
+# 017: each row's tuple carries its Chinese vocabulary IN PLACE, inheriting the row's
+# precedence (the event row stays first: 手举牌 beats 营销 in a mixed phrase exactly as
+# "photo" beats "marketing"). Deliberately NOT bare 活动 (it appears inside 促销活动, a
+# marketing phrase); 活动现场 is the event-scene form.
 USAGE_RULES = [
-    (("held for photos", "posed with", "photo", "worn / carried"), "event_prop"),
-    (("wall-posted", "read at distance", "outdoor display", "table-placed"), "marketing"),
+    (("held for photos", "posed with", "photo", "worn / carried",
+      "手举牌", "举牌", "应援", "打卡", "活动现场"), "event_prop"),
+    (("wall-posted", "read at distance", "outdoor display", "table-placed",
+      "上墙", "墙贴", "张贴"), "marketing"),
     (("handed out", "direct mail"), "formal_leaning"),  # resolved by vibe below
     (("scrolled on phone",), "marketing"),
     # Feature 011 (FR-006): common marketing words match EXPLICITLY instead of falling
@@ -39,7 +52,7 @@ USAGE_RULES = [
     # LAST: no existing keyword collides, every pinned baseline lacks these phrases (their
     # profiles stay byte-identical), and a hard formal base skips every vibe branch below
     # (they key on formal_leaning/event_prop/marketing), so the statement always wins.
-    (("formal document", "official notice"), "formal"),
+    (("formal document", "official notice", "正式文件", "公告", "通知"), "formal"),
 ]
 
 # Feature 015 (pre-spend gate): the register-lane assumption row's constrained picks. Each

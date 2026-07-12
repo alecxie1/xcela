@@ -38,9 +38,24 @@ def _default(note: str) -> dict:
             "pixels": w * h, "target_area": DEFAULT_TARGET_AREA, "note": note, "needs_review": False}
 
 
+# 017: Chinese IME typography -> the ASCII the parser already understands. IDENTITY on pure
+# ASCII input (every pre-017 parse is byte-identical, pinned); a string still unparseable
+# after normalization takes the existing honest default + note.
+_FULLWIDTH = str.maketrans("０１２３４５６７８９×Ｘｘ＊．", "0123456789xxx*.")
+
+
+def _normalize_size_text(s: str) -> str:
+    s = s.translate(_FULLWIDTH).replace("　", " ")   # ASCII input passes through UNCHANGED
+    for zh, unit in (("厘米", "cm"), ("公分", "cm"), ("毫米", "mm"), ("英寸", "in")):
+        s = s.replace(zh, unit)
+    return s
+
+
 def resolve_size(format_size, target_area: int = DEFAULT_TARGET_AREA) -> dict:
-    """Resolve a physical size string (e.g. '60x40cm') to a valid gpt-image-2 pixel size dict.
-    See module docstring for the contract. Unparseable -> default + note (honest null)."""
+    """Resolve a physical size string (e.g. '60x40cm', '６０×４０厘米') to a valid
+    gpt-image-2 pixel size dict. See module docstring for the contract.
+    Unparseable -> default + note (honest null)."""
+    format_size = _normalize_size_text(str(format_size or ""))
     nums = _NUM.findall(str(format_size or ""))
     if len(nums) < 2:
         return _default(f"could not parse a WxH size from {format_size!r}; defaulted to 1536x1024")

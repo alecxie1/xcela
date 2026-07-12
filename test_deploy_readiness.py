@@ -246,6 +246,53 @@ def check5_resume_wiring():
     return ok, f"hash-guard={a}; one-assignment-home={b}; picker={c}"
 
 
+def check6_chinese_input():
+    """T007 / FR-009, FR-010, SC-002, SC-003: 朋友圈推广海报 derives marketing AS the 014
+    explicit-statement (suppression trace, zero usage assumptions in the sink); 手举牌 beats
+    营销 in one phrase (event row precedence); the MIXED context 上墙+\"marketing\" derives
+    via the wall row; the wall-posted baseline is byte-identical to the imported 011 literal;
+    ６０×４０厘米 resolves byte-identically to 60x40cm; current ASCII parses are
+    byte-identical; post-normalization garbage still defaults with the honest note."""
+    import derive_register as dr
+    import format_size as fmtsize
+    from test_register_render_aware import EXPECTED_PREFEATURE_PROFILE, _subfields
+
+    sink = []
+    p = dr.derive_register(_subfields(usage="朋友圈推广海报"), {}, assumptions_sink=sink)
+    sup = [t for t in p["_derivation_trace"] if "SUPPRESSED" in t]
+    a = (p["inferred_register"] == "marketing" and len(sup) == 1
+         and not any(r.get("dimension") == "register" for r in sink))
+
+    p2 = dr.derive_register(_subfields(usage="活动现场手举牌，用于品牌营销"), {})
+    b = p2["inferred_register"] == "event_prop"   # event row precedence over 营销
+
+    # MIXED language: 上墙 (wall row, earlier) must be the matched keyword, not 海报 or
+    # "marketing" (both in the later marketing row); the final register may still promote
+    # on the playful vibe exactly like the pinned English wall-posted baseline
+    p3 = dr.derive_register(_subfields(usage="海报上墙 marketing"), {})
+    c = any("上墙" in t for t in p3["_derivation_trace"])
+
+    absent = json.dumps(dr.derive_register(_subfields(), {}), ensure_ascii=False,
+                        sort_keys=True)
+    e = absent == EXPECTED_PREFEATURE_PROFILE   # English baseline byte-identical
+
+    zh = fmtsize.resolve_size("６０×４０厘米")
+    en = fmtsize.resolve_size("60x40cm")
+    f = {k: v for k, v in zh.items() if k != "requested_size"} \
+        == {k: v for k, v in en.items() if k != "requested_size"} \
+        and zh["width"] == en["width"] and zh["pixels"] == en["pixels"]
+    r6040 = fmtsize.resolve_size("60x40cm")
+    g = ((r6040["width"], r6040["height"]) == (1536, 1024)   # the documented 3:2 anchor
+         and all(fmtsize.resolve_size(s)["note"] is None
+                 for s in ("60x40cm", "40x60cm", "8.5x11in")))
+    h = "could not parse" in (fmtsize.resolve_size("尺寸随意")["note"] or "")
+
+    ok = a and b and c and e and f and g and h
+    return ok, (f"marketing+suppress+no-row={a}; event-precedence={b}; mixed-wall={c}; "
+                f"english-baseline-identical={e}; fullwidth==ascii={f}; ascii-parses={g}; "
+                f"garbage-honest-default={h}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
@@ -253,6 +300,7 @@ CHECKS = [
     ("T004 requirements + deploy artifacts: pins, syntax, placeholders, no secrets", check3_deploy_artifacts),
     ("T005 run listing: newest-first flags, pre-015 nulls, corrupt tolerance, limit", check4_run_listing),
     ("T006 resume wiring: hash guard, replaceState sync, /runs picker, default path", check5_resume_wiring),
+    ("T007 Chinese input: lanes + suppression + byte-identity + fullwidth sizes", check6_chinese_input),
 ]
 
 

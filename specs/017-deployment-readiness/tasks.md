@@ -113,7 +113,7 @@ behavior byte-identical.
 **Independent Test**: lane/size checks with byte-identity pins; Chinese chrome greps with
 unchanged submit values; the served playbook.
 
-- [ ] T007 [US3] `register/derive_register.py`: add the Chinese keywords INSIDE the existing
+- [x] T007 [US3] `register/derive_register.py`: add the Chinese keywords INSIDE the existing
       tuples exactly per data-model (marketing set incl. 朋友圈/小红书/海报; event set incl.
       手举牌, NOT bare 活动; wall; formal) + `harness/format_size.py resolve_size`
       normalization pre-pass (fullwidth digits/×/spaces, 厘米/公分/毫米/英寸). Tests check6:
