@@ -17,7 +17,7 @@ anywhere in tests; the one paid step is the human flow gate (T012).
 
 ## Phase 1: Setup
 
-- [ ] T001 Create `test_deploy_readiness.py` scaffold: house check-list style; fixture
+- [x] T001 Create `test_deploy_readiness.py` scaffold: house check-list style; fixture
       builders `make_brands(tmp)` (a temp brands dir with `<brand>/<logo>.png` files + a
       lean key dict pointing at them, absolute AND brands-relative variants) and a runs-dir
       builder that REUSES `test_export_layers.make_run_dir` by import (the established
