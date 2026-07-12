@@ -95,7 +95,7 @@ behavior byte-identical.
       gate_state tolerated (null, not a crash); limit honored. Commit:
       `feat(017): run listing (T005)`.
 
-- [ ] T006 [US2] `frontend/index.html`: on load, `location.hash` `#run_<id>` opens that run
+- [x] T006 [US2] `frontend/index.html`: on load, `location.hash` `#run_<id>` opens that run
       via the viewAttempt path (unknown id = the honest empty run view + the picker);
       `history.replaceState` syncs the hash on every currentRun change; a recent-runs panel
       fetches `/runs` on load (+ a refresh control) and opens an entry on click. Tests

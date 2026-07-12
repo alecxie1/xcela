@@ -107,6 +107,7 @@
   </section>
 
   <section class="panel">
+    <div id="recentruns"></div>
     <div id="attempts"></div>
     <div class="stage"><h3><span class="dot wait" id="d_brief"></span>1. Brief (what the pipeline received)</h3><div class="body" id="brief"><span class="pending">waiting for a run...</span></div></div>
     <div class="stage"><h3><span class="dot wait" id="d_register"></span>2. Register / dial</h3><div class="body" id="register"><span class="pending">not yet</span></div></div>
@@ -274,7 +275,7 @@ async function startRun(style_notes) {
   const r = await fetch("/run", { method: "POST", body: fd });
   const j = await r.json();
   if (!r.ok) { $("formNote").textContent = j.error || "run failed"; $("run").disabled = false; return; }
-  currentRun = j.run_id;
+  setCurrentRun(j.run_id);
   if (!attempts.includes(j.run_id)) { attempts.push(j.run_id); renderAttempts(); }
   if (poller) clearInterval(poller);
   poller = setInterval(poll, 1000); poll();
@@ -285,8 +286,27 @@ function renderAttempts() {
     attempts.map((id, i) => `<button style="width:auto;margin:2px;background:${id === currentRun ? '#2a6' : '#777'}" onclick="viewAttempt('${id}')">${i + 1}${id === currentRun ? ' (current)' : ''}</button>`).join("") +
     `</div></div>`;
 }
+// --- 017 (US2): URL-hash resume + the recent-runs picker. The hash is the ONE piece of
+// state that survives a refresh or dropped connection; runs themselves live on disk. ---
+function setCurrentRun(id) {
+  currentRun = id;
+  history.replaceState(null, "", id ? "#" + id : location.pathname);
+}
+async function loadRuns() {
+  try {
+    const r = await fetch("/runs"); const j = await r.json();
+    const runs = (j.runs || []).slice(0, 12);
+    if (!runs.length) { $("recentruns").innerHTML = ""; return; }
+    $("recentruns").innerHTML = `<div class="stage"><h3>最近的运行</h3><div class="body">` +
+      runs.map(x => `<div><a href="#${x.id}" onclick="openRun('${x.id}');return false">${x.id}</a>` +
+        ` <span class="note">${esc(x.brand || "?")}${x.image ? " · 有图" : ""}${x.export_state === "done" ? " · 已导出分层" : ""}</span></div>`).join("") +
+      `<button type="button" id="runsrefresh" style="width:auto;margin-top:6px">刷新列表</button></div></div>`;
+    $("runsrefresh").onclick = loadRuns;
+  } catch (e) { /* the listing is best-effort; the form still works without it */ }
+}
+function openRun(id) { viewAttempt(id); }
 function viewAttempt(id) {
-  currentRun = id; renderAttempts();
+  setCurrentRun(id); renderAttempts();
   $("gate").innerHTML = ""; $("exportstage").innerHTML = "";  // re-render for the switched run
   // restart the INTERVAL, not a one-shot poll: a finished run stops itself on the first
   // tick, but a mid-export run needs live polling or its progress/gate freeze forever
@@ -373,6 +393,10 @@ function showGate() {
   };
 }
 loadBrands();
+loadRuns();
+// 017: a #run_... hash reopens that run after a refresh/reconnect; NO hash = the pre-017
+// startup path, byte-identical (an unknown id renders the honest empty stages + the picker)
+if (location.hash.startsWith("#run_")) openRun(location.hash.slice(1));
 </script>
 </body>
 </html>

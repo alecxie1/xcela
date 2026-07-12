@@ -231,12 +231,28 @@ def check4_run_listing():
     return ok, f"order={a}; gated-flags={b}; pre015-nulls={c}; corrupt-null={e}; empty+limit={f}"
 
 
+def check5_resume_wiring():
+    """T006 / FR-008 (form greps, value-bearing): the hash is read on load behind the
+    #run_ guard (absent hash = the untouched pre-017 startup); every currentRun assignment
+    goes through setCurrentRun (which replaceStates the hash: a stray raw assignment would
+    silently break resume); the picker fetches /runs and renders into its container."""
+    html = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    a = 'if (location.hash.startsWith("#run_")) openRun(location.hash.slice(1));' in html
+    b = ('history.replaceState' in html
+         and html.count("currentRun = ") <= 2   # only inside setCurrentRun + declaration
+         and html.count("setCurrentRun(") >= 3)  # def + startRun + viewAttempt
+    c = 'fetch("/runs")' in html and 'id="recentruns"' in html and "openRun(" in html
+    ok = a and b and c
+    return ok, f"hash-guard={a}; one-assignment-home={b}; picker={c}"
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
     ("T003 portable wiring: keys, scene sites, export soft-null, persist, validator", check2_portable_wiring),
     ("T004 requirements + deploy artifacts: pins, syntax, placeholders, no secrets", check3_deploy_artifacts),
     ("T005 run listing: newest-first flags, pre-015 nulls, corrupt tolerance, limit", check4_run_listing),
+    ("T006 resume wiring: hash guard, replaceState sync, /runs picker, default path", check5_resume_wiring),
 ]
 
 
