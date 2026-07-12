@@ -357,6 +357,75 @@ def check8_playbook():
                 f"route={f}; docs-pointer={g}")
 
 
+def check9_guards():
+    """T010 / FR-005, FR-006, FR-007, SC-005: defaults byte-identical (empty env + argv =
+    127.0.0.1:8765; env knobs + argv precedence honored); a real oversize POST answers 413
+    with the pinned wording BEFORE any lock or run dir (the lock stays free, output/ gains
+    nothing); a wedged worker is killed at the wall clock, writes the named timeout error,
+    and FREES the single-flight lock; a killed worker's pid no longer blocks a new export
+    (the 016 stuck-state composition)."""
+    import http.client
+    import os
+    import time
+    os.environ["XCELA_MAX_UPLOAD_MB"] = "1"      # must be set BEFORE the server import
+    os.environ["XCELA_WORKER_TIMEOUT_S"] = "1"
+    sys.path.insert(0, str(REPO / "frontend"))
+    import server
+    import export_layers as xl
+    try:
+        a = (server._bind_config(["server.py"], {}) == ("127.0.0.1", 8765)
+             and server._bind_config(["server.py"], {"XCELA_BIND": "0.0.0.0",
+                                                     "XCELA_PORT": "9000"}) == ("0.0.0.0", 9000)
+             and server._bind_config(["server.py", "7000"],
+                                     {"XCELA_PORT": "9000"}) == ("127.0.0.1", 7000)
+             and server.MAX_UPLOAD_BYTES == 1024 * 1024 and server.WORKER_TIMEOUT_S == 1)
+
+        # real oversize POST against an ephemeral instance: 413 pinned, lock free, no run dir
+        from http.server import ThreadingHTTPServer
+        import threading
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        port = srv.server_address[1]
+        before = set(p.name for p in server.OUTPUT.glob("run_*")) if server.OUTPUT.is_dir() else set()
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn.request("POST", "/run", body=b"x" * (2 * 1024 * 1024),
+                     headers={"Content-Type": "multipart/form-data; boundary=x"})
+        resp = conn.getresponse()
+        payload = json.loads(resp.read())
+        conn.close()
+        srv.shutdown()
+        after = set(p.name for p in server.OUTPUT.glob("run_*")) if server.OUTPUT.is_dir() else set()
+        b = (resp.status == 413 and "exceeds the 1MB cap" in payload["error"]
+             and not server._inflight.locked() and before == after)
+
+        # wedged worker: killed at the 1s wall clock, named error, lock freed
+        d = _tmp("timeout")
+        server._inflight.acquire()
+        server._spawn_worker(["sleep", "30"], d, error_name="run_error.txt")
+        deadline = time.time() + 10
+        while time.time() < deadline and not (d / "run_error.txt").is_file():
+            time.sleep(0.2)
+        err = (d / "run_error.txt").read_text(encoding="utf-8") if (d / "run_error.txt").is_file() else ""
+        deadline = time.time() + 3
+        while time.time() < deadline and server._inflight.locked():
+            time.sleep(0.1)
+        c = ("timed out after 1s" in err and "paid calls may already have completed" in err
+             and not server._inflight.locked())
+
+        # composition: a killed worker's dead pid does not block a new export
+        import subprocess
+        pr = subprocess.Popen(["sleep", "0"]); pr.wait()
+        e = not xl.state_blocks_new_export({"state": "exporting", "started_at": "t",
+                                            "pid": pr.pid})
+    finally:
+        del os.environ["XCELA_MAX_UPLOAD_MB"]
+        del os.environ["XCELA_WORKER_TIMEOUT_S"]
+
+    ok = a and b and c and e
+    return ok, (f"bind-config={a}; 413-pinned+lock-free+no-dir={b}; "
+                f"timeout-error+lock-freed={c}; dead-pid-retryable={e}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
@@ -367,6 +436,7 @@ CHECKS = [
     ("T007 Chinese input: lanes + suppression + byte-identity + fullwidth sizes", check6_chinese_input),
     ("T008 Chinese chrome: labels, unchanged submit values, ZH dict drift guard", check7_chinese_chrome),
     ("T009 playbook: served route, costs, etiquette, message table, placeholder", check8_playbook),
+    ("T010 guards: default bind, env knobs, 413 cap pre-lock, worker timeout frees lock", check9_guards),
 ]
 
 

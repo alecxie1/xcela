@@ -37,6 +37,10 @@ OUTPUT = REPO_ROOT / "output"
 ANSWER_KEYS = REPO_ROOT / "answer_keys"
 PER_RUN_COST_USD = 0.08  # single-sign gpt-image-2; labeled on the Run button (FR-009)
 MAX_PRODUCT_IMAGES = 6   # feature 013: mirrors conductor.MAX_PRODUCT_IMAGES (drift-guarded by test)
+# 017 (US4) remote-misuse guards; every default is byte-identical to pre-017 behavior
+# except that unbounded uploads and immortal workers are no longer possible.
+MAX_UPLOAD_BYTES = int(os.environ.get("XCELA_MAX_UPLOAD_MB", "32")) * 1024 * 1024
+WORKER_TIMEOUT_S = int(os.environ.get("XCELA_WORKER_TIMEOUT_S", "1800"))
 
 _inflight = threading.Lock()  # single-flight: one run at a time
 
@@ -301,7 +305,18 @@ def _spawn_worker(argv: list, run_dir: Path, error_name: str = "run_error.txt"):
 
     def _work():
         try:
-            proc = subprocess.run(argv, cwd=str(REPO_ROOT), capture_output=True, text=True)
+            # 017 (US4): a wall-clock bound; a wedged worker must never hold the
+            # single-flight lock forever. A timed-out EXPORT lands in the 016 dead-pid
+            # stuck state (retryable by construction); a timed-out run surfaces here.
+            try:
+                proc = subprocess.run(argv, cwd=str(REPO_ROOT), capture_output=True,
+                                      text=True, timeout=WORKER_TIMEOUT_S)
+            except subprocess.TimeoutExpired:
+                (run_dir / error_name).write_text(
+                    f"worker timed out after {WORKER_TIMEOUT_S}s and was killed; paid "
+                    "calls may already have completed, inspect the run dir",
+                    encoding="utf-8")
+                return
             if proc.returncode != 0:
                 err = (proc.stderr or proc.stdout or "").strip()
                 tail = "\n".join(err.splitlines()[-12:]) or f"worker exited {proc.returncode}"
@@ -381,6 +396,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?", 1)[0]
+        # 017 (US4): ONE upload cap for every POST, checked BEFORE any handler, run dir,
+        # or lock (an unbounded Content-Length was read straight into RAM).
+        clen = int(self.headers.get("Content-Length") or 0)
+        if clen > MAX_UPLOAD_BYTES:
+            return self._send(413, {"error": f"upload too large: {clen // (1024*1024)}MB "
+                                             f"exceeds the {MAX_UPLOAD_BYTES // (1024*1024)}MB cap"})
         # --- Feature 006: onboarding wizard routes ---
         if path == "/onboard/upload":
             return self._onboard_upload()
@@ -565,11 +586,21 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def _bind_config(argv=None, env=None):
+    """017 (US4): (bind, port), pure + testable. Precedence: argv port (the existing CLI
+    contract) > XCELA_PORT > 8765; bind from XCELA_BIND > 127.0.0.1. Empty env + empty
+    argv = ("127.0.0.1", 8765), byte-identical to pre-017."""
+    argv = sys.argv if argv is None else argv
+    env = os.environ if env is None else env
+    port = int(argv[1]) if len(argv) > 1 else int(env.get("XCELA_PORT") or 8765)
+    return env.get("XCELA_BIND") or "127.0.0.1", port
+
+
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
+    bind, port = _bind_config()
     OUTPUT.mkdir(exist_ok=True)
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"live-runner on http://localhost:{port}  (Ctrl-C to stop)")
+    srv = ThreadingHTTPServer((bind, port), Handler)
+    print(f"live-runner on http://{bind}:{port}  (Ctrl-C to stop)")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

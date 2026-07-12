@@ -155,7 +155,7 @@ unchanged submit values; the served playbook.
 
 ## Phase 6: User Story 4 - The server survives remote misuse (P3)
 
-- [ ] T010 [US4] `frontend/server.py`: bind from `XCELA_BIND`, port argv > `XCELA_PORT` >
+- [x] T010 [US4] `frontend/server.py`: bind from `XCELA_BIND`, port argv > `XCELA_PORT` >
       8765 (defaults byte-identical); ONE `do_POST` preamble check of Content-Length
       against `XCELA_MAX_UPLOAD_MB` (default 32) -> 413 named BEFORE any handler/lock;
       `_spawn_worker` subprocess timeout from `XCELA_WORKER_TIMEOUT_S` (default 1800) ->
