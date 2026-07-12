@@ -162,10 +162,44 @@ def check2_portable_wiring():
                 f"dangling-rejected={h}")
 
 
+def check3_deploy_artifacts():
+    """T004 / FR-003, FR-004: requirements.txt pins every core dep with == (a build that
+    ships a loose or missing pin fails); bootstrap.sh parses (bash -n); the unit carries
+    LANG=C.UTF-8 + TimeoutStopSec=30; the Caddyfile carries BOTH placeholders; the README
+    names BOTH out-of-band items; nothing secret-shaped anywhere in deploy/."""
+    import re
+    import subprocess
+    req = (REPO / "requirements.txt").read_text(encoding="utf-8")
+    core = ["openai", "anthropic", "pillow", "numpy", "scipy", "pymupdf",
+            "python-dotenv", "opencv-python"]
+    a = all(re.search(rf"^{re.escape(d)}==[\d.]+", req, re.M) for d in core) \
+        and "3.11" in req and "libgl1" in req
+
+    b = subprocess.run(["bash", "-n", str(REPO / "deploy" / "bootstrap.sh")],
+                       capture_output=True).returncode == 0
+    unit = (REPO / "deploy" / "xcela.service").read_text(encoding="utf-8")
+    c = ("LANG=C.UTF-8" in unit and "TimeoutStopSec=30" in unit
+         and "Restart=on-failure" in unit and "XCELA_BIND=127.0.0.1" in unit)
+    caddy = (REPO / "deploy" / "Caddyfile").read_text(encoding="utf-8")
+    e = ("YOUR_DOMAIN" in caddy and "HASHED_PASSWORD" in caddy
+         and "reverse_proxy 127.0.0.1:8765" in caddy)
+    readme = (REPO / "deploy" / "README.md").read_text(encoding="utf-8")
+    f = "~/.hermes/.env" in readme and "brands/" in readme and "restart" in readme.lower()
+
+    secretish = re.compile(r"sk-[A-Za-z0-9]{10,}|api[_-]?key\s*=\s*['\"][A-Za-z0-9]{8,}")
+    g = not any(secretish.search((REPO / "deploy" / n).read_text(encoding="utf-8"))
+                for n in ("bootstrap.sh", "xcela.service", "Caddyfile", "README.md"))
+
+    ok = a and b and c and e and f and g
+    return ok, (f"pins={a}; bash-n={b}; unit={c}; caddy-placeholders={e}; "
+                f"readme-handoff={f}; no-secrets={g}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
     ("T003 portable wiring: keys, scene sites, export soft-null, persist, validator", check2_portable_wiring),
+    ("T004 requirements + deploy artifacts: pins, syntax, placeholders, no secrets", check3_deploy_artifacts),
 ]
 
 

@@ -61,7 +61,7 @@ missing logo refuses named; existing suites green.
       existing sweep stays green (absolute fixture paths pass through). Commit:
       `feat(017): portable brand-asset paths, fallback removed, keys rewritten (T003)`.
 
-- [ ] T004 [P] [US1] `requirements.txt` (pinned freeze of the working venv; header comment:
+- [x] T004 [P] [US1] `requirements.txt` (pinned freeze of the working venv; header comment:
       Python 3.11, apt `libgl1 libglib2.0-0`, opencv-python-headless alternative) +
       `deploy/bootstrap.sh` (python3.11 check, venv, pip install -r, mkdir output, NAMED
       presence checks for `~/.hermes/.env` and the brands dir covering every committed

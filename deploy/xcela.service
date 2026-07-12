@@ -1,0 +1,31 @@
+# deploy/xcela.service - feature 017: systemd unit TEMPLATE for the xcela live-runner.
+# Install: sudo cp deploy/xcela.service /etc/systemd/system/ && edit User/paths, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now xcela
+# Keys load from the service user's ~/.hermes/.env via the app's own dotenv (HOME below).
+# RESTART THE SERVICE AFTER EVERY CODE UPDATE (server.py loads once).
+[Unit]
+Description=xcela (handyprint design tool) live-runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# EDIT: the deploy user and repo path
+User=xcela
+WorkingDirectory=/opt/xcela/handyprint-design-tool
+Environment=HOME=/home/xcela
+Environment=LANG=C.UTF-8
+Environment=LC_ALL=C.UTF-8
+# The app stays on localhost; Caddy fronts it with TLS + auth (deploy/Caddyfile)
+Environment=XCELA_BIND=127.0.0.1
+Environment=XCELA_PORT=8765
+# Optional guards (defaults shown): XCELA_MAX_UPLOAD_MB=32 XCELA_WORKER_TIMEOUT_S=1800
+ExecStart=/opt/xcela/handyprint-design-tool/.venv/bin/python frontend/server.py
+Restart=on-failure
+RestartSec=3
+# Bounded stop: SIGTERM, then SIGKILL after 30s (an in-flight paid worker gets 30s to exit;
+# a killed export lands in the 016 retryable stuck state, never a bricked run)
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

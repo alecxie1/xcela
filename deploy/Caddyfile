@@ -1,0 +1,17 @@
+# deploy/Caddyfile - feature 017: TLS + access control IN FRONT of the app (which stays on
+# localhost). Fill the two placeholders, then: sudo caddy run --config deploy/Caddyfile
+#
+# 1. YOUR_DOMAIN: a DNS name pointing at this VM (Caddy fetches the certificate itself).
+# 2. HASHED_PASSWORD: generate with `caddy hash-password` (never commit the plaintext).
+
+YOUR_DOMAIN {
+    basic_auth {
+        # shared team credential (v1); individual accounts are a later decision
+        xcela HASHED_PASSWORD
+    }
+    reverse_proxy 127.0.0.1:8765
+    # uploads (style reference + product shots) are capped app-side (XCELA_MAX_UPLOAD_MB)
+    request_body {
+        max_size 64MB
+    }
+}
