@@ -28,7 +28,7 @@ anywhere in tests; the one paid step is the human flow gate (T012).
 
 ## Phase 2: Foundational (blocking)
 
-- [ ] T002 Create `harness/asset_paths.py` (stdlib-only): `REPO_ROOT`, `brands_dir()` (env
+- [x] T002 Create `harness/asset_paths.py` (stdlib-only): `REPO_ROOT`, `brands_dir()` (env
       `XCELA_BRANDS_DIR` else `REPO_ROOT/"brands"`), `resolve_brand_asset(p)` with the
       resolution order absolute-and-exists > brands-relative > repo-relative > `SystemExit`
       naming EVERY tried path (research D1). Test check1: absolute passthrough;

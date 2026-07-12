@@ -59,8 +59,51 @@ def check0_fixtures():
     return ok, f"brands fixture={a}; shared run fixture={b}"
 
 
+def check1_resolver():
+    """T002 / FR-001, FR-002: the resolution order as VALUES: absolute passthrough;
+    brands-relative under the env override; repo-relative; None from the soft form; the
+    raising form's refusal names EVERY tried path (a build that hides a candidate or
+    substitutes a fallback fails here)."""
+    import importlib
+    import os
+    import asset_paths as ap
+
+    d = _tmp("resolve")
+    base, keys = make_brands(d)
+
+    a = ap.try_resolve_brand_asset(keys["absolute"]["logo_path"]) == keys["absolute"]["logo_path"]
+
+    os.environ["XCELA_BRANDS_DIR"] = str(base)
+    try:
+        b = (ap.brands_dir() == base
+             and ap.try_resolve_brand_asset("TESTBRAND/logo file.png")
+             == str(base / "TESTBRAND" / "logo file.png"))
+        c = ap.try_resolve_brand_asset("TESTBRAND/nope.png") is None
+        e = False
+        try:
+            ap.resolve_brand_asset("TESTBRAND/nope.png")
+        except SystemExit as exc:
+            msg = str(exc)
+            e = (str(base / "TESTBRAND" / "nope.png") in msg
+                 and str(ap.REPO_ROOT / "TESTBRAND" / "nope.png") in msg
+                 and "NO fallback" in msg)
+    finally:
+        del os.environ["XCELA_BRANDS_DIR"]
+    importlib.invalidate_caches()
+
+    # repo-relative fallback: a file that exists under the repo root resolves without env
+    f = ap.try_resolve_brand_asset("conductor_inputs_example.json") == str(
+        ap.REPO_ROOT / "conductor_inputs_example.json")
+    g = ap.try_resolve_brand_asset("") is None and ap.try_resolve_brand_asset(None) is None
+
+    ok = a and b and c and e and f and g
+    return ok, (f"absolute={a}; env-base={b}; soft-none={c}; refusal-names-all={e}; "
+                f"repo-relative={f}; empty-none={g}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
+    ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
 ]
 
 
