@@ -338,5 +338,5 @@ key operator-judged in the 011/012/014 gates).
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/016-layered-export/plan.md
+at specs/017-deployment-readiness/plan.md
 <!-- SPECKIT END -->
