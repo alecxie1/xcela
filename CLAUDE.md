@@ -144,7 +144,21 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `016-layered-export` - BUILT (US1-US3) + structurally green
+**Active feature:** `017-deployment-readiness` - SPEC'D 2026-07-12 (plan/tasks next). The
+answer-independent deployment slice (hosting provisioning stays blocked on
+docs/DEPLOYMENT_QUESTIONS.md): portable answer-key logo paths (repo-relative against a
+configurable brands base; the /mnt/c LOGO_PATH fallback dies, missing logo = named refusal),
+pinned requirements.txt + deploy/ (bootstrap, systemd unit, Caddyfile, out-of-band secrets
+handoff README), bind/port from env (defaults byte-identical), upload size cap, worker
+wall-clock timeout (frees the single-flight lock), GET /runs + URL-hash resume + recent-runs
+picker (a refresh reopens the run), Chinese input robustness (ADDITIVE Chinese USAGE_RULES
+keyword rows per the 011/014 pattern, English derivations pinned byte-identical; format_size
+fullwidth/厘米 normalization), Chinese UI chrome (frontend-only; select values + server strings
+unchanged; gate vocabulary via a display dict), and the Chinese playbook served at /playbook.
+4 user stories, 13 FRs; SC-007 is one human flow gate through the Chinese UI.
+Spec: `specs/017-deployment-readiness/`.
+
+Prior feature `016-layered-export` - BUILT (US1-US3) + structurally green
 (test_export_layers 10/10; the FULL 30-suite prior sweep passes, test_confirm_gate's pinned
 run_view key set gaining exactly the ONE additive export stage). Richard's ask: at the final
 step, split the approved design into per-element layers, zipped. gpt-image-2 CANNOT emit layers
