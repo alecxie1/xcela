@@ -29,7 +29,7 @@ is deployment-readiness work) plus the full-sweep proof. One task = one commit.
       (live imports); fix legacy-internal imports minimally or note as unmaintained. FULL
       suite green after. Commit: `chore(018): legacy scripts to legacy/ (T003)`.
 
-- [ ] T004 Root `README.md` for outsiders (purpose, layout, quickstart, env table, tests,
+- [x] T004 Root `README.md` for outsiders (purpose, layout, quickstart, env table, tests,
       deploy + docs pointers) + CLAUDE.md/SYSTEM_MAP currency. Commit:
       `docs(018): outsider README + currency (T004)`.
 

@@ -144,7 +144,22 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `017-deployment-readiness` - BUILT (US1-US4) + structurally green
+**Active feature:** `018-github-handoff` - BUILT T001-T004 (2026-07-13); T005 = the push to
+origin (needs Alec's GitHub credentials) + the CTO's clone-to-first-run human gate. Richard's
+team decision: everything to GitHub, THEIR CTO deploys with THEIR keys. Shipped: ONE env
+loader `harness/runtime_env.py` (real env > <repo>/.env > ~/.hermes/.env legacy, never
+overriding; the override=True accident is dead, grep-guarded; `require()` for named
+missing-key refusals) wired at all six live dotenv sites; `.env.example` documenting every
+read variable (gitignore gains !.env.example); deploy/ rewritten for a third-party deployer
+(bootstrap accepts either .env home; unit gains EnvironmentFile; our SGP1 box reframed as the
+reference deployment); 25 early-research scripts + 7 manual tests swept to `legacy/`
+(provenance.py moved BACK when the sweep caught extract_text_layer's live import: the root
+extractors were outside the scan; root Python is now exactly the 30 suites + 2 extractors +
+provenance.py); an outsider-facing root README.md (purpose, layout, quickstart, env table,
+costs). test_deploy_readiness 11/11 incl. the hermetic precedence-by-value check; full
+30-suite sweep green. Spec/tasks: `specs/018-github-handoff/`.
+
+Prior feature `017-deployment-readiness` - BUILT (US1-US4) + structurally green
 (test_deploy_readiness 10/10; the FULL 30-suite sweep green with the pinned form-greps
 updated to the CHINESE values, dated in place, never weakened). The answer-independent
 deployment slice (hosting provisioning stays blocked on docs/DEPLOYMENT_QUESTIONS.md):

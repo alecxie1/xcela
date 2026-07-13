@@ -1,7 +1,29 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-07-12._
+_Single source of truth for "what is this whole thing." Updated 2026-07-13._
 
-> **▶ BUILD STATUS 2026-07-12 (latest): feature 017 (deployment readiness + Chinese-ready UI) is BUILT + structurally green; its human flow gate T012 is PENDING.**
+> **▶ BUILD STATUS 2026-07-13 (latest): feature 018 (GitHub handoff) is BUILT T001-T004; T005 (the push + the CTO's clone-to-first-run gate) is PENDING on Alec's GitHub credentials.**
+> Richard's team decision: everything to GitHub, THEIR CTO deploys himself with THEIR keys. The
+> repo is now configured the standard way: harness/runtime_env.py is the ONE loader (real
+> environment variables > <repo>/.env > ~/.hermes/.env legacy, never overriding; the pre-018
+> override-flag accident that let a FILE beat the environment is dead and grep-guarded;
+> require() gives named missing-key refusals), wired at all six live model-boundary modules;
+> .env.example documents every variable the code reads (both keys + the five XCELA_* knobs);
+> deploy/ is rewritten for a third-party deployer (bootstrap accepts <repo>/.env OR the legacy
+> home file; the unit gains EnvironmentFile; OUR SGP1 box at https://xcela-17ad22.xcela.net is
+> reframed as the reference deployment and stays up as staging until theirs works). The repo
+> root now reads as the live system: 25 early-research one-offs + 7 manual pre-spec tests moved
+> to legacy/ (with the promote-back-with-a-spec rule); provenance.py moved BACK when the sweep
+> caught extract_text_layer's live import (the initial scan covered the packages but not the
+> root extractors; four suites went red and now prove the boundary); root README.md gives an
+> outsider the purpose, layout, quickstart, env table, tests, and costs. Tests:
+> test_deploy_readiness 11/11 (hermetic env-precedence BY VALUE, no-override grep, six sites,
+> .env.example coverage derived from the code's own environ reads); the FULL 30-suite sweep
+> green after the moves. PENDING T005: `git push origin master` with Alec's credentials
+> (github.com/alecxie1/xcela, private; invite the CTO in the GitHub UI), then the HUMAN GATE:
+> the CTO goes clone -> README -> .env with his keys -> serve -> one gated run without asking
+> us anything. Spec/tasks: `specs/018-github-handoff/`.
+
+> **▶ BUILD STATUS 2026-07-12: feature 017 (deployment readiness + Chinese-ready UI) is BUILT + structurally green; its human flow gate T012 is PENDING.**
 > The answer-independent deployment slice: everything a fresh Linux VM and a Chinese-speaking
 > testing team need that does NOT wait on Richard's answers (docs/DEPLOYMENT_QUESTIONS.md still
 > governs provisioning: provider/domain/auth/feedback-channel). PORTABLE ASSETS: the new
