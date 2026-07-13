@@ -14,7 +14,7 @@ is deployment-readiness work) plus the full-sweep proof. One task = one commit.
       covers every var the code reads (grep-derived). Commit:
       `feat(018): one env loader, standard precedence, .env.example (T001)`.
 
-- [ ] T002 deploy/ updates: bootstrap's out-of-band check accepts `<repo>/.env` OR
+- [x] T002 deploy/ updates: bootstrap's out-of-band check accepts `<repo>/.env` OR
       `~/.hermes/.env` (names both); xcela.service gains
       `EnvironmentFile=-/opt/xcela/handyprint-design-tool/.env`; README rewritten for a
       THIRD-PARTY deployer (their keys, their VM; our PRODUCTION section marked as the

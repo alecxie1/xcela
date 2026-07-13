@@ -26,9 +26,10 @@ echo "output/ ready"
 
 # 4. OUT-OF-BAND item checks (named, non-fatal: the server can boot without them, but no
 #    run can spend / no logo can resolve until they exist)
-if [ ! -f "$HOME/.hermes/.env" ]; then
-  echo "MISSING (out-of-band item 1): $HOME/.hermes/.env"
-  echo "  -> copy the API key file there (OPENAI_API_KEY=..., ANTHROPIC_API_KEY=...)"
+if [ ! -f ".env" ] && [ ! -f "$HOME/.hermes/.env" ]; then
+  echo "MISSING (out-of-band item 1): API keys"
+  echo "  -> cp .env.example .env and fill in OPENAI_API_KEY / ANTHROPIC_API_KEY"
+  echo "     (real environment variables also work and always win; ~/.hermes/.env is the legacy home)"
 fi
 BRANDS_DIR="${XCELA_BRANDS_DIR:-$(pwd)/brands}"
 if [ ! -d "$BRANDS_DIR" ]; then

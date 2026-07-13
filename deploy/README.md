@@ -1,12 +1,10 @@
-# deploy/ — feature 017: everything a fresh Linux VM needs (except the two secrets)
+# deploy/ — everything a fresh Linux VM needs (except your secrets)
 
-The provisioning decisions live in `docs/DEPLOYMENT_QUESTIONS.md` (see the DECIDED PARAMETERS
-section, 2026-07-12): WE host, ONE designer uses a URL, NO login for the testing phase (use an
-unguessable subdomain; a shared password later is a two-line Caddyfile change), the designer
-onboards brands himself via /onboard (pre-loading our brands/ dir is optional but makes CJXQ
-work day one). Region constraint: the OpenAI/Anthropic APIs are blocked from mainland China
-and unsupported in Hong Kong, so host where both work AND the team can reach (Singapore or
-Tokyo are the proven sweet spots).
+Written for a THIRD-PARTY deployer (018): clone, bootstrap, add YOUR OWN API keys, serve.
+Region constraint: the OpenAI/Anthropic APIs are blocked from mainland China and unsupported
+in Hong Kong, so host where both work AND your team can reach (Singapore or Tokyo are the
+proven sweet spots). Access model is your call: the app has no login; put Caddy's basic_auth
+or your own gateway in front, or rely on an unguessable hostname for a small trusted group.
 
 ## The exact handoff (in order)
 
@@ -16,11 +14,10 @@ Tokyo are the proven sweet spots).
    cd /opt/xcela/handyprint-design-tool && bash deploy/bootstrap.sh
    # system prerequisite for opencv (kit/legacy paths): apt install libgl1 libglib2.0-0
    ```
-2. **Out-of-band item 1: API keys.** Copy the key file to the service user's home,
-   NEVER into the repo:
-   ```
-   ~/.hermes/.env    ->  OPENAI_API_KEY=...  ANTHROPIC_API_KEY=...
-   ```
+2. **Out-of-band item 1: YOUR API keys.** Standard precedence (harness/runtime_env.py):
+   real environment variables win; else `<repo>/.env`; else the legacy `~/.hermes/.env`.
+   Simplest: `cp .env.example .env` in the repo root and fill in `OPENAI_API_KEY` +
+   `ANTHROPIC_API_KEY`. Never commit `.env` (gitignored).
 3. **Out-of-band item 2 (now OPTIONAL): brand assets.** The designer onboards brands himself
    via `/onboard` (the wizard writes `brands/<brand>/` + the key). To make the committed demo
    brands (CJXQ etc.) work day one, `scp -r` our `brands/` directory into the repo root (or
@@ -46,7 +43,7 @@ Tokyo are the proven sweet spots).
 - **Env knobs** (all optional): `XCELA_BIND`, `XCELA_PORT`, `XCELA_MAX_UPLOAD_MB` (32),
   `XCELA_WORKER_TIMEOUT_S` (1800), `XCELA_BRANDS_DIR`.
 
-## PRODUCTION (deployed 2026-07-12)
+## REFERENCE DEPLOYMENT (ours, deployed 2026-07-12; not required for yours)
 
 - **URL**: https://xcela-17ad22.xcela.net (the unguessable hostname IS the access gate; no login)
 - **VM**: DigitalOcean SGP1, 188.166.238.61, Ubuntu 24.04, user `xcela`, repo at
