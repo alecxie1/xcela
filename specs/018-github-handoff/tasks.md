@@ -33,7 +33,8 @@ is deployment-readiness work) plus the full-sweep proof. One task = one commit.
       deploy + docs pointers) + CLAUDE.md/SYSTEM_MAP currency. Commit:
       `docs(018): outsider README + currency (T004)`.
 
-- [ ] T005 Push `master` to origin (needs Alec's GitHub credentials: run
-      `git push origin master` in the session shell or paste a token); verify
-      `git ls-remote origin master` == local HEAD; Alec invites the CTO in the GitHub UI.
-      HUMAN GATE (SC-005): the CTO's clone-to-first-run without questions.
+- [ ] T005 Push `master` to origin: PUSH DONE 2026-07-13 (origin switched to SSH with the
+      xcela-deploy key registered on Alec's GitHub account; core.sshCommand pinned per-repo;
+      origin/master == local HEAD verified). REMAINING: Alec invites the CTO in the GitHub
+      UI, then the HUMAN GATE (SC-005): the CTO's clone-to-first-run without questions;
+      record his verdict here + SYSTEM_MAP, then feature 018 closes.
