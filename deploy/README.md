@@ -45,3 +45,19 @@ Tokyo are the proven sweet spots).
   already in flight"); the playbook tells the team to take turns.
 - **Env knobs** (all optional): `XCELA_BIND`, `XCELA_PORT`, `XCELA_MAX_UPLOAD_MB` (32),
   `XCELA_WORKER_TIMEOUT_S` (1800), `XCELA_BRANDS_DIR`.
+
+## PRODUCTION (deployed 2026-07-12)
+
+- **URL**: https://xcela-17ad22.xcela.net (the unguessable hostname IS the access gate; no login)
+- **VM**: DigitalOcean SGP1, 188.166.238.61, Ubuntu 24.04, user `xcela`, repo at
+  `/opt/xcela/handyprint-design-tool`, bare repo at `/opt/xcela/repo.git`
+- **SSH**: `ssh -i ~/.ssh/xcela_deploy root@188.166.238.61` (the deploy key lives on Alec's WSL)
+- **Update procedure** (from the dev machine):
+  ```bash
+  GIT_SSH_COMMAND="ssh -i ~/.ssh/xcela_deploy" git push vm master
+  ssh -i ~/.ssh/xcela_deploy root@188.166.238.61 \
+    'cd /opt/xcela/handyprint-design-tool && sudo -u xcela git pull -q && systemctl restart xcela'
+  ```
+- Known missing on the VM (honest, per bootstrap's report): logos for the historical keys
+  chajiuxingqiu/taichi/xiucai (CJXQ + aia resolve; new brands arrive via the wizard).
+- Fonts (brands/*/fonts) deliberately NOT copied (kit/legacy only; 188MB).
