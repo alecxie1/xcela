@@ -12,8 +12,8 @@ def generate_variant(prompt: str, logo_path, out_path: str,
     logo_path: a single path (str) or a list of paths — all are passed as
     reference images to images.edit in order (e.g. [logo, style_reference]).
     """
-    from dotenv import load_dotenv
-    load_dotenv(Path.home() / ".hermes" / ".env", override=True)
+    from runtime_env import load_runtime_env  # 018: env > .env > legacy ~/.hermes
+    load_runtime_env()
     from openai import OpenAI
 
     paths = [logo_path] if isinstance(logo_path, str) else list(logo_path)

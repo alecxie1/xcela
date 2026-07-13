@@ -25,6 +25,7 @@ brands/
 .env
 *.env
 .env.*
+!.env.example
 *token*.json
 *credential*
 

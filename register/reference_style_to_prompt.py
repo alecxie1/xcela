@@ -32,8 +32,10 @@ import os
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-load_dotenv(Path.home() / ".hermes" / ".env", override=True)
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "harness"))
+from runtime_env import load_runtime_env  # noqa: E402  (018: env > .env > legacy ~/.hermes)
+load_runtime_env()
 
 # Reuse the proven vision helper + model chain from the sibling calibrator.
 # Repo root is on sys.path when run as `.venv/bin/python register/...`; add it

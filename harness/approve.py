@@ -13,8 +13,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from dotenv import load_dotenv
-load_dotenv(Path.home() / ".hermes" / ".env", override=True)
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from runtime_env import load_runtime_env  # noqa: E402  (018: env > .env > legacy ~/.hermes)
+load_runtime_env()
 
 sys.path.insert(0, str(Path(__file__).parent))
 from scene_author import load_brand, author_tier3, assemble_final_prompt, LOGO_PATH

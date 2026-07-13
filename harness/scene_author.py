@@ -11,8 +11,9 @@ import re
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-load_dotenv(Path.home() / ".hermes" / ".env", override=True)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from runtime_env import load_runtime_env  # noqa: E402  (018: env > .env > legacy ~/.hermes)
+load_runtime_env()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kit as kitlib  # noqa: E402  (stdlib-only kit loader; used by the kit reserve-box mode)

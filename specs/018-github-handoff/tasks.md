@@ -4,7 +4,7 @@ Plan-lite feature (mechanical scope, verified inventory): the spec doubles as th
 binding facts are in the spec's FRs. Tests live in `test_deploy_readiness.py` (extended: this
 is deployment-readiness work) plus the full-sweep proof. One task = one commit.
 
-- [ ] T001 `harness/runtime_env.py` (`load_runtime_env()`: process env > `<repo>/.env` >
+- [x] T001 `harness/runtime_env.py` (`load_runtime_env()`: process env > `<repo>/.env` >
       `~/.hermes/.env`, override=False both loads) + switch the SIX live call sites
       (harness/approve.py, harness/generate.py, harness/scene_author.py,
       register/blind_score.py, register/calibrate_from_reference.py,

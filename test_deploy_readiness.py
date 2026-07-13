@@ -444,6 +444,54 @@ def check9_guards():
                 f"timeout-error+lock-freed={c}; dead-pid-retryable={e}")
 
 
+def check10_env_loader():
+    """018 T001 / FR-001, FR-002, SC-001: hermetic precedence proof BY VALUE (a real env var
+    beats a conflicting repo .env; the repo .env beats the legacy home file; a
+    home-file-only var still loads); ZERO override=True dotenv loads outside legacy/; all
+    six live call sites import the loader; .env.example documents every variable the live
+    code reads and is NOT gitignored."""
+    import os
+    import re
+    import subprocess
+    from runtime_env import load_runtime_env
+
+    d = _tmp("env")
+    (d / "repo").mkdir(); (d / "home" / ".hermes").mkdir(parents=True)
+    (d / "repo" / ".env").write_text("X18_A=repofile\nX18_B=repofile\n", encoding="utf-8")
+    (d / "home" / ".hermes" / ".env").write_text("X18_B=homefile\nX18_C=homefile\n",
+                                                 encoding="utf-8")
+    os.environ["X18_A"] = "realenv"
+    try:
+        load_runtime_env(_repo=d / "repo", _home=d / "home")
+        a = (os.environ["X18_A"] == "realenv"       # real env beats the repo file
+             and os.environ["X18_B"] == "repofile"  # repo file beats the legacy home file
+             and os.environ["X18_C"] == "homefile") # legacy fallback still loads
+    finally:
+        for k in ("X18_A", "X18_B", "X18_C"):
+            os.environ.pop(k, None)
+
+    live = subprocess.run(["grep", "-rn", "override=True", "harness", "register",
+                           "frontend", "brand_intake"], cwd=REPO, capture_output=True,
+                          text=True).stdout
+    b = live.strip() == ""
+
+    sites = ["harness/approve.py", "harness/generate.py", "harness/scene_author.py",
+             "register/blind_score.py", "register/calibrate_from_reference.py",
+             "register/reference_style_to_prompt.py"]
+    c = all("load_runtime_env" in (REPO / s).read_text(encoding="utf-8") for s in sites)
+
+    example = (REPO / ".env.example").read_text(encoding="utf-8")
+    read_vars = {"OPENAI_API_KEY", "ANTHROPIC_API_KEY"}
+    for f in (REPO / "frontend" / "server.py"), (REPO / "harness" / "asset_paths.py"):
+        read_vars |= set(re.findall(r'environ\.get\("(XCELA_[A-Z_]+)"', f.read_text(encoding="utf-8")))
+    e = all(v in example for v in read_vars)
+    f2 = subprocess.run(["git", "check-ignore", "-q", ".env.example"], cwd=REPO).returncode == 1
+
+    ok = a and b and c and e and f2
+    return ok, (f"precedence-by-value={a}; no-override-live={b}; six-sites={c}; "
+                f"example-covers={sorted(read_vars) if not e else True}; example-tracked={f2}")
+
+
 CHECKS = [
     ("T001 fixtures: dual-form brand key + shared run-dir import", check0_fixtures),
     ("T002 resolver: order, env override, soft None, refusal names every path", check1_resolver),
@@ -455,6 +503,7 @@ CHECKS = [
     ("T008 Chinese chrome: labels, unchanged submit values, ZH dict drift guard", check7_chinese_chrome),
     ("T009 playbook: served route, costs, etiquette, message table, placeholder", check8_playbook),
     ("T010 guards: default bind, env knobs, 413 cap pre-lock, worker timeout frees lock", check9_guards),
+    ("018 env loader: precedence by value, no override=True, six sites, .env.example", check10_env_loader),
 ]
 
 

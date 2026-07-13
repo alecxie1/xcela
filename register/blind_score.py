@@ -16,8 +16,10 @@ import json
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-load_dotenv(Path.home() / ".hermes" / ".env", override=True)
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "harness"))
+from runtime_env import load_runtime_env  # noqa: E402  (018: env > .env > legacy ~/.hermes)
+load_runtime_env()
 
 RUBRIC_PROMPT = (
     "You are scoring a single graphic-design image, completely blind — you have no context "
