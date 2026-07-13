@@ -45,11 +45,14 @@ _Single source of truth for "what is this whole thing." Updated 2026-07-12._
 > palette_roles). SC-001 PROVEN live: a fresh /tmp clone bootstrapped from deploy/, booted on
 > env config, served /brands + /runs + /playbook, and its own export --plan-only resolved the
 > rewritten relative CJXQ key via XCELA_BRANDS_DIR from a foreign repo root (5 elements).
-> PENDING: **T012, the ONE human flow gate (SC-007)**: one end-to-end run through the CHINESE UI
-> (Chinese brief incl. a 朋友圈-class usage + a fullwidth size, gate, confirm ~$0.08, judge,
-> optional export, then a deliberate refresh resuming from the URL/picker); ideally driven by a
-> China-side tester over the deployed URL once provisioning happens. Operator note: RESTART
-> frontend/server.py. Spec: `specs/017-deployment-readiness/`.
+> DEPLOYED 2026-07-12: LIVE at https://xcela-17ad22.xcela.net (DigitalOcean SGP1, no login: the
+> unguessable hostname is the gate; full record + push-to-deploy procedure in deploy/README.md
+> PRODUCTION section; free suites green ON the VM; the push->pull->restart->serve round trip
+> proven). PENDING: **T012, the ONE human flow gate (SC-007)**: one end-to-end run through the
+> CHINESE UI over the LIVE URL (Chinese brief incl. a 朋友圈-class usage + a fullwidth size,
+> gate, confirm ~$0.08, judge, optional export, then a deliberate refresh resuming from the
+> URL/picker); ideally driven by the China-side designer as his first real task.
+> Spec: `specs/017-deployment-readiness/`.
 
 > **▶ BUILD STATUS 2026-07-10: feature 016 (layered export) is COMPLETE: built, structurally green, eye-gate T009 PASSED (attempt 2).**
 > Richard's ask delivered: the run view's stage 6 exports the approved design as PER-ELEMENT LAYERS in
