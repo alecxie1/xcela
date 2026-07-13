@@ -1,16 +1,19 @@
-# deploy/Caddyfile - feature 017: TLS + access control IN FRONT of the app (which stays on
-# localhost). Fill the two placeholders, then: sudo caddy run --config deploy/Caddyfile
+# deploy/Caddyfile - feature 017: TLS in front of the app (which stays on localhost).
+# Fill YOUR_DOMAIN, then: sudo caddy run --config deploy/Caddyfile
 #
-# 1. YOUR_DOMAIN: a DNS name pointing at this VM (Caddy fetches the certificate itself).
-# 2. HASHED_PASSWORD: generate with `caddy hash-password` (never commit the plaintext).
+# ACCESS DECISION (2026-07-12, docs/DEPLOYMENT_QUESTIONS.md answers): NO login for the
+# single-designer testing phase. The mitigation for the open-spend risk is the URL itself:
+# use an UNGUESSABLE subdomain (e.g. xcela-k3v9q2.yourdomain.tld), share it privately, and
+# never link it anywhere public. To add a shared password later, uncomment the basic_auth
+# block and fill the hash from `caddy hash-password` (zero app-code impact).
 
 YOUR_DOMAIN {
-    basic_auth {
-        # shared team credential (v1); individual accounts are a later decision
-        xcela HASHED_PASSWORD
-    }
+    # basic_auth {
+    #     xcela HASHED_PASSWORD
+    # }
     reverse_proxy 127.0.0.1:8765
-    # uploads (style reference + product shots) are capped app-side (XCELA_MAX_UPLOAD_MB)
+    # uploads (style reference + product shots + VI PDFs) are capped app-side
+    # (XCELA_MAX_UPLOAD_MB, default 32MB)
     request_body {
         max_size 64MB
     }

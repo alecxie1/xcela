@@ -1,8 +1,10 @@
 # deploy/ — feature 017: everything a fresh Linux VM needs (except the two secrets)
 
-The provisioning decisions (provider, region, domain, who holds the password) are driven by
-`docs/DEPLOYMENT_QUESTIONS.md`. This directory is answer-independent: it works wherever those
-answers land. Region constraint: the OpenAI/Anthropic APIs are blocked from mainland China
+The provisioning decisions live in `docs/DEPLOYMENT_QUESTIONS.md` (see the DECIDED PARAMETERS
+section, 2026-07-12): WE host, ONE designer uses a URL, NO login for the testing phase (use an
+unguessable subdomain; a shared password later is a two-line Caddyfile change), the designer
+onboards brands himself via /onboard (pre-loading our brands/ dir is optional but makes CJXQ
+work day one). Region constraint: the OpenAI/Anthropic APIs are blocked from mainland China
 and unsupported in Hong Kong, so host where both work AND the team can reach (Singapore or
 Tokyo are the proven sweet spots).
 
@@ -19,14 +21,17 @@ Tokyo are the proven sweet spots).
    ```
    ~/.hermes/.env    ->  OPENAI_API_KEY=...  ANTHROPIC_API_KEY=...
    ```
-3. **Out-of-band item 2: brand assets.** `scp -r` the `brands/` directory (logos, licensed
-   fonts) into the repo root (or anywhere, exporting `XCELA_BRANDS_DIR=<path>`). Re-run
-   `bash deploy/bootstrap.sh` to confirm "all committed brand keys resolve their logos".
+3. **Out-of-band item 2 (now OPTIONAL): brand assets.** The designer onboards brands himself
+   via `/onboard` (the wizard writes `brands/<brand>/` + the key). To make the committed demo
+   brands (CJXQ etc.) work day one, `scp -r` our `brands/` directory into the repo root (or
+   anywhere, exporting `XCELA_BRANDS_DIR=<path>`); a committed key whose logo is absent
+   refuses loudly at run time and lists in bootstrap's resolution report.
 4. **Service:** `sudo cp deploy/xcela.service /etc/systemd/system/`, edit User/paths,
    `sudo systemctl daemon-reload && sudo systemctl enable --now xcela`.
-5. **Proxy:** fill the two placeholders in `deploy/Caddyfile` (domain; hashed password from
-   `caddy hash-password`), then run caddy as a service. The app itself stays on localhost.
-6. **Hand the team**: the URL, the password, and the in-app playbook link (`/playbook`).
+5. **Proxy:** fill YOUR_DOMAIN in `deploy/Caddyfile` with an UNGUESSABLE subdomain (the
+   no-login decision makes the URL the only gate), then run caddy as a service. The app
+   itself stays on localhost.
+6. **Hand the designer**: the URL and the in-app playbook link (`/playbook`).
 
 ## Operations notes
 

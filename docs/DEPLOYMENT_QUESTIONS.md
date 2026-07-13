@@ -59,3 +59,22 @@ feature 017-deployment-readiness, Chinese playbook served at /playbook).
     Is a Chinese playbook sufficient, or does the interface itself need to be in Chinese?
 18. 希望什么时候开始测试？
     When do you want to start testing?
+
+---
+
+## 已确定的部署参数 / Decided parameters (2026-07-12, per Alec)
+
+- **Hosting**: WE host; the team uses a URL only. We bear hosting + API costs for now.
+- **Users**: ONE designer on Richard's team (single-flight is a perfect fit, no queue UX needed).
+- **Login**: none (decision). Mitigation for the open-spend risk: an unguessable subdomain;
+  a shared password later is a two-line Caddyfile change with zero code impact.
+- **Network**: the designer can reach foreign sites via VPN; no policy concerns about brand
+  assets on a foreign-hosted server.
+- **Brands**: the designer onboards each brand HIMSELF via the /onboard wizard as tasks come
+  in (so the brands/ pre-provisioning shrinks to optional: we preload our existing brands dir
+  so CJXQ works day one).
+- **Fonts**: they hold the licensed font files (matters for the future composite moat, not
+  for the thin route; nothing to provision now).
+- **Interface**: Chinese required; SHIPPED in feature 017.
+- **Still open** (cosmetic, non-blocking): the feedback channel for the playbook placeholder,
+  and the start date.
