@@ -20,7 +20,7 @@ is deployment-readiness work) plus the full-sweep proof. One task = one commit.
       THIRD-PARTY deployer (their keys, their VM; our PRODUCTION section marked as the
       reference deployment). Commit: `feat(018): deploy artifacts for a third-party deployer (T002)`.
 
-- [ ] T003 Legacy sweep: `git mv` the 21 root one-off scripts (analyze_*, baseline_*,
+- [x] T003 Legacy sweep: `git mv` the 21 root one-off scripts (analyze_*, baseline_*,
       benchmark_*, build_font_index, extract_typography, make_contact_sheet*, ocr_alec_batch,
       ocr_readback, proto_root_a, provenance, psd_to_cutout, rescore_saved, score_*, viewer)
       + the 7 legacy manual tests (test_brand_analysis, test_brand_gen, test_full_pipeline,
