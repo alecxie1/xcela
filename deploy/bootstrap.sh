@@ -20,9 +20,9 @@ fi
 .venv/bin/python -m pip install --quiet -r requirements.txt
 echo "deps installed from requirements.txt"
 
-# 3. runtime dirs
-mkdir -p output
-echo "output/ ready"
+# 3. runtime dirs (brands/ fills itself through the /onboard wizard)
+mkdir -p output brands
+echo "output/ and brands/ ready"
 
 # 4. OUT-OF-BAND item checks (named, non-fatal: the server can boot without them, but no
 #    run can spend / no logo can resolve until they exist)
@@ -47,7 +47,9 @@ for key in sorted(Path("answer_keys").glob("*.json")):
     if try_resolve_brand_asset(lp) is None:
         missing.append(f"{key.name}: {lp}")
 if missing:
-    print("MISSING brand logos (runs for these brands will refuse loudly):")
+    print("note: these PRE-EXISTING brand keys have no logo asset on this machine; runs for")
+    print("them will refuse loudly until the asset is provided. This is fine for a fresh")
+    print("deployment: onboard YOUR brands via /onboard (which supplies assets itself).")
     for m in missing:
         print("  ", m)
 else:
