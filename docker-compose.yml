@@ -1,0 +1,17 @@
+# xcela (018): the canonical container wiring. `cp .env.example .env`, fill your keys, then
+# `docker compose up -d`. The app listens on localhost:8765 of the host; put your TLS proxy
+# in front for remote access (deploy/Caddyfile is a ready template).
+services:
+  xcela:
+    build: .
+    ports:
+      - "127.0.0.1:8765:8765"
+    env_file:
+      - .env
+    volumes:
+      # ALL THREE are runtime state; without them a rebuild loses runs, uploaded brand
+      # assets, and every brand onboarded through the wizard (which writes answer_keys/).
+      - ./output:/app/output
+      - ./brands:/app/brands
+      - ./answer_keys:/app/answer_keys
+    restart: unless-stopped

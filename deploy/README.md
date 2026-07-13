@@ -1,6 +1,9 @@
 # deploy/ — everything a fresh Linux VM needs (except your secrets)
 
-Written for a THIRD-PARTY deployer (018): clone, bootstrap, add YOUR OWN API keys, serve.
+Written for a THIRD-PARTY deployer (018). TWO equivalent paths: the root Dockerfile +
+docker-compose.yml (any container platform; remember the three state volumes: output/,
+brands/, answer_keys/), or the bare-VM path below (bootstrap + systemd + Caddy). Either way:
+clone, add YOUR OWN API keys via env or .env, serve.
 Region constraint: the OpenAI/Anthropic APIs are blocked from mainland China and unsupported
 in Hong Kong, so host where both work AND your team can reach (Singapore or Tokyo are the
 proven sweet spots). Access model is your call: the app has no login; put Caddy's basic_auth

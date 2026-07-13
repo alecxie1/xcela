@@ -25,9 +25,19 @@ cp .env.example .env              # then fill in YOUR OpenAI + Anthropic keys
 .venv/bin/python frontend/server.py    # serves http://127.0.0.1:8765
 ```
 
+Or with Docker (any container platform works; the compose file is the canonical wiring):
+
+```bash
+cp .env.example .env              # your keys
+docker compose up -d              # serves on localhost:8765; mounts output/, brands/, answer_keys/
+```
+
 Open the app, onboard a brand once via 录入品牌 (upload its VI PDF + logo), then run briefs
-from the main form. The in-app manual lives at `/playbook` (Chinese). For a real deployment
-(systemd + TLS proxy), follow `deploy/README.md`.
+from the main form. The in-app manual lives at `/playbook` (Chinese). For a bare-VM
+deployment (systemd + TLS proxy), follow `deploy/README.md`; the hard requirements either
+way: Python 3.11 or the provided image, outbound reach to both model APIs, and PERSISTENT
+storage for `output/`, `brands/`, and `answer_keys/` (the onboarding wizard writes brand keys
+at runtime).
 
 Note: the app calls `api.openai.com` and `api.anthropic.com` directly, so the server must run
 where both are reachable (they are blocked from mainland China and unsupported in Hong Kong;

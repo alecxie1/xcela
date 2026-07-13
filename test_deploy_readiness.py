@@ -485,7 +485,11 @@ def check10_env_loader():
     for f in (REPO / "frontend" / "server.py"), (REPO / "harness" / "asset_paths.py"):
         read_vars |= set(re.findall(r'environ\.get\("(XCELA_[A-Z_]+)"', f.read_text(encoding="utf-8")))
     e = all(v in example for v in read_vars)
-    f2 = subprocess.run(["git", "check-ignore", "-q", ".env.example"], cwd=REPO).returncode == 1
+    # gitless contexts (the Docker image excludes .git) cannot check ignore rules; that is
+    # a property of the working copy, not the image, so it passes vacuously there
+    f2 = (not (REPO / ".git").exists()
+          or subprocess.run(["git", "check-ignore", "-q", ".env.example"],
+                            cwd=REPO).returncode == 1)
 
     ok = a and b and c and e and f2
     return ok, (f"precedence-by-value={a}; no-override-live={b}; six-sites={c}; "

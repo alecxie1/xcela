@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+output
+brands
+.env
+*.env
+!.env.example
+__pycache__
+*.pyc
+legacy
+.claude
+.specify
