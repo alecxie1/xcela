@@ -29,6 +29,7 @@ import runner  # noqa: E402
 import onboard as onboard_mod  # noqa: E402  (feature 006: the web onboarding wizard)
 import multipart  # noqa: E402  (feature 006: stdlib multipart upload parsing)
 import uploads  # noqa: E402  (feature 007: the shared save-upload home, 004 reference + 006 logo)
+import brand_manager  # noqa: E402  (feature 019: the brand database, HTTP-free half)
 sys.path.insert(0, str(REPO_ROOT / "harness"))
 import export_layers as export_mod  # noqa: E402  (feature 016: the layered exporter)
 from asset_paths import keys_dir  # noqa: E402  (019: answer keys are runtime state)
@@ -367,6 +368,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"brands": _brands(), "per_run_cost_usd": PER_RUN_COST_USD})
         if path == "/runs":  # 017 (US2): the recent-runs picker's free listing
             return self._send(200, {"runs": run_view_mod.list_runs(OUTPUT)})
+        if path == "/brands/detail":  # 019: the brand database view (free, tolerant)
+            return self._send(200, {"brands": brand_manager.list_brands_detail()})
+        if path == "/manage":  # 019: the brand manager page
+            return self._send(200, (HERE / "manage.html").read_bytes(), "text/html; charset=utf-8")
         if path.startswith("/run/") and path.endswith("/stages"):
             run_id = path[len("/run/"):-len("/stages")]
             return self._send(200, {**run_view_mod.run_view(OUTPUT / run_id),
@@ -421,6 +426,14 @@ class Handler(BaseHTTPRequestHandler):
         # --- Feature 016: the layered exporter's spending route ---
         if path.startswith("/run/") and path.endswith("/export"):
             return self._run_export(path[len("/run/"):-len("/export")])
+        # --- Feature 019: brand database writes (single-flight guarded: a derive mid-run
+        # must never lose its key from under it) ---
+        if path.startswith("/brand/") and path.endswith("/update"):
+            return self._brand_write(path[len("/brand/"):-len("/update")], "update")
+        if path.startswith("/brand/") and path.endswith("/logo"):
+            return self._brand_write(path[len("/brand/"):-len("/logo")], "logo")
+        if path.startswith("/brand/") and path.endswith("/delete"):
+            return self._brand_write(path[len("/brand/"):-len("/delete")], "delete")
         # --- Feature 004: the back-half run ---
         if path != "/run":
             return self._send(404, {"error": "not found"})
@@ -500,6 +513,43 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
         finally:
             if not launched and _inflight.locked():
+                _inflight.release()
+
+    def _brand_write(self, brand, verb):
+        """Feature 019: manage writes hold the single-flight lock for their (fast) duration:
+        a run mid-derive must not have its key edited or deleted underneath it. The brand id
+        comes from the URL but is only ever used through keys_dir()/<id>.json lookups that
+        404 on absence, and the update/delete verbs re-verify existence in the module."""
+        if not _inflight.acquire(blocking=False):
+            return self._send(409, {"error": "a run is already in flight (single-flight); "
+                                             "wait before editing brands"})
+        try:
+            if "/" in brand or "\\" in brand or ".." in brand:
+                return self._send(400, {"error": f"invalid brand id {brand!r}"})
+            if verb == "update":
+                try:
+                    payload = json.loads(self._read_body() or b"{}")
+                except json.JSONDecodeError:
+                    return self._send(400, {"error": "invalid JSON body"})
+                code, body = brand_manager.update_brand(brand, payload)
+            elif verb == "logo":
+                parsed = multipart.parse_multipart(self._read_body(),
+                                                   self.headers.get("Content-Type", ""))
+                logo = parsed["files"].get("logo")
+                if not logo or not logo[1]:
+                    return self._send(400, {"error": "a logo file part is required"})
+                code, body = brand_manager.replace_logo(brand, logo[0], logo[1])
+            else:
+                try:
+                    payload = json.loads(self._read_body() or b"{}")
+                except json.JSONDecodeError:
+                    payload = {}
+                code, body = brand_manager.delete_brand(brand, payload.get("confirm", ""))
+            return self._send(code, body)
+        except Exception as exc:  # noqa: BLE001
+            return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
+        finally:
+            if _inflight.locked():
                 _inflight.release()
 
     def _run_export(self, run_id):

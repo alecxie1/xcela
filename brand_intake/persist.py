@@ -17,9 +17,8 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "harness"))
-from asset_paths import keys_dir  # noqa: E402  (019: answer keys are runtime state)
-
-BRANDS = _REPO / "brands"
+from asset_paths import brands_dir, keys_dir  # noqa: E402  (019: BOTH stores are runtime
+# state with env-overridable locations; the fixed BRANDS constant was a 017 leftover)
 
 
 def key_path(brand: str) -> Path:
@@ -42,7 +41,7 @@ def place_logo(brand: str, src) -> str:
     src = str(src or "").strip()
     if not src or not Path(src).is_file():
         return ""
-    brand_dir = BRANDS / brand
+    brand_dir = brands_dir() / brand
     brand_dir.mkdir(parents=True, exist_ok=True)
     dest = brand_dir / Path(src).name
     if Path(src).resolve() != dest.resolve():

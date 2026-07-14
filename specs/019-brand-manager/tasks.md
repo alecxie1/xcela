@@ -5,7 +5,7 @@ One task = one commit; tests named per task in spec.md's test section.
 - [x] T001 keys_dir() + consumer wiring + XCELA_ANSWER_KEYS_DIR + suite repoints + the five
       demo keys move to tests_support/demo_keys/ + answer_keys/ gitignored (.gitkeep).
       Bar: FULL sweep green. Commit: `feat(019): answer keys become runtime state (T001)`.
-- [ ] T002 manage deciders + routes (GET /brands/detail, POST /brand/<id>/update|logo|delete
+- [x] T002 manage deciders + routes (GET /brands/detail, POST /brand/<id>/update|logo|delete
       with the inflight 409 guard) + test_brand_manager.py checks.
       Commit: `feat(019): brand manager routes (T002)`.
 - [ ] T003 frontend/manage.html (品牌管理) + shared nav on all pages + run-form asset-status

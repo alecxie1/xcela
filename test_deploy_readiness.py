@@ -150,7 +150,8 @@ def check2_portable_wiring():
 
     logo_src = base / "TESTBRAND" / "logo file.png"
     rel = persist.place_logo("TESTBRAND", str(logo_src))
-    f = rel == "TESTBRAND/logo file.png" and (persist.BRANDS / rel).is_file()
+    import asset_paths as _ap019
+    f = rel == "TESTBRAND/logo file.png" and (_ap019.brands_dir() / rel).is_file()
 
     g = False
     if not _cjxq_logo.is_file():
