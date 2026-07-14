@@ -159,8 +159,16 @@ per-brand asset status line + the ONE logo format guard (ext + magic-byte sniff,
 PNG/JPG/WebP) shared by the wizard and the manager (Kevin's 只能识别JPG report). Fixed en
 route: persist.place_logo ignored XCELA_BRANDS_DIR (017 leftover). test_brand_manager 6/6
 (hermetic tmp workspaces); full sweep green. Spec/tasks: `specs/019-brand-manager/`
-(plan-as-spec). Follow-up candidates: 020 model-env config (de-fork Kevin's GPT-5.5 swap);
-SGP teardown pending designer confirmation.
+(plan-as-spec). Feature `020-model-env-config` BUILT same day: harness/model_client.py is
+the ONE text/vision call home (XCELA_TEXT_MODELS chain + XCELA_IMAGE_MODEL, providers
+inferred from the name: claude-* -> Anthropic blocks, else OpenAI chat with data-URI images
++ max_completion_tokens; injectable client factories); five sites rewired (scene_author
+author chain with parse-in-loop preserved, blind_score, calibrate _vision_call,
+approve tier mapping chain[0]/chain[-1], generate + manifest record image_model()); no bare
+anthropic.Anthropic() outside model_client (grep-guarded); defaults byte-identical (pinned).
+Kevin's GPT-5.5 fork becomes one .env line. test_model_config 4/4 (fake-client payload
+shapes by value); full 32-suite sweep green. Spec: `specs/020-model-env-config/`.
+Remaining ops: SGP teardown pending designer confirmation.
 
 Prior feature `018-github-handoff` - BUILT T001-T004 (2026-07-13); T005 = the push to
 origin (needs Alec's GitHub credentials) + the CTO's clone-to-first-run human gate. Richard's

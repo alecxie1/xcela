@@ -25,7 +25,10 @@ from runtime_env import load_runtime_env  # noqa: E402  (018: env > .env > legac
 load_runtime_env()
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-MODELS = ["claude-opus-4-5", "claude-sonnet-4-6"]
+import sys as _sys020
+_sys020.path.insert(0, str(Path(__file__).resolve().parent.parent / "harness"))
+from model_client import text_models as _text_models020  # noqa: E402
+MODELS = _text_models020()  # 020: env-configured (XCELA_TEXT_MODELS)
 
 # Step-0 rubric, EXACT format (energy/grab recorded but not used as targets).
 BLIND_PROMPT = (
@@ -52,26 +55,13 @@ STYLE_PROMPT = (
 
 
 def _vision_call(image_path: str, prompt: str) -> str:
-    import anthropic
-    data = base64.standard_b64encode(Path(image_path).read_bytes()).decode()
-    media = "image/png" if image_path.lower().endswith("png") else "image/jpeg"
-    client = anthropic.Anthropic()
-    last_exc = None
-    for model in MODELS:
-        try:
-            msg = client.messages.create(
-                model=model, max_tokens=768,
-                messages=[{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media, "data": data}},
-                    {"type": "text", "text": prompt},
-                ]}],
-            )
-            print(f"  [model: {model}]", file=sys.stderr)
-            return msg.content[0].text.strip()
-        except Exception as exc:  # noqa: BLE001
-            last_exc = exc
-            print(f"  [warn] {model} failed: {exc}", file=sys.stderr)
-    raise RuntimeError(f"all models failed: {last_exc}")
+    # 020: env-configured chain, provider-agnostic (model_client routes by model name)
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).resolve().parent.parent / "harness"))
+    from model_client import call_text_chain
+    raw, model = call_text_chain(prompt, 768, image_path=image_path, models=MODELS)
+    print(f"  [model: {model}]", file=sys.stderr)
+    return raw
 
 
 def parse_blind(raw: str) -> dict:

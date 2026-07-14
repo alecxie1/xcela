@@ -495,7 +495,8 @@ def check10_env_loader():
 
     example = (REPO / ".env.example").read_text(encoding="utf-8")
     read_vars = {"OPENAI_API_KEY", "ANTHROPIC_API_KEY"}
-    for f in (REPO / "frontend" / "server.py"), (REPO / "harness" / "asset_paths.py"):
+    for f in ((REPO / "frontend" / "server.py"), (REPO / "harness" / "asset_paths.py"),
+              (REPO / "harness" / "model_client.py")):
         read_vars |= set(re.findall(r'environ\.get\("(XCELA_[A-Z_]+)"', f.read_text(encoding="utf-8")))
     e = all(v in example for v in read_vars)
     # gitless contexts (the Docker image excludes .git) cannot check ignore rules; that is

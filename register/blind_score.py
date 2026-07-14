@@ -33,25 +33,21 @@ RUBRIC_PROMPT = (
     '{"formality": <int>, "playfulness": <int>, "grab": <int>, "rationale": "<one sentence>"}'
 )
 
-MODELS = ["claude-opus-4-5", "claude-sonnet-4-6"]
+# 020: the chain is env-configured (XCELA_TEXT_MODELS) and provider-agnostic; kept as a
+# module attribute for the pinned-chain callers/docs (evaluated at import with the default
+# when the env is unset).
+import sys as _sys020
+_sys020.path.insert(0, str(Path(__file__).resolve().parent.parent / "harness"))
+from model_client import call_text_model, text_models  # noqa: E402
+
+MODELS = text_models()
 
 
 def score_once(image_path: str) -> dict:
-    import anthropic
-    data = base64.standard_b64encode(Path(image_path).read_bytes()).decode()
-    media = "image/png" if image_path.lower().endswith("png") else "image/jpeg"
-    client = anthropic.Anthropic()
     last_exc = None
-    for model in MODELS:
+    for model in text_models():
         try:
-            msg = client.messages.create(
-                model=model, max_tokens=512,
-                messages=[{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media, "data": data}},
-                    {"type": "text", "text": RUBRIC_PROMPT},
-                ]}],
-            )
-            raw = msg.content[0].text.strip()
+            raw = call_text_model(model, RUBRIC_PROMPT, 512, image_path=image_path)
             if raw.startswith("```"):
                 raw = raw.split("```", 2)[1]
                 if raw.startswith("json"):

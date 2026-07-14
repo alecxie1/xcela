@@ -14,6 +14,7 @@ def generate_variant(prompt: str, logo_path, out_path: str,
     """
     from runtime_env import load_runtime_env  # 018: env > .env > legacy ~/.hermes
     load_runtime_env()
+    from model_client import image_model  # 020: the image model is deployment config
     from openai import OpenAI
 
     paths = [logo_path] if isinstance(logo_path, str) else list(logo_path)
@@ -23,7 +24,7 @@ def generate_variant(prompt: str, logo_path, out_path: str,
     refs = [open(p, "rb") for p in paths]
     try:
         resp = client.images.edit(
-            model="gpt-image-2",
+            model=image_model(),
             image=refs,
             prompt=prompt,
             size=size,        # type: ignore[arg-type]
@@ -39,7 +40,7 @@ def generate_variant(prompt: str, logo_path, out_path: str,
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(b64))
     return {
-        "model": "gpt-image-2",
+        "model": image_model(),
         "endpoint": "images.edit",
         "size": size,
         "quality": quality,

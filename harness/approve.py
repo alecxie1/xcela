@@ -30,17 +30,10 @@ def _now() -> str:
 
 
 def _anthropic_text(model: str, prompt: str, max_tokens: int = 4096) -> str:
-    import anthropic
-    msg = anthropic.Anthropic().messages.create(
-        model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}]
-    )
-    raw = msg.content[0].text.strip()
-    if raw.startswith("```"):  # strip markdown fences if the model adds them anyway
-        raw = raw.split("```", 2)[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.rsplit("```", 1)[0].strip()
-    return raw
+    # 020: provider-agnostic (model_client routes by name); the legacy tier mapping below
+    # picks chain[0] (the strong model) and chain[-1] (the fast one) from XCELA_TEXT_MODELS.
+    from model_client import call_text_model
+    return call_text_model(model, prompt, max_tokens)
 
 
 def summarize_scene(tier3: dict) -> str:
@@ -53,7 +46,8 @@ def summarize_scene(tier3: dict) -> str:
         "Start with \"Here's the plan:\" and end with: anything you'd like to change?\n\n"
         f"{json.dumps(tier3, ensure_ascii=False, indent=2)}"
     )
-    return _anthropic_text("claude-sonnet-4-6", prompt, max_tokens=1024)
+    from model_client import text_models
+    return _anthropic_text(text_models()[-1], prompt, max_tokens=1024)
 
 
 def summarize_diff(changed_fields: list[str], old: dict, new: dict) -> str:
@@ -64,7 +58,8 @@ def summarize_diff(changed_fields: list[str], old: dict, new: dict) -> str:
         "pixels, no jargon. Format: \"Updated: ... Everything else unchanged.\"\n\n"
         f"Changed fields (before/after):\n{json.dumps(snippets, ensure_ascii=False, indent=2)}"
     )
-    return _anthropic_text("claude-sonnet-4-6", prompt, max_tokens=512)
+    from model_client import text_models
+    return _anthropic_text(text_models()[-1], prompt, max_tokens=512)
 
 
 def apply_nudge(tier3: dict, nudge: str) -> tuple[dict, list[str], list[str]]:
@@ -81,7 +76,7 @@ def apply_nudge(tier3: dict, nudge: str) -> tuple[dict, list[str], list[str]]:
         "{\"changed_fields\": [top-level keys you changed], \"scene\": {the FULL updated tier-3 JSON}}\n\n"
         f"Current tier-3 scene:\n{json.dumps(tier3, ensure_ascii=False, indent=2)}"
     )
-    result = json.loads(_anthropic_text("claude-opus-4-5", prompt, max_tokens=8192))
+    result = json.loads(_anthropic_text(__import__("model_client").text_models()[0], prompt, max_tokens=8192))
     changed = [str(f).split(".")[0].split("[")[0] for f in result["changed_fields"]]
     new_scene = result["scene"]
 

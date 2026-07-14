@@ -592,18 +592,14 @@ def author_tier3(brand_key: dict, must_include: list[str] | None = None,
 
 
 def _call_author(messages: list[dict]) -> tuple[dict, str]:
-    """One authoring call (model fallback chain). Returns (parsed_json, raw_text)."""
-    import anthropic
+    """One authoring call (model fallback chain, 020: env-configured + provider-agnostic
+    via model_client). Returns (parsed_json, raw_text). A JSON-parse failure falls through
+    the chain exactly like an API failure (pre-020 semantics preserved)."""
+    from model_client import call_text_model, text_models
 
-    client = anthropic.Anthropic()
-    for model in ["claude-opus-4-5", "claude-sonnet-4-6"]:
+    for model in text_models():
         try:
-            msg = client.messages.create(
-                model=model,
-                max_tokens=4096,
-                messages=messages,
-            )
-            raw = msg.content[0].text.strip()
+            raw = call_text_model(model, messages, 4096)
             # Strip markdown fences if the model adds them anyway.
             if raw.startswith("```"):
                 raw = raw.split("```", 2)[1]

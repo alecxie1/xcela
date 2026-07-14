@@ -1,7 +1,19 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-14._
 
-> **▶ BUILD STATUS 2026-07-14 (latest): feature 019 (brand manager) is BUILT T001-T004; T005 (Kevin comms + their unassisted use) is PENDING.**
+> **▶ BUILD STATUS 2026-07-14 (latest): features 019 (brand manager) + 020 (model-env config) are BUILT; the Kevin comms + their unassisted use are the pending human gates.**
+> FEATURE 020 (same day): model choice is deployment CONFIG. harness/model_client.py is the ONE
+> text/vision call home: XCELA_TEXT_MODELS (comma chain, default the claude opus->sonnet pair) +
+> XCELA_IMAGE_MODEL (default gpt-image-2); the provider is inferred from the model name
+> (claude-* -> Anthropic content blocks; anything else -> OpenAI chat.completions with data-URI
+> image_url parts + max_completion_tokens); client factories injectable (the suite proves both
+> payload shapes BY VALUE with fakes, the chain's warn-then-fallback-then-raise semantics, and
+> the pinned defaults). Five sites rewired: scene_author._call_author (parse-failure still
+> falls through the chain), blind_score.score_once, calibrate _vision_call (reference_style
+> imports it), approve's legacy tiers (chain[0]/chain[-1]), generate.py (call + manifest both
+> record image_model()). ZERO bare anthropic.Anthropic() outside model_client (grep-guarded).
+> Kevin's GPT-5.5 code fork becomes ONE .env line: XCELA_TEXT_MODELS=gpt-5.5.
+> test_model_config 4/4; the FULL 32-suite sweep green. Spec: `specs/020-model-env-config/`.
 > Trigger: Kevin's team (deployed at xcela.handyprint.cn, verified byte-identical UI to ours;
 > his only real change is the GPT-5.5 model swap) misread our five committed demo keys as
 > production brands with complete assets. The structural fix + the feature they asked for:
