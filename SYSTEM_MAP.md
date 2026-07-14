@@ -1,7 +1,34 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-07-13._
+_Single source of truth for "what is this whole thing." Updated 2026-07-14._
 
-> **▶ BUILD STATUS 2026-07-13 (latest): feature 018 (GitHub handoff) is BUILT T001-T004; T005 (the push + the CTO's clone-to-first-run gate) is PENDING on Alec's GitHub credentials.**
+> **▶ BUILD STATUS 2026-07-14 (latest): feature 019 (brand manager) is BUILT T001-T004; T005 (Kevin comms + their unassisted use) is PENDING.**
+> Trigger: Kevin's team (deployed at xcela.handyprint.cn, verified byte-identical UI to ours;
+> his only real change is the GPT-5.5 model swap) misread our five committed demo keys as
+> production brands with complete assets. The structural fix + the feature they asked for:
+> ANSWER KEYS ARE RUNTIME STATE (asset_paths.keys_dir, env XCELA_ANSWER_KEYS_DIR; the demo keys
+> now live in committed tests_support/demo_keys/ for the suites; answer_keys/ is gitignored, so
+> a deployed clone's pull DELETES our demo keys while user-onboarded keys survive untracked;
+> the full sweep is proven green with answer_keys/ EMPTIED, the fresh-clone truth, which flushed
+> out nine runtime-dependent suites now pinning the env, and test_onboard writes into a seeded
+> tmp workspace). THE BRAND DATABASE: frontend/brand_manager.py (HTTP-free: tolerant
+> list_brands_detail with honest logo_resolved via try_resolve; update_brand validated on a deep
+> copy so refusals leave the file byte-identical; replace_logo staged under the original
+> basename; delete_brand = the KEY only, server-side retype confirmation, assets remain and the
+> response says so) + GET /brands/detail + POST /brand/<id>/update|logo|delete through
+> _brand_write (single-flight lock held for the write, path-traversal ids rejected) +
+> manage.html (品牌管理, Chinese, nav on all four pages) + the run form's per-brand asset status
+> line (✗ 缺少 logo 素材 = 出图会被明确拒绝) + a playbook section. ONE logo format guard
+> (extension + magic-byte sniff; PNG/JPG/WebP, the gpt-image-2 set) shared by the manager AND
+> the onboarding wizard (answers Kevin's 只能识别JPG report with a named refusal at upload
+> time). Fixed en route: persist.place_logo wrote to the fixed repo brands dir, ignoring
+> XCELA_BRANDS_DIR (a 017 leftover the hermetic suite caught). Tests: test_brand_manager 6/6
+> (fully hermetic tmp keys+brands workspaces per check); the FULL sweep green BOTH with runtime
+> keys present and with answer_keys/ emptied. PENDING T005: the Kevin message (pull to get
+> 品牌管理 + the demo keys vanish; the screenshot feature he flagged is OUR 017 run-resume
+> picker; 020 will make model names .env vars so his GPT-5.5 swap stops being a fork) and the
+> human gate: his team manages brands unassisted. Spec: `specs/019-brand-manager/`.
+
+> **▶ BUILD STATUS 2026-07-13: feature 018 (GitHub handoff) is BUILT T001-T004; T005 (the push + the CTO's clone-to-first-run gate) is PENDING on Alec's GitHub credentials.**
 > Richard's team decision: everything to GitHub, THEIR CTO deploys himself with THEIR keys. The
 > repo is now configured the standard way: harness/runtime_env.py is the ONE loader (real
 > environment variables > <repo>/.env > ~/.hermes/.env legacy, never overriding; the pre-018

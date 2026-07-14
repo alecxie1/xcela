@@ -181,8 +181,13 @@ def check6_ui():
          and "renderBrandStatus" in ix and "✓ 素材齐全" in ix)
     pb = (REPO / "frontend" / "playbook.html").read_text(encoding="utf-8")
     e = "品牌管理" in pb and "明确拒绝" in pb
-    ok = a and b and c and e
-    return ok, f"manage-page={a}; nav-x4={b}; form-status={c}; playbook={e}"
+    # 019 T004: the wizard shares the ONE guard (server-side call + narrowed accept)
+    ob = (REPO / "frontend" / "onboard.html").read_text(encoding="utf-8")
+    srv = (REPO / "frontend" / "server.py").read_text(encoding="utf-8")
+    f = ('accept=".png,.jpg,.jpeg,.webp"' in ob
+         and "brand_manager.validate_logo_format(logo[0], logo[1])" in srv)
+    ok = a and b and c and e and f
+    return ok, f"manage-page={a}; nav-x4={b}; form-status={c}; playbook={e}; wizard-guard={f}"
 
 
 CHECKS = [

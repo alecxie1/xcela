@@ -10,7 +10,7 @@ One task = one commit; tests named per task in spec.md's test section.
       Commit: `feat(019): brand manager routes (T002)`.
 - [x] T003 frontend/manage.html (品牌管理) + shared nav on all pages + run-form asset-status
       line + playbook section + greps. Commit: `feat(019): brand manager UI (T003)`.
-- [ ] T004 shared logo format guard (wizard + manager) + tests; docs currency; full sweep;
+- [x] T004 shared logo format guard (wizard + manager) + tests; docs currency; full sweep;
       push origin + vm; VM ops (demo keys copied back as runtime state, restart).
       Commit: `feat(019): logo format guard + docs + ship (T004)`.
 - [ ] T005 Kevin comms (paste-able Chinese) + HUMAN GATE: Kevin/designer manage brands

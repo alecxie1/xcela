@@ -144,7 +144,25 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `018-github-handoff` - BUILT T001-T004 (2026-07-13); T005 = the push to
+**Active feature:** `019-brand-manager` - BUILT T001-T004 (2026-07-14); T005 = Kevin comms +
+his team managing brands unassisted. Trigger: Kevin's team misread our five committed demo
+keys as production brands with assets. Shipped: answer keys are RUNTIME STATE
+(asset_paths.keys_dir, env XCELA_ANSWER_KEYS_DIR; the five demo keys moved to committed
+tests_support/demo_keys/, answer_keys/ gitignored with local working copies; deployed clones
+LOSE the demo keys on pull, which is the point; nine runtime-dependent suites pin the env,
+test_onboard gets a seeded tmp because it WRITES; proven green with answer_keys EMPTIED);
+frontend/brand_manager.py (list/update/replace_logo/delete, all through validate_lean_key,
+refusals leave files byte-identical, delete = key only + retype confirm server-side) + routes
+(GET /brands/detail, POST /brand/<id>/update|logo|delete via _brand_write: single-flight
+lock, traversal-guarded ids) + manage.html (品牌管理, nav on all four pages) + the run form's
+per-brand asset status line + the ONE logo format guard (ext + magic-byte sniff,
+PNG/JPG/WebP) shared by the wizard and the manager (Kevin's 只能识别JPG report). Fixed en
+route: persist.place_logo ignored XCELA_BRANDS_DIR (017 leftover). test_brand_manager 6/6
+(hermetic tmp workspaces); full sweep green. Spec/tasks: `specs/019-brand-manager/`
+(plan-as-spec). Follow-up candidates: 020 model-env config (de-fork Kevin's GPT-5.5 swap);
+SGP teardown pending designer confirmation.
+
+Prior feature `018-github-handoff` - BUILT T001-T004 (2026-07-13); T005 = the push to
 origin (needs Alec's GitHub credentials) + the CTO's clone-to-first-run human gate. Richard's
 team decision: everything to GitHub, THEIR CTO deploys with THEIR keys. Shipped: ONE env
 loader `harness/runtime_env.py` (real env > <repo>/.env > ~/.hermes/.env legacy, never

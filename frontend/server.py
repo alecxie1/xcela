@@ -622,6 +622,11 @@ class Handler(BaseHTTPRequestHandler):
         logo = parsed["files"].get("logo")
         logo_src = ""
         if logo and logo[1]:  # land the uploaded logo on disk for persist.place_logo (feature 007: the
+            # 019: the ONE format guard (gpt-image-2 accepts PNG/JPG/WebP only), shared with
+            # the brand manager: refuse HERE, never as a generation-time surprise
+            reason = brand_manager.validate_logo_format(logo[0], logo[1])
+            if reason:
+                return self._send(400, {"error": reason})
             logo_src = uploads.save_upload(logo, OUTPUT / ".onboard_tmp")  # ONE shared save-upload home
         if not _inflight.acquire(blocking=False):
             return self._send(409, {"error": "a job is already in flight (single-flight); wait for it"})

@@ -62,14 +62,14 @@ Loader: `harness/runtime_env.py`. Precedence: **real environment variables > `<r
 
 ```
 frontend/        the web app: stdlib HTTP server + three vanilla-HTML pages
-                 (run form / onboarding wizard / playbook), run listing, pre-spend gate UI
+                 (run form / onboarding wizard / brand manager / playbook), run listing, pre-spend gate UI
 harness/         the pipeline: conductor.py (orchestrator), scene_author.py (prompt engine),
                  generate.py (gpt-image-2 wrapper), export_layers.py (per-element layer
                  export), format_size.py, asset_paths.py, runtime_env.py, ...
 register/        the reconciliation engine: brand DNA vs task needs, per dimension
                  (derive_register.py), plus reference calibration
 brand_intake/    brand onboarding: VI-PDF extraction, key assembly/validation, persistence
-answer_keys/     committed brand DNA (one JSON per onboarded brand)
+answer_keys/     RUNTIME brand database (gitignored; managed in-app at /manage)
 kits/ config/    optional per-brand data for the dormant kit path
 deploy/          bootstrap script, systemd unit, Caddyfile template, deployer README
 docs/            ARCHITECTURE.md (the full map), playbook pointer, deployment notes
