@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>品牌管理 - Handyprint 设计工具</title>
+<style>
+  :root { --ink:#1a1a1a; --muted:#6b7280; --line:#e3e3e6; --nav:#23232a; --accent:#3b82f6; --danger:#c0392b; --ok:#2a6; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: var(--ink); }
+  header.topnav { background: var(--nav); color: #fff; height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 22px; }
+  header.topnav .brandmark { font-weight: 700; letter-spacing: 0.3px; }
+  header.topnav nav { display: flex; gap: 4px; }
+  header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
+  header.topnav nav a:hover { background: #34343d; color: #fff; }
+  header.topnav nav a.active { background: var(--accent); color: #fff; }
+  main { max-width: 880px; margin: 0 auto; padding: 22px 20px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; padding: 14px 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .card h3 { margin: 0 0 8px; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .bad { color: var(--danger); font-weight: 600; }
+  .muted { color: var(--muted); font-size: 12px; }
+  label { display: block; margin: 8px 0 3px; font-weight: 600; font-size: 12px; color: #444; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+  .swatch { display: inline-block; width: 22px; height: 22px; border-radius: 4px; border: 1px solid #ccc; vertical-align: middle; margin-right: 4px; }
+  .colorrow { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .colorrow input[type=text] { width: 8em; }
+  select { padding: 5px 8px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+  button { margin-top: 10px; padding: 8px 12px; border: 0; border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer; background: var(--ok); }
+  button.danger { background: var(--danger); }
+  button.gray { background: #777; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  .note { color: #b8860b; font-style: italic; margin-top: 6px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .row > div { flex: 1; min-width: 160px; }
+</style>
+</head>
+<body>
+<header class="topnav">
+  <span class="brandmark">Handyprint</span>
+  <nav>
+    <a href="/">生成设计</a>
+    <a href="/onboard">录入品牌</a>
+    <a href="/manage" class="active" aria-current="page">品牌管理</a>
+    <a href="/playbook">使用手册</a>
+  </nav>
+</header>
+<main>
+  <div class="card"><b>品牌数据库</b>
+    <div class="muted">这里是本服务器上的全部品牌。新品牌请通过「录入品牌」向导添加；此页用于查看、修改和删除。
+    每个品牌会标明素材是否齐全：缺少 logo 的品牌在出图时会被明确拒绝，不会静默出错。</div>
+  </div>
+  <div id="list"><div class="card muted">加载中...</div></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ROLES = ["primary","secondary","accent","background","text"];
+
+async function load() {
+  const r = await fetch("/brands/detail"); const j = await r.json();
+  const brands = j.brands || [];
+  if (!brands.length) { $("list").innerHTML = `<div class="card muted">数据库为空：请先在「录入品牌」向导中添加品牌。</div>`; return; }
+  $("list").innerHTML = brands.map((b, i) => {
+    if (b.error) return `<div class="card"><h3>${esc(b.brand)} <span class="bad">✗ ${esc(b.error)}</span></h3></div>`;
+    const colors = (b.colors || []).map((c, k) => `
+      <div class="colorrow">
+        <span class="swatch" style="background:${esc(c.hex)}"></span>
+        <input type="text" data-b="${i}" data-hex="${k}" value="${esc(c.hex)}">
+        <select data-b="${i}" data-role="${k}">${ROLES.map(x => `<option value="${x}"${x === c.role ? " selected" : ""}>${x}</option>`).join("")}</select>
+      </div>`).join("");
+    return `<div class="card" id="card_${i}">
+      <h3>${esc(b.brand)}
+        ${b.logo_resolved ? '<span class="ok">✓ 素材齐全</span>' : '<span class="bad">✗ 缺少 logo 素材（出图会被拒绝）</span>'}
+        <span class="muted">录入：${esc(b.verified_by || "?")} ${esc(b.verified_date || "")}</span></h3>
+      <div class="row">
+        <div><label>品牌名（中文）</label><input type="text" id="cn_${i}" value="${esc(b.name_cn || "")}"></div>
+        <div><label>品牌名（英文）</label><input type="text" id="en_${i}" value="${esc(b.name_en || "")}"></div>
+      </div>
+      <label>颜色（必须有且只有一个 primary）</label>${colors}
+      <label>更换 logo（PNG/JPG/WebP；当前：${esc(b.logo_path || "无")}）</label>
+      <input type="file" id="logo_${i}" accept=".png,.jpg,.jpeg,.webp">
+      <div>
+        <button onclick="saveBrand(${i}, '${esc(b.brand)}')">保存修改</button>
+        <button class="gray" onclick="replaceLogo(${i}, '${esc(b.brand)}')" style="width:auto">上传新 logo</button>
+        <button class="danger" onclick="delBrand('${esc(b.brand)}')" style="width:auto">删除品牌</button>
+      </div>
+      <div class="note" id="note_${i}"></div>
+    </div>`;
+  }).join("");
+}
+
+async function saveBrand(i, brand) {
+  const colors = [...document.querySelectorAll(`input[data-b="${i}"][data-hex]`)].map((inp, k) => ({
+    hex: inp.value.trim(),
+    role: document.querySelector(`select[data-b="${i}"][data-role="${k}"]`).value,
+  }));
+  const body = { name_cn: $(`cn_${i}`).value, name_en: $(`en_${i}`).value, colors };
+  const r = await fetch(`/brand/${encodeURIComponent(brand)}/update`, { method: "POST",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json();
+  $(`note_${i}`).textContent = r.ok ? "已保存。" : (j.error || "保存失败");
+  if (r.ok) load();
+}
+
+async function replaceLogo(i, brand) {
+  const f = $(`logo_${i}`).files[0];
+  if (!f) { $(`note_${i}`).textContent = "请先选择 logo 文件（PNG/JPG/WebP）。"; return; }
+  const fd = new FormData(); fd.append("logo", f, f.name);
+  const r = await fetch(`/brand/${encodeURIComponent(brand)}/logo`, { method: "POST", body: fd });
+  const j = await r.json();
+  $(`note_${i}`).textContent = r.ok ? "logo 已更新。" : (j.error || "上传失败");
+  if (r.ok) load();
+}
+
+async function delBrand(brand) {
+  const typed = prompt(`删除后此品牌将从列表消失（素材文件保留在服务器上）。\n确认删除请原样输入品牌 ID：${brand}`);
+  if (typed === null) return;
+  const r = await fetch(`/brand/${encodeURIComponent(brand)}/delete`, { method: "POST",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: typed }) });
+  const j = await r.json();
+  if (!r.ok) { alert(j.error || "删除失败"); return; }
+  load();
+}
+
+load();
+</script>
+</body>
+</html>

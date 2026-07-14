@@ -163,12 +163,35 @@ def check5_route_wiring():
     return ok, f"routes={a}; lock+traversal-guard={b}; views={c}; wizard-guard-intact={e}"
 
 
+def check6_ui():
+    """UI wiring (greps, value-bearing): manage.html carries the four verbs (list fetch,
+    update/logo/delete posts) with the retype-confirm prompt and the PNG/JPG/WebP accept;
+    ALL FOUR pages carry the 品牌管理 nav link; the run form renders the per-brand asset
+    status from /brands/detail (best-effort, never blocking); the playbook documents the
+    manager incl. the loud-refusal contract."""
+    mg = (REPO / "frontend" / "manage.html").read_text(encoding="utf-8")
+    a = all(s in mg for s in ('fetch("/brands/detail")', "/update", "/logo", "/delete",
+                              "原样输入品牌 ID", 'accept=".png,.jpg,.jpeg,.webp"',
+                              "缺少 logo 素材"))
+    pages = ["index.html", "onboard.html", "manage.html", "playbook.html"]
+    b = all('href="/manage"' in (REPO / "frontend" / p).read_text(encoding="utf-8")
+            for p in pages)
+    ix = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    c = ('id="brandstatus"' in ix and 'fetch("/brands/detail")' in ix
+         and "renderBrandStatus" in ix and "✓ 素材齐全" in ix)
+    pb = (REPO / "frontend" / "playbook.html").read_text(encoding="utf-8")
+    e = "品牌管理" in pb and "明确拒绝" in pb
+    ok = a and b and c and e
+    return ok, f"manage-page={a}; nav-x4={b}; form-status={c}; playbook={e}"
+
+
 CHECKS = [
     ("019 list detail: honest logo_resolved, corrupt tolerance", check1_list_detail),
     ("019 update: validate-gated, refusal leaves bytes identical", check2_update),
     ("019 logo: ext + header guard by value, relative placement", check3_logo_guard_and_replace),
     ("019 delete: server-side confirm, key-only, honest note", check4_delete),
     ("019 routes: lock, traversal guard, views, wizard guard intact", check5_route_wiring),
+    ("019 UI: manage page, nav on all pages, form status line, playbook section", check6_ui),
 ]
 
 

@@ -44,6 +44,7 @@
   <nav>
     <a href="/" class="active" aria-current="page">生成设计</a>
     <a href="/onboard">录入品牌</a>
+    <a href="/manage">品牌管理</a>
     <a href="/playbook">使用手册</a>
   </nav>
 </header>
@@ -52,6 +53,7 @@
     <fieldset><legend>品牌与产出物</legend>
       <label>品牌 Brand</label>
       <select id="brand"></select>
+      <div id="brandstatus" class="note"></div>
       <label>产出物类型（可自由中文描述，例如：朋友圈海报、门店物料）</label>
       <input id="asset_type" value="手举牌 hand-held event sign">
       <label>渲染风格</label>
@@ -146,9 +148,21 @@ function zh(s) {
   return s;   // English fallback: unmapped vocabulary stays honest
 }
 
+let brandDetail = {};   // 019: per-brand asset status for the form's honesty line
+function renderBrandStatus() {
+  const d = brandDetail[$("brand").value];
+  $("brandstatus").textContent = !d ? "" :
+    (d.logo_resolved ? "✓ 素材齐全" : "✗ 缺少 logo 素材：出图会被明确拒绝（去「品牌管理」补齐或删除该品牌）");
+}
 async function loadBrands() {
   const r = await fetch("/brands"); const j = await r.json();
   $("brand").innerHTML = j.brands.map(b => `<option>${b}</option>`).join("");
+  try {   // best-effort: the status line never blocks the form
+    const rd = await fetch("/brands/detail"); const jd = await rd.json();
+    (jd.brands || []).forEach(b => brandDetail[b.brand] = b);
+  } catch (e) {}
+  renderBrandStatus();
+  $("brand").addEventListener("change", renderBrandStatus);
   $("run").textContent = `开始（免费预览；确认方案后才收费，约 $${j.per_run_cost_usd.toFixed(2)}）`;
   // feature 010: preselect the brand handed off from onboarding (/?brand=<id>); graceful if absent/unknown
   const want = new URLSearchParams(location.search).get("brand");
