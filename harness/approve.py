@@ -29,12 +29,15 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _anthropic_text(model: str, prompt: str, max_tokens: int = 4096) -> str:
-    import anthropic
-    msg = anthropic.Anthropic().messages.create(
+def _openai_text(model: str, prompt: str, max_tokens: int = 4096) -> str:
+    import os as _os
+    from openai import OpenAI
+    client = OpenAI(base_url=_os.environ.get("OPENAI_BASE_URL"),
+                    api_key=_os.environ.get("OPENAI_API_KEY"))
+    msg = client.chat.completions.create(
         model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}]
     )
-    raw = msg.content[0].text.strip()
+    raw = msg.choices[0].message.content.strip()
     if raw.startswith("```"):  # strip markdown fences if the model adds them anyway
         raw = raw.split("```", 2)[1]
         if raw.startswith("json"):
@@ -53,7 +56,7 @@ def summarize_scene(tier3: dict) -> str:
         "Start with \"Here's the plan:\" and end with: anything you'd like to change?\n\n"
         f"{json.dumps(tier3, ensure_ascii=False, indent=2)}"
     )
-    return _anthropic_text("claude-sonnet-4-6", prompt, max_tokens=1024)
+    return _openai_text("gpt-5.5", prompt, max_tokens=1024)
 
 
 def summarize_diff(changed_fields: list[str], old: dict, new: dict) -> str:
@@ -64,7 +67,7 @@ def summarize_diff(changed_fields: list[str], old: dict, new: dict) -> str:
         "pixels, no jargon. Format: \"Updated: ... Everything else unchanged.\"\n\n"
         f"Changed fields (before/after):\n{json.dumps(snippets, ensure_ascii=False, indent=2)}"
     )
-    return _anthropic_text("claude-sonnet-4-6", prompt, max_tokens=512)
+    return _openai_text("gpt-5.5", prompt, max_tokens=512)
 
 
 def apply_nudge(tier3: dict, nudge: str) -> tuple[dict, list[str], list[str]]:
@@ -81,7 +84,7 @@ def apply_nudge(tier3: dict, nudge: str) -> tuple[dict, list[str], list[str]]:
         "{\"changed_fields\": [top-level keys you changed], \"scene\": {the FULL updated tier-3 JSON}}\n\n"
         f"Current tier-3 scene:\n{json.dumps(tier3, ensure_ascii=False, indent=2)}"
     )
-    result = json.loads(_anthropic_text("claude-opus-4-5", prompt, max_tokens=8192))
+    result = json.loads(_openai_text("gpt-5.5", prompt, max_tokens=8192))
     changed = [str(f).split(".")[0].split("[")[0] for f in result["changed_fields"]]
     new_scene = result["scene"]
 

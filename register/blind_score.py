@@ -33,25 +33,27 @@ RUBRIC_PROMPT = (
     '{"formality": <int>, "playfulness": <int>, "grab": <int>, "rationale": "<one sentence>"}'
 )
 
-MODELS = ["claude-opus-4-5", "claude-sonnet-4-6"]
+MODELS = ["gpt-5.5"]
 
 
 def score_once(image_path: str) -> dict:
-    import anthropic
+    import os as _os
+    from openai import OpenAI
     data = base64.standard_b64encode(Path(image_path).read_bytes()).decode()
     media = "image/png" if image_path.lower().endswith("png") else "image/jpeg"
-    client = anthropic.Anthropic()
+    client = OpenAI(base_url=_os.environ.get("OPENAI_BASE_URL"),
+                    api_key=_os.environ.get("OPENAI_API_KEY"))
     last_exc = None
     for model in MODELS:
         try:
-            msg = client.messages.create(
+            msg = client.chat.completions.create(
                 model=model, max_tokens=512,
                 messages=[{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media, "data": data}},
+                    {"type": "image_url", "image_url": {"url": f"data:{media};base64,{data}"}},
                     {"type": "text", "text": RUBRIC_PROMPT},
                 ]}],
             )
-            raw = msg.content[0].text.strip()
+            raw = msg.choices[0].message.content.strip()
             if raw.startswith("```"):
                 raw = raw.split("```", 2)[1]
                 if raw.startswith("json"):

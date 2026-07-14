@@ -593,17 +593,19 @@ def author_tier3(brand_key: dict, must_include: list[str] | None = None,
 
 def _call_author(messages: list[dict]) -> tuple[dict, str]:
     """One authoring call (model fallback chain). Returns (parsed_json, raw_text)."""
-    import anthropic
+    import os as _os
+    from openai import OpenAI
 
-    client = anthropic.Anthropic()
-    for model in ["claude-opus-4-5", "claude-sonnet-4-6"]:
+    client = OpenAI(base_url=_os.environ.get("OPENAI_BASE_URL"),
+                    api_key=_os.environ.get("OPENAI_API_KEY"))
+    for model in ["gpt-5.5"]:
         try:
-            msg = client.messages.create(
+            msg = client.chat.completions.create(
                 model=model,
                 max_tokens=4096,
                 messages=messages,
             )
-            raw = msg.content[0].text.strip()
+            raw = msg.choices[0].message.content.strip()
             # Strip markdown fences if the model adds them anyway.
             if raw.startswith("```"):
                 raw = raw.split("```", 2)[1]
@@ -615,7 +617,7 @@ def _call_author(messages: list[dict]) -> tuple[dict, str]:
             return result, raw
         except Exception as exc:
             print(f"  [warn] {model} failed: {exc}", file=sys.stderr)
-    raise RuntimeError("All Anthropic models failed.")
+    raise RuntimeError("All OpenAI models failed.")
 
 
 def assemble_final_prompt(brand_key: dict, tier3: dict, asset_profile: str = "photo",

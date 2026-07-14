@@ -25,7 +25,7 @@ from runtime_env import load_runtime_env  # noqa: E402  (018: env > .env > legac
 load_runtime_env()
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-MODELS = ["claude-opus-4-5", "claude-sonnet-4-6"]
+MODELS = ["gpt-5.5"]
 
 # Step-0 rubric, EXACT format (energy/grab recorded but not used as targets).
 BLIND_PROMPT = (
@@ -52,22 +52,24 @@ STYLE_PROMPT = (
 
 
 def _vision_call(image_path: str, prompt: str) -> str:
-    import anthropic
+    import os as _os
+    from openai import OpenAI
     data = base64.standard_b64encode(Path(image_path).read_bytes()).decode()
     media = "image/png" if image_path.lower().endswith("png") else "image/jpeg"
-    client = anthropic.Anthropic()
+    client = OpenAI(base_url=_os.environ.get("OPENAI_BASE_URL"),
+                    api_key=_os.environ.get("OPENAI_API_KEY"))
     last_exc = None
     for model in MODELS:
         try:
-            msg = client.messages.create(
+            msg = client.chat.completions.create(
                 model=model, max_tokens=768,
                 messages=[{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media, "data": data}},
+                    {"type": "image_url", "image_url": {"url": f"data:{media};base64,{data}"}},
                     {"type": "text", "text": prompt},
                 ]}],
             )
             print(f"  [model: {model}]", file=sys.stderr)
-            return msg.content[0].text.strip()
+            return msg.choices[0].message.content.strip()
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             print(f"  [warn] {model} failed: {exc}", file=sys.stderr)
