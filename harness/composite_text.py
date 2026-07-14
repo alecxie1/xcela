@@ -32,7 +32,7 @@ from PIL import Image, ImageDraw, ImageFont
 _VERT_ANCHORS = set("atmsbd")
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_ANSWER_KEYS = _REPO_ROOT / "answer_keys"
+from asset_paths import keys_dir as _keys_dir  # noqa: E402  (019: runtime state)
 _FONT_CACHE = Path.home() / ".cache" / "handyprint-fonts"
 _NATIVE_FORMATS = {".otf", ".ttf", ".ttc"}
 _CONVERT_FORMATS = {".woff", ".woff2"}
@@ -59,7 +59,7 @@ def _strip_weight_tail(name: str) -> str:
 
 
 def _load_typography_entry(role: str, brand: str) -> tuple[dict, Path]:
-    key_path = _ANSWER_KEYS / f"{brand}.json"
+    key_path = _keys_dir() / f"{brand}.json"
     if not key_path.exists():
         raise FileNotFoundError(f"answer key not found: {key_path}")
     key = json.loads(key_path.read_text(encoding="utf-8"))

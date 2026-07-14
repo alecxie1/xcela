@@ -329,8 +329,8 @@ def check_reservation_legibility(png_path: str, tier3: dict, min_contrast=1.8) -
 
 
 def load_brand(brand: str) -> dict:
-    key_path = Path(__file__).parent.parent / "answer_keys" / f"{brand}.json"
-    return json.loads(key_path.read_text(encoding="utf-8"))
+    from asset_paths import keys_dir  # 019: answer keys are runtime state
+    return json.loads((keys_dir() / f"{brand}.json").read_text(encoding="utf-8"))
 
 
 def _primary_color_hex(brand_key: dict) -> str:

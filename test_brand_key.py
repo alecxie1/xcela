@@ -32,7 +32,7 @@ from make_pdf import make_pdf         # noqa: E402
 from scene_author import assemble_thin_prompt  # noqa: E402
 from derive_register import derive_register    # noqa: E402
 
-FAT = json.loads((REPO / "answer_keys" / "aia.json").read_text(encoding="utf-8"))
+FAT = json.loads((REPO / "tests_support" / "demo_keys" / "aia.json").read_text(encoding="utf-8"))
 # PINNED register profile (per SC-005 / T008d): event_prop, flexes font:rounded.
 SUBFIELDS = {"usage_context": "held for photos / posed with",
              "vibe": {"formality": 2, "playfulness": 8, "warmth": 7},

@@ -364,7 +364,9 @@ def main() -> None:
     args = ap.parse_args()
 
     subfields = json.loads(Path(args.subfields).read_text(encoding="utf-8"))
-    brand_key = json.loads((_REPO_ROOT / "answer_keys" / f"{args.brand}.json").read_text(encoding="utf-8"))
+    _sys2 = __import__("sys"); _sys2.path.insert(0, str(_REPO_ROOT / "harness"))
+    from asset_paths import keys_dir  # 019: answer keys are runtime state
+    brand_key = json.loads((keys_dir() / f"{args.brand}.json").read_text(encoding="utf-8"))
     calibration = (json.loads(Path(args.calibration).read_text(encoding="utf-8"))
                    if args.calibration else None)
 

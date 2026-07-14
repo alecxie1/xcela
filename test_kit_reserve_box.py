@@ -18,6 +18,11 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+# 019: answer keys are runtime state; the suites read the committed demo fixtures
+import os as _os019
+_os019.environ.setdefault("XCELA_ANSWER_KEYS_DIR",
+                          str(Path(__file__).resolve().parent / "tests_support" / "demo_keys"))
+
 
 REPO_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO_ROOT / "harness"))
@@ -26,7 +31,7 @@ import compose_select as cs  # noqa: E402
 import scene_author as sa  # noqa: E402
 
 KIT = kitlib.load_kit("aia")
-ANSWER_KEY = json.loads((REPO_ROOT / "answer_keys" / "aia.json").read_text(encoding="utf-8"))
+ANSWER_KEY = json.loads((REPO_ROOT / "tests_support" / "demo_keys" / "aia.json").read_text(encoding="utf-8"))
 REGISTER_PROFILE = {
     "inferred_register": "event_prop", "font_role_hint": "rounded display",
     "brand_anchors_held": ["primary_color"], "brand_locks_flexed": ["logo:omit", "shape:die-cut"],

@@ -2,7 +2,7 @@
 
 One task = one commit; tests named per task in spec.md's test section.
 
-- [ ] T001 keys_dir() + consumer wiring + XCELA_ANSWER_KEYS_DIR + suite repoints + the five
+- [x] T001 keys_dir() + consumer wiring + XCELA_ANSWER_KEYS_DIR + suite repoints + the five
       demo keys move to tests_support/demo_keys/ + answer_keys/ gitignored (.gitkeep).
       Bar: FULL sweep green. Commit: `feat(019): answer keys become runtime state (T001)`.
 - [ ] T002 manage deciders + routes (GET /brands/detail, POST /brand/<id>/update|logo|delete

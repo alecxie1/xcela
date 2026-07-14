@@ -31,10 +31,11 @@ import multipart  # noqa: E402  (feature 006: stdlib multipart upload parsing)
 import uploads  # noqa: E402  (feature 007: the shared save-upload home, 004 reference + 006 logo)
 sys.path.insert(0, str(REPO_ROOT / "harness"))
 import export_layers as export_mod  # noqa: E402  (feature 016: the layered exporter)
+from asset_paths import keys_dir  # noqa: E402  (019: answer keys are runtime state)
 
 HERE = Path(__file__).resolve().parent
 OUTPUT = REPO_ROOT / "output"
-ANSWER_KEYS = REPO_ROOT / "answer_keys"
+ANSWER_KEYS_LEGACY_NOTE = "019: answer keys are runtime state; location via asset_paths.keys_dir"
 PER_RUN_COST_USD = 0.08  # single-sign gpt-image-2; labeled on the Run button (FR-009)
 MAX_PRODUCT_IMAGES = 6   # feature 013: mirrors conductor.MAX_PRODUCT_IMAGES (drift-guarded by test)
 # 017 (US4) remote-misuse guards; every default is byte-identical to pre-017 behavior
@@ -46,7 +47,7 @@ _inflight = threading.Lock()  # single-flight: one run at a time
 
 
 def _brands() -> list:
-    return sorted(p.stem for p in ANSWER_KEYS.glob("*.json"))
+    return sorted(p.stem for p in keys_dir().glob("*.json"))
 
 
 def parse_run_form(body: bytes, content_type: str):

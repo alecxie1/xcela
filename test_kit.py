@@ -20,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO_ROOT / "harness"))
 import kit  # noqa: E402  (stdlib-only)
 
-ANSWER_KEY = json.loads((REPO_ROOT / "answer_keys" / "aia.json").read_text(encoding="utf-8"))
+ANSWER_KEY = json.loads((REPO_ROOT / "tests_support" / "demo_keys" / "aia.json").read_text(encoding="utf-8"))
 AIA_PRIMARY = "#D31145"  # answer_keys/aia.json colors.primary printed_html
 
 

@@ -163,7 +163,9 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
-    brand_key = json.loads((_REPO_ROOT / "answer_keys" / f"{args.brand}.json").read_text(encoding="utf-8"))
+    _sys2 = __import__("sys"); _sys2.path.insert(0, str(_REPO_ROOT / "harness"))
+    from asset_paths import keys_dir  # 019: answer keys are runtime state
+    brand_key = json.loads((keys_dir() / f"{args.brand}.json").read_text(encoding="utf-8"))
 
     print("=== Call 1: blind Step-0 score ===")
     blind_raw = _vision_call(args.image, BLIND_PROMPT)

@@ -14,6 +14,11 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+# 019: answer keys are runtime state; the suites read the committed demo fixtures
+import os as _os019
+_os019.environ.setdefault("XCELA_ANSWER_KEYS_DIR",
+                          str(Path(__file__).resolve().parent / "tests_support" / "demo_keys"))
+
 
 REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO / "harness"))
@@ -114,7 +119,7 @@ def check2_portable_wiring():
     import persist
     import validate_key as vk
 
-    cjxq = json.loads((REPO / "answer_keys" / "CJXQ.json").read_text(encoding="utf-8"))
+    cjxq = json.loads((REPO / "tests_support" / "demo_keys" / "CJXQ.json").read_text(encoding="utf-8"))
     # brands/ is provisioned out-of-band (gitignored, dockerignored): where the logo file
     # exists, assert full resolution; in an unprovisioned context (fresh clone, container
     # without volumes) the committed-string pin is the checkable half

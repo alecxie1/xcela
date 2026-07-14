@@ -18,6 +18,11 @@ Run:  .venv/bin/python test_confirm_gate.py
 import json
 import sys
 from pathlib import Path
+# 019: answer keys are runtime state; the suites read the committed demo fixtures
+import os as _os019
+_os019.environ.setdefault("XCELA_ANSWER_KEYS_DIR",
+                          str(Path(__file__).resolve().parent / "tests_support" / "demo_keys"))
+
 
 REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO / "register"))

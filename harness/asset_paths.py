@@ -20,6 +20,13 @@ def brands_dir() -> Path:
     return Path(os.environ.get("XCELA_BRANDS_DIR") or (REPO_ROOT / "brands"))
 
 
+def keys_dir() -> Path:
+    """019: answer keys are RUNTIME state (a deployment's own brand database), not committed
+    data; the five historical demo keys live in tests_support/demo_keys/ for the suites.
+    Env-overridable like brands_dir so tests can point at fixtures or a tmp workspace."""
+    return Path(os.environ.get("XCELA_ANSWER_KEYS_DIR") or (REPO_ROOT / "answer_keys"))
+
+
 def _candidates(p: str) -> list:
     path = Path(p)
     if path.is_absolute():

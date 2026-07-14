@@ -19,6 +19,14 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
+# 019: answer keys are runtime state; this suite WRITES keys, so it gets a seeded TMP
+# workspace (never the committed fixtures)
+import os as _os019, shutil as _sh019, tempfile as _tf019
+_kt019 = _tf019.mkdtemp(prefix="keys_onboard_")
+for _k in (Path(__file__).resolve().parent / "tests_support" / "demo_keys").glob("*.json"):
+    _sh019.copy(_k, _kt019)
+_os019.environ["XCELA_ANSWER_KEYS_DIR"] = _kt019
+
 
 REPO = Path(__file__).resolve().parent
 for p in ("frontend", "brand_intake", "harness", "register", "tests_support", str(REPO)):
@@ -39,7 +47,7 @@ THROWAWAY = "_t_onboard006"
 
 
 def _cleanup():
-    (REPO / "answer_keys" / f"{THROWAWAY}.json").unlink(missing_ok=True)
+    (Path(_os019.environ["XCELA_ANSWER_KEYS_DIR"]) / f"{THROWAWAY}.json").unlink(missing_ok=True)
     shutil.rmtree(REPO / "brands" / THROWAWAY, ignore_errors=True)
 
 
@@ -87,7 +95,7 @@ def check4_save_writes_valid_key():
     d = onboard.start_draft(PDF_BYTES)
     onboard.extract_draft(d["draft_id"], {"color": [2], "name": [1]})
     onboard.save_draft(d["draft_id"], _verified(), _logo())
-    key = json.loads((REPO / "answer_keys" / f"{THROWAWAY}.json").read_text(encoding="utf-8"))
+    key = json.loads((Path(_os019.environ["XCELA_ANSWER_KEYS_DIR"]) / f"{THROWAWAY}.json").read_text(encoding="utf-8"))
     validate_key.validate_lean_key(key)
     rp = derive_register(SUBFIELDS, key)
     prompt = assemble_thin_prompt(key, ["守住钱袋子"], register_profile=rp)
@@ -107,7 +115,7 @@ def _save_should_fail(verified, logo, why):
         onboard.save_draft(d["draft_id"], verified, logo)
     except Exception:  # noqa: BLE001
         raised = True
-    wrote = (REPO / "answer_keys" / f"{THROWAWAY}.json").exists()
+    wrote = (Path(_os019.environ["XCELA_ANSWER_KEYS_DIR"]) / f"{THROWAWAY}.json").exists()
     _cleanup()
     return (raised and not wrote), f"{why}: raised={raised}, file written={wrote} (want raised + no file)"
 
@@ -130,13 +138,13 @@ def check8_fail_existing_id():
     _cleanup()
     d = onboard.start_draft(PDF_BYTES)
     onboard.extract_draft(d["draft_id"], {"color": [2], "name": [1]})
-    before = hashlib.sha256((REPO / "answer_keys" / "aia.json").read_bytes()).hexdigest()
+    before = hashlib.sha256((REPO / "tests_support" / "demo_keys" / "aia.json").read_bytes()).hexdigest()
     raised = False
     try:
         onboard.save_draft(d["draft_id"], v, _logo())
     except Exception:  # noqa: BLE001
         raised = True
-    after = hashlib.sha256((REPO / "answer_keys" / "aia.json").read_bytes()).hexdigest()
+    after = hashlib.sha256((REPO / "tests_support" / "demo_keys" / "aia.json").read_bytes()).hexdigest()
     return (raised and before == after), f"collision raised={raised}; aia.json unchanged={before == after}"
 
 
@@ -147,7 +155,7 @@ def check9_saved_brand_in_dropdown():
     onboard.save_draft(d["draft_id"], _verified(ack="keep-flagged"), _logo())
     server = importlib.import_module("server")
     in_dropdown = THROWAWAY in server._brands()
-    key = json.loads((REPO / "answer_keys" / f"{THROWAWAY}.json").read_text(encoding="utf-8"))
+    key = json.loads((Path(_os019.environ["XCELA_ANSWER_KEYS_DIR"]) / f"{THROWAWAY}.json").read_text(encoding="utf-8"))
     kept = any(c.get("needs_review") is True for c in key["fields"]["colors"]["items"])
     _cleanup()
     return (in_dropdown and kept), f"in _brands()={in_dropdown}; keep-flagged persisted needs_review={kept}"

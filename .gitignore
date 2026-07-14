@@ -32,3 +32,7 @@ brands/
 # ── OS cruft ──
 .DS_Store
 Thumbs.db
+
+# 019: answer keys are RUNTIME state (a deployment's own brand database)
+answer_keys/*.json
+!answer_keys/.gitkeep

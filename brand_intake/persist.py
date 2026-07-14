@@ -5,21 +5,25 @@ ONE place to "check the id + place the logo + write the key", called by BOTH the
 (`intake.py`) and the 006 web gate (`frontend/onboard.py`), so they produce byte-identical artifacts
 and the silent-logo / id-collision landmines are guarded in exactly one spot. Stdlib only.
 
-  answer_keys/<brand>.json   committed brand data (tracked)
+  answer_keys/<brand>.json   RUNTIME brand data (gitignored since 019; demo keys for
+  the suites live in tests_support/demo_keys/)
   brands/<brand>/<logo>      the logo asset (gitignored)
 """
 
 import json
 import shutil
+import sys
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-ANSWER_KEYS = _REPO / "answer_keys"
+sys.path.insert(0, str(_REPO / "harness"))
+from asset_paths import keys_dir  # noqa: E402  (019: answer keys are runtime state)
+
 BRANDS = _REPO / "brands"
 
 
 def key_path(brand: str) -> Path:
-    return ANSWER_KEYS / f"{brand}.json"
+    return keys_dir() / f"{brand}.json"
 
 
 def key_exists(brand: str) -> bool:

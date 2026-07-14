@@ -15,6 +15,11 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+# 019: answer keys are runtime state; the suites read the committed demo fixtures
+import os as _os019
+_os019.environ.setdefault("XCELA_ANSWER_KEYS_DIR",
+                          str(Path(__file__).resolve().parent / "tests_support" / "demo_keys"))
+
 
 REPO_ROOT = Path(__file__).resolve().parent
 CONDUCTOR = REPO_ROOT / "harness" / "conductor.py"
@@ -136,7 +141,7 @@ def check2_aligned_prompt_injected():
 
 def check3_render_and_scrub_universal():
     # no-ref default prompt (assemble_final_prompt, render_headline=True): no reserve box, headline IN
-    bk = json.loads((REPO_ROOT / "answer_keys" / "aia.json").read_text(encoding="utf-8"))
+    bk = json.loads((REPO_ROOT / "tests_support" / "demo_keys" / "aia.json").read_text(encoding="utf-8"))
     tier3 = {"off_vi": False, "palette_resolved": [{"name": "r", "hex": "E2231A", "role": "primary"}],
              "background": "flat", "hero_staging": "x", "props": [], "composition": "centered",
              "container_shape": "die-cut", "text_graphic_hierarchy": "text dominates",

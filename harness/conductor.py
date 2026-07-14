@@ -1396,9 +1396,10 @@ def main() -> None:
                      "(that run dir) and --inputs (its inputs.json).")
 
     # 2. LOAD BRAND — fail loudly if the brand has no answer key.
-    answer_key = REPO_ROOT / "answer_keys" / f"{args.brand}.json"
+    from asset_paths import keys_dir  # 019: answer keys are runtime state
+    answer_key = keys_dir() / f"{args.brand}.json"
     if not answer_key.exists():
-        available = sorted(p.stem for p in (REPO_ROOT / "answer_keys").glob("*.json"))
+        available = sorted(p.stem for p in keys_dir().glob("*.json"))
         sys.exit(f"ERROR: no answer key for brand {args.brand!r} (expected {answer_key}). "
                  f"Brands with an answer key: {available}")
 
