@@ -144,7 +144,17 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `019-brand-manager` - BUILT T001-T004 (2026-07-14); T005 = Kevin comms +
+**Active feature:** `021-auth-multitenancy` - APPROVED + SPEC'D 2026-07-14, NOT STARTED
+(resume at T001). Kevin's request: login page, whitelist users (scrypt passwords, stdlib),
+per-user isolation of brands and runs, super sees all. Binding decisions in the spec: auth
+activates ONLY when the users file exists (no file = today's behavior byte-identical, THE
+pin; our deployments stay open), disk-backed sessions (cookie, 30d), legacy/unowned
+artifacts visible to every logged-in user, owner on new run_meta + brand keys (validate
+ignores extras, proven), three list functions filter, per-run routes 403-guard, super can
+assign brand owners. Spec/tasks (plan-as-spec, verified line numbers embedded):
+`specs/021-auth-multitenancy/`.
+
+Prior feature `019-brand-manager` - BUILT T001-T004 (2026-07-14); T005 = Kevin comms +
 his team managing brands unassisted. Trigger: Kevin's team misread our five committed demo
 keys as production brands with assets. Shipped: answer keys are RUNTIME STATE
 (asset_paths.keys_dir, env XCELA_ANSWER_KEYS_DIR; the five demo keys moved to committed

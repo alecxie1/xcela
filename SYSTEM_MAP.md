@@ -1,7 +1,9 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-14._
 
-> **▶ BUILD STATUS 2026-07-14 (latest): features 019 (brand manager) + 020 (model-env config) are BUILT; the Kevin comms + their unassisted use are the pending human gates.**
+> **▶ NEXT 2026-07-14: feature 021 (auth + multi-tenancy) is APPROVED + SPEC'D, NOT STARTED (resume at T001; the full approved plan with verified choke-point line numbers is specs/021-auth-multitenancy/spec.md).**
+
+> **▶ BUILD STATUS 2026-07-14: features 019 (brand manager) + 020 (model-env config) are BUILT; the Kevin comms + their unassisted use are the pending human gates.**
 > FEATURE 020 (same day): model choice is deployment CONFIG. harness/model_client.py is the ONE
 > text/vision call home: XCELA_TEXT_MODELS (comma chain, default the claude opus->sonnet pair) +
 > XCELA_IMAGE_MODEL (default gpt-image-2); the provider is inferred from the model name
