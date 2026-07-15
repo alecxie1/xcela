@@ -57,6 +57,17 @@ Loader: `harness/runtime_env.py`. Precedence: **real environment variables > `<r
 | `XCELA_MAX_UPLOAD_MB` | no | `32` | reject larger uploads before reading them |
 | `XCELA_WORKER_TIMEOUT_S` | no | `1800` | kill a wedged worker, free the one-at-a-time lock |
 | `XCELA_BRANDS_DIR` | no | `<repo>/brands` | where brand assets (logos) live |
+| `XCELA_USERS_FILE` | no | `<repo>/users.json` | login whitelist; auth is ON only while this file exists |
+
+### Login (optional)
+
+The app is OPEN by default. To require login, create users on the server:
+`.venv/bin/python frontend/auth.py add <user>` (add `--super` for the one admin who sees
+everything), then restart. The users file's existence IS the switch: delete it (or `remove`
+the last user) and the app is open again, byte-identical to before. Sessions persist in
+`sessions.json` beside it; both are runtime state, never committed. Non-super users see
+their own brands and runs plus anything unowned; artifacts from before auth was enabled
+have no owner and stay shared with the whole team.
 
 ## Repo layout
 

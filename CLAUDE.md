@@ -144,12 +144,19 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `021-auth-multitenancy` - IN PROGRESS (T001-T003 BUILT 2026-07-14:
-auth core + CLI; the server gate (choke points, /login /logout /whoami, login.html, jf()
-401 wrapper, nav user chips); ownership (run_meta owner, filtered lists, per-run 403s,
-brand visible_to/write_allowed, super-only owner assign, onboard owner threading);
-test_auth 13/13 incl. live ephemeral-server pin/gate/isolation proofs, full sweep green;
-resume at T004 docs+ship). Kevin's request: login page, whitelist users (scrypt passwords, stdlib),
+**Active feature:** `021-auth-multitenancy` - BUILT T001-T004 (2026-07-14); T005 = the
+HUMAN GATE (Kevin creates users via docs/KEVIN_AUTH_GUIDE.md, his team verifies isolation
+unassisted). Shipped: auth core frontend/auth.py (scrypt whitelist, disk 30d sessions,
+CLI add/remove/list = the whole user management v1; re-add = password reset; removing the
+last user deletes users.json so auth deactivates, never a lockout) + asset_paths.users_file
+(XCELA_USERS_FILE); the server gate (choke points in both verbs, /login /logout /whoami,
+login.html, jf() 401 wrapper, nav user chips); ownership (run_meta owner via pure
+run_meta_payload, filtered /runs //brands//brands/detail, per-run 403 guards incl. spends,
+brand visible_to/write_allowed, super-only owner assign in update_brand, onboard owner
+threading); docs (README, deploy/README enable section, playbook 登录与权限).
+test_auth 13/13 (live ephemeral-server pin/gate/isolation proofs; THE PIN: no users file =
+open access byte-identical), full 33-suite sweep green.
+Kevin's request: login page, whitelist users (scrypt passwords, stdlib),
 per-user isolation of brands and runs, super sees all. Binding decisions in the spec: auth
 activates ONLY when the users file exists (no file = today's behavior byte-identical, THE
 pin; our deployments stay open), disk-backed sessions (cookie, 30d), legacy/unowned

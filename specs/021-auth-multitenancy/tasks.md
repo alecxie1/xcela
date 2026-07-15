@@ -21,6 +21,10 @@
       visible_to/write_allowed in brand_manager (one policy home, separately named);
       run_meta_payload pure + pinned byte-identical with auth off; owner column in the
       manager (sent only when edited), owner label in the runs picker; full sweep green.
-- [ ] T004 docs (.env.example, README, deploy/README, playbook 登录 section) + full sweep +
+- [x] T004 docs (.env.example, README, deploy/README, playbook 登录 section) + full sweep +
       ship origin+vm (VM stays auth-OFF) + Kevin enable-guide (Chinese).
+      DONE 2026-07-14: README login para + env row; deploy/README "Enabling login"
+      section (the no-login intro sentence updated); playbook 登录与权限 section
+      (grep-pinned in check9); the paste-able Chinese guide at docs/KEVIN_AUTH_GUIDE.md;
+      full 33-suite sweep green. Ship status recorded in the commit / session notes.
 - [ ] T005 HUMAN GATE: Kevin creates users; his team verifies isolation unassisted.

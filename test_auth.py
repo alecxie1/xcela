@@ -312,9 +312,11 @@ def check9_ui_wiring():
     srv = (fe / "server.py").read_text(encoding="utf-8")
     f = ('HTML_PAGES = ("/", "/onboard", "/playbook", "/manage")' in srv
          and '"/whoami"' in srv and "def _authed" in srv)
-    ok = a and b and c and d and e and f
+    # T004: the playbook explains login + the permission model in the team's language
+    g = "登录与权限" in (fe / "playbook.html").read_text(encoding="utf-8")
+    ok = a and b and c and d and e and f and g
     return ok, (f"login-page={a}; jf-defined={b}; no-stray-fetch={c}; jpost-401={d}; "
-                f"chip-x4={e}; server-gate={f}")
+                f"chip-x4={e}; server-gate={f}; playbook={g}")
 
 
 # ---- T003: ownership (the userA/userB/super x owned-A/owned-B/unowned matrix) ----

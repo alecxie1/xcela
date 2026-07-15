@@ -6,8 +6,9 @@ brands/, answer_keys/), or the bare-VM path below (bootstrap + systemd + Caddy).
 clone, add YOUR OWN API keys via env or .env, serve.
 Region constraint: the OpenAI/Anthropic APIs are blocked from mainland China and unsupported
 in Hong Kong, so host where both work AND your team can reach (Singapore or Tokyo are the
-proven sweet spots). Access model is your call: the app has no login; put Caddy's basic_auth
-or your own gateway in front, or rely on an unguessable hostname for a small trusted group.
+proven sweet spots). Access model is your call: built-in login (OFF by default; see
+"Enabling login" below), Caddy's basic_auth, your own gateway, or an unguessable hostname
+for a small trusted group.
 
 ## The exact handoff (in order)
 
@@ -33,6 +34,28 @@ or your own gateway in front, or rely on an unguessable hostname for a small tru
    itself stays on localhost.
 6. **Hand the designer**: the URL and the in-app playbook link (`/playbook`).
 
+## Enabling login (optional, feature 021)
+
+Auth activates ONLY when the users file exists (default `<repo>/users.json`; relocate via
+`XCELA_USERS_FILE`). No file = open access, byte-identical to the no-login app above.
+
+```bash
+cd /opt/xcela/handyprint-design-tool
+sudo -u xcela .venv/bin/python frontend/auth.py add kevin --super   # ONE admin
+sudo -u xcela .venv/bin/python frontend/auth.py add <teammate>      # each designer
+sudo systemctl restart xcela   # server.py loads once; the restart applies the gate
+```
+
+- `list` / `remove <user>` manage the whitelist; re-`add` a user to reset a password
+  (there is no self-service reset); removing the LAST user deletes the file, so auth
+  turns off instead of locking everyone out.
+- `users.json` (scrypt hashes) and `sessions.json` (30-day tokens) are RUNTIME state,
+  never committed; sessions survive restarts, so a deploy logs nobody out.
+- Permission model: a logged-in user sees their OWN brands and runs plus anything
+  unowned; artifacts from before auth was enabled have no owner and stay shared with
+  the whole team; the `--super` user sees and manages everything and can assign brand
+  owners in the manager page (品牌管理).
+
 ## Operations notes
 
 - **Restart after every update**: `server.py` loads once; `git pull` without
@@ -44,7 +67,7 @@ or your own gateway in front, or rely on an unguessable hostname for a small tru
 - **One at a time**: the app is single-flight by design (a busy click answers 409 "a run is
   already in flight"); the playbook tells the team to take turns.
 - **Env knobs** (all optional): `XCELA_BIND`, `XCELA_PORT`, `XCELA_MAX_UPLOAD_MB` (32),
-  `XCELA_WORKER_TIMEOUT_S` (1800), `XCELA_BRANDS_DIR`.
+  `XCELA_WORKER_TIMEOUT_S` (1800), `XCELA_BRANDS_DIR`, `XCELA_USERS_FILE`.
 
 ## REFERENCE DEPLOYMENT (ours, deployed 2026-07-12; not required for yours)
 
