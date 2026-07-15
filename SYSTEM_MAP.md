@@ -1,7 +1,29 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-14._
 
-> **▶ NEXT 2026-07-14: feature 021 (auth + multi-tenancy) is APPROVED + SPEC'D, NOT STARTED (resume at T001; the full approved plan with verified choke-point line numbers is specs/021-auth-multitenancy/spec.md).**
+> **▶ NEXT 2026-07-14 (evening): feature 021 (auth + multi-tenancy) is BUILT T001-T004; T005 = the HUMAN GATE (Kevin creates users via docs/KEVIN_AUTH_GUIDE.md, his team verifies isolation unassisted) + the vm push awaits operator approval (origin IS pushed; the exact commands are in specs/021-auth-multitenancy/tasks.md).**
+> FEATURE 021 (2026-07-14): login + per-user isolation, OFF by default. Auth activates ONLY
+> when the users file exists (asset_paths.users_file, env XCELA_USERS_FILE, default
+> <repo>/users.json, gitignored) - no file = today's behavior byte-identical, THE pin, proven
+> against a LIVE ephemeral server; our deployments stay open until users are created.
+> frontend/auth.py is the HTTP-free core + the whole user-management v1 (CLI add/remove/list;
+> scrypt n=2^14 per-user salt, constant-time verify, dummy-scrypt on unknown users; re-add =
+> password reset; removing the last user deletes the file = deactivation, never a lockout) with
+> disk 30d sessions beside it (mint prunes, lookup read-only, logout drops, restart logs nobody
+> out, de-whitelisted users lose live sessions via the role() check). The gate: _authed at the
+> top of both server verbs (HTML pages 302 /login, APIs 401; exempt /login /logout /whoami),
+> login.html (Chinese), jf() 401 wrapper in index+manage (jpost gains the check), /whoami-driven
+> nav user chips + 退出 on all four pages. Ownership: run_meta_payload (pure; owner only when
+> auth on) + owner in list_runs; /runs /brands /brands/detail filter to own+unowned for
+> non-super; every per-run route incl. the spends 403s named on foreign runs; brands get
+> visible_to/write_allowed in brand_manager (unowned = shared, the legacy migration semantics),
+> run creation checks the FILTERED list (a foreign brand refuses as unknown), onboard save
+> threads owner post-build pre-validate, update_brand's owner field is super-only
+> (assign/transfer/release, the migration path), owner column in the manager UI. Docs: README,
+> deploy/README "Enabling login", playbook 登录与权限, docs/KEVIN_AUTH_GUIDE.md (paste-able
+> Chinese). test_auth 13/13 (core by value; pin/gate/isolation over live ephemeral servers);
+> the pinned form-greps that named raw fetch() moved to jf() values dated in place; the FULL
+> 33-suite sweep green. Spec/tasks: `specs/021-auth-multitenancy/`.
 
 > **▶ BUILD STATUS 2026-07-14: features 019 (brand manager) + 020 (model-env config) are BUILT; the Kevin comms + their unassisted use are the pending human gates.**
 > FEATURE 020 (same day): model choice is deployment CONFIG. harness/model_client.py is the ONE
