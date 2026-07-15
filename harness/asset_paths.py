@@ -27,6 +27,13 @@ def keys_dir() -> Path:
     return Path(os.environ.get("XCELA_ANSWER_KEYS_DIR") or (REPO_ROOT / "answer_keys"))
 
 
+def users_file() -> Path:
+    """021: the auth whitelist is RUNTIME state; auth activates ONLY when this file
+    exists (no file = open access, byte-identical to pre-021 behavior). Env-overridable
+    for hermetic tests; sessions.json lives beside it."""
+    return Path(os.environ.get("XCELA_USERS_FILE") or (REPO_ROOT / "users.json"))
+
+
 def _candidates(p: str) -> list:
     path = Path(p)
     if path.is_absolute():

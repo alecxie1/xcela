@@ -28,6 +28,9 @@ brands/
 !.env.example
 *token*.json
 *credential*
+# 021: auth whitelist (scrypt hashes) + live session tokens are RUNTIME state
+users.json
+sessions.json
 
 # ── OS cruft ──
 .DS_Store

@@ -144,8 +144,9 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `021-auth-multitenancy` - APPROVED + SPEC'D 2026-07-14, NOT STARTED
-(resume at T001). Kevin's request: login page, whitelist users (scrypt passwords, stdlib),
+**Active feature:** `021-auth-multitenancy` - IN PROGRESS (T001 BUILT 2026-07-14: auth core
+frontend/auth.py + asset_paths.users_file + CLI add/remove/list, test_auth 6/6 hermetic;
+resume at T002 the gate). Kevin's request: login page, whitelist users (scrypt passwords, stdlib),
 per-user isolation of brands and runs, super sees all. Binding decisions in the spec: auth
 activates ONLY when the users file exists (no file = today's behavior byte-identical, THE
 pin; our deployments stay open), disk-backed sessions (cookie, 30d), legacy/unowned

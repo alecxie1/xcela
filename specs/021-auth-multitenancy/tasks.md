@@ -1,7 +1,10 @@
-# Tasks: 021-auth-multitenancy (NOT STARTED; spec.md is the approved plan)
+# Tasks: 021-auth-multitenancy (IN PROGRESS; spec.md is the approved plan)
 
-- [ ] T001 frontend/auth.py core (scrypt store, disk sessions, CLI add/remove/list) +
+- [x] T001 frontend/auth.py core (scrypt store, disk sessions, CLI add/remove/list) +
       asset_paths.users_file()/XCELA_USERS_FILE + gitignore + test_auth.py core checks.
+      DONE 2026-07-14: test_auth 6/6 (hermetic tmp XCELA_USERS_FILE); re-add = the
+      password reset; removing the last user deletes users.json (auth deactivates,
+      never a lockout); removed users lose live sessions via the role() check.
 - [ ] T002 the gate: _send optional headers, do_GET/do_POST choke points, /login /logout
       /whoami + login.html + jf() 401 wrapper + nav user chips + THE PIN (no users file =
       open access byte-identical, ephemeral-server proven).
