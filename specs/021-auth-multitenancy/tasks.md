@@ -26,5 +26,10 @@
       DONE 2026-07-14: README login para + env row; deploy/README "Enabling login"
       section (the no-login intro sentence updated); playbook 登录与权限 section
       (grep-pinned in check9); the paste-able Chinese guide at docs/KEVIN_AUTH_GUIDE.md;
-      full 33-suite sweep green. Ship status recorded in the commit / session notes.
+      full 33-suite sweep green. SHIP: origin pushed (73003d7); the vm push + restart
+      needs the operator (production deploy approval):
+      GIT_SSH_COMMAND="ssh -i ~/.ssh/xcela_deploy" git push vm master && ssh -i
+      ~/.ssh/xcela_deploy root@188.166.238.61 'cd /opt/xcela/handyprint-design-tool &&
+      sudo -u xcela git pull -q && systemctl restart xcela'  (VM stays auth-OFF: no
+      users file there, byte-identical behavior).
 - [ ] T005 HUMAN GATE: Kevin creates users; his team verifies isolation unassisted.
