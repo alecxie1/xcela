@@ -1,7 +1,22 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
 _Single source of truth for "what is this whole thing." Updated 2026-07-14._
 
-> **▶ NEXT 2026-07-14 (evening): feature 021 (auth + multi-tenancy) is BUILT T001-T004; T005 = the HUMAN GATE (Kevin creates users via docs/KEVIN_AUTH_GUIDE.md, his team verifies isolation unassisted) + the vm push awaits operator approval (origin IS pushed; the exact commands are in specs/021-auth-multitenancy/tasks.md).**
+> **▶ NEXT 2026-07-15: feature 022 (form size units + wait expectations) is BUILT T001-T004; T005 = the FREE human flow gate (drive one derive through the new W/H/px fields). Feature 021 (auth) T005 = Kevin's team verifies isolation via docs/KEVIN_AUTH_GUIDE.md. Kevin's yaoyj branch MERGED (base-URL config); the vm remote is RETIRED (Kevin self-deploys on Alicloud; ship = origin only).**
+> FEATURE 022 (2026-07-15, from Richard's designer's feedback 公司宣传H5.zip items 04-06;
+> items 01/02 long-image/template DEFERRED out-of-product-shape, 03 fonts pending Kevin
+> clarification): the run form's 尺寸 is W + H numeric inputs + cm/px select composing the
+> SAME canonical string (untouched defaults -> the pre-022 literal "60x40cm", pinned;
+> resolve_size was always unit-agnostic - 750x300px -> 2000x800 delta 0.0 pinned, 像素
+> normalizes, ASCII identity pinned); loud refusal on blank/zero W/H; the aspect-only
+> ~1.5MP draft note at the fields and in the playbook. ONE waitline over the stages panel:
+> WAIT_EXPECT (derive 2-3min, generate ~2min, export 8-10min) with the provenance comment
+> naming the measured CJXQ run dirs + per-kind method; the kind ladder (export live ->
+> generate confirmed/generating -> derive inflight-no-gate) keys off THIS run's states and
+> clears otherwise; observation resets on run switch (resume shows elapsed-since-
+> observation, accepted honest reading); seconds only, never a progress bar (constitution
+> V). test_form_size_progress 6/6, test_format_size 9/9, full 34-suite sweep green.
+> Spec/plan/tasks: `specs/022-form-size-progress/` (spec'd via speckit + /speckit-analyze
+> remediation U1/I1/U2/U3/A1 resolved pre-build).
 > FEATURE 021 (2026-07-14): login + per-user isolation, OFF by default. Auth activates ONLY
 > when the users file exists (asset_paths.users_file, env XCELA_USERS_FILE, default
 > <repo>/users.json, gitignored) - no file = today's behavior byte-identical, THE pin, proven

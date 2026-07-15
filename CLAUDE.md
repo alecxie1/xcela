@@ -144,15 +144,24 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `022-form-size-progress` - SPEC'D 2026-07-15 (draft, operator asked for
-the spec; next: /speckit-tasks then build). Richard's designer's feedback items 04-06:
-separate W/H + unit (cm/px) size inputs on the run form composing the SAME canonical
-"WxHunit" string (byte-identity pin; resolve_size is already unit-agnostic, px parses
-today - the fix is form truth), plus elapsed-time + typical-duration expectations on the
-derive and generate waits (no fake progress bars). Items 01/02 (long-image H5, .ai template
-re-theming) DEFERRED as out-of-product-shape; 03 (font selection) deferred pending Kevin
-clarification (style nudge vs licensed-font compositing?). Evidence: 公司宣传H5.zip (AIA
-NAVI monthly project). Spec: `specs/022-form-size-progress/`.
+**Active feature:** `022-form-size-progress` - BUILT T001-T004 (2026-07-15); T005 = the
+HUMAN GATE (one FREE derive through the new W/H/px fields: judge the form flow, the
+composed inputs.json on disk, a clamped case's 015 gate row, the derive counter; generate/
+export counters judged opportunistically on the next routine paid run). Richard's
+designer's feedback items 04-06 (evidence: 公司宣传H5.zip, the AIA NAVI project). Shipped:
+像素 in format_size normalization (math was always unit-agnostic; 750x300px -> 2000x800
+delta 0.0 pinned, ASCII identity pinned); the form's single 尺寸 field is now W + H numeric
+inputs + cm/px select whose formState compose expression can only produce the pre-022
+literal on untouched defaults ("60x40cm", THE pin; no test pinned the old HTML field, all
+pins are on the JSON contract), loud client refusal on blank/zero, the aspect-only ~1.5MP
+draft note; ONE waitline over the stages panel (WAIT_EXPECT: derive 2-3min / generate
+~2min / export 8-10min, provenance comment names the measured CJXQ runs + per-kind method;
+kind ladder export->generate->derive off THIS run's states, clears otherwise; observation
+resets on run switch; seconds only, no progress bars ever - honest nulls).
+test_form_size_progress 6/6 + test_format_size 9/9; full 34-suite sweep green. Items 01/02
+(long-image H5, .ai template re-theming) DEFERRED as out-of-product-shape; 03 (font
+selection) deferred pending Kevin clarification (style nudge vs licensed-font
+compositing?). Spec/plan/tasks: `specs/022-form-size-progress/`.
 
 Prior feature `021-auth-multitenancy` - BUILT T001-T004 (2026-07-14); T005 = the
 HUMAN GATE (Kevin creates users via docs/KEVIN_AUTH_GUIDE.md, his team verifies isolation

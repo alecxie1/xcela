@@ -217,7 +217,7 @@ function formState() {
   return {
     // 022: the canonical brief string is COMPOSED from the three size controls; the
     // untouched defaults (60/40/cm) compose exactly "60x40cm", the pre-022 literal (the
-    // byte-identity pin) — every downstream consumer of format_size is unchanged.
+    // byte-identity pin); every downstream consumer of format_size is unchanged.
     brand: $("brand").value, asset_type: $("asset_type").value, render_style: $("render_style").value,
     format_size: $("size_w").value + "x" + $("size_h").value + $("size_unit").value,
     reference_relationship: $("reference_relationship").value,

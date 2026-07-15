@@ -56,9 +56,11 @@ No setup tasks: no new modules, dependencies, or structure (plan.md).
 
 ## Phase 5: Polish & ship
 
-- [ ] T004 docs + sweep + ship: playbook.html 尺寸 row mentions px + the aspect-only draft
+- [X] T004 docs + sweep + ship: playbook.html 尺寸 row mentions px + the aspect-only draft
       contract; CLAUDE.md + SYSTEM_MAP status current; FULL suite sweep green; commit +
       push origin (origin ONLY — the vm remote is retired).
+      DONE 2026-07-15: full 34-suite sweep green (the frontend_nav no-em-dash guard
+      caught one em-dash in a new index.html comment, fixed); pushed to origin.
 - [ ] T005 HUMAN GATE (SC-004): one FREE derive driven through the new W/H/px fields by
       the operator — judge the form flow, the composed size in the run's inputs.json on
       disk (the SC-002 byte-identity observation), the 015 gate's size row on a clamped
