@@ -11,7 +11,7 @@ No setup tasks: no new modules, dependencies, or structure (plan.md).
 
 ## Phase 2: Foundational
 
-- [ ] T001 px parsing pinned in harness/format_size.py + test_format_size.py: add 像素 to
+- [X] T001 px parsing pinned in harness/format_size.py + test_format_size.py: add 像素 to
       the unit normalization table (identity on ASCII input pinned against the existing
       literal); extend test_format_size.py with value checks — resolve_size("750x300px")
       resolves to aspect 2.5 within existing delta bounds, "７５０×３００像素" normalizes to

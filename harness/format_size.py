@@ -46,7 +46,9 @@ _FULLWIDTH = str.maketrans("０１２３４５６７８９×Ｘｘ＊．", "0123
 
 def _normalize_size_text(s: str) -> str:
     s = s.translate(_FULLWIDTH).replace("　", " ")   # ASCII input passes through UNCHANGED
-    for zh, unit in (("厘米", "cm"), ("公分", "cm"), ("毫米", "mm"), ("英寸", "in")):
+    # 022: 像素 joins the table (px was ALWAYS parseable, the math is unit-agnostic; this
+    # only normalizes the recorded requested_size). Identity on ASCII input, pinned.
+    for zh, unit in (("厘米", "cm"), ("公分", "cm"), ("毫米", "mm"), ("英寸", "in"), ("像素", "px")):
         s = s.replace(zh, unit)
     return s
 

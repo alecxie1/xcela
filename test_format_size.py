@@ -76,6 +76,32 @@ def check7_target_area_recorded_and_in_budget():
     return passed, f"target_area={r.get('target_area')} pixels={r['pixels']}"
 
 
+def check8_px_units():
+    """022 (US1/FR-003): px sizes resolve through the SAME aspect-preserving math — the
+    resolver is unit-agnostic BY VALUE, not by accident. 750x300px (the online-banner
+    exemplar) lands at exact aspect 2.5 (delta 0.0, verified 2026-07-15: 2000x800);
+    the fullwidth Chinese form ７５０×３００像素 normalizes to the identical result; and
+    an equal-ratio cm size resolves to the SAME pixels (units feed aspect only)."""
+    px = fs.resolve_size("750x300px")
+    a = (_invariants(px) and px["aspect_resolved"] == 2.5 and px["aspect_delta"] == 0.0
+         and not px["needs_review"] and (px["width"], px["height"]) == (2000, 800))
+    zh = fs.resolve_size("７５０×３００像素")
+    b = (zh["width"], zh["height"]) == (px["width"], px["height"]) and zh["requested_size"] == "750x300px"
+    cm = fs.resolve_size("75x30cm")   # same 2.5 ratio in cm -> same resolution
+    c = (cm["width"], cm["height"]) == (px["width"], px["height"])
+    passed = a and b and c
+    return passed, (f"750x300px -> {px['width']}x{px['height']} delta={px['aspect_delta']} ({a}); "
+                    f"fullwidth+像素 normalizes ({b}); cm-same-ratio-same-result ({c})")
+
+
+def check9_ascii_identity_pin():
+    """022: the 像素 normalization is IDENTITY on ASCII input — every pre-022 parse is
+    byte-identical (requested_size recorded verbatim, resolution unchanged)."""
+    cases = ["60x40cm", "40x60cm", "300x100cm", "750x300px", "1920x1080"]
+    passed = all(fs.resolve_size(s)["requested_size"] == s for s in cases)
+    return passed, f"requested_size verbatim for {cases}: {passed}"
+
+
 CHECKS = [
     ("3:2 lands on 1536x1024 (consequence of default target)", check1_landscape_3_2),
     ("2:3 lands portrait 1024x1536 (not landscape-only, D8)", check2_portrait_2_3),
@@ -84,6 +110,8 @@ CHECKS = [
     ("Beyond 3:1 / below 1:3 clamps symmetrically + needs_review", check5_clamp_beyond_3_1_symmetric),
     ("Unparseable -> default size + honest-null note", check6_unparseable_honest_null),
     ("Target area recorded; pixels in budget", check7_target_area_recorded_and_in_budget),
+    ("022 px units: same aspect math, 像素 normalizes, exemplar delta 0.0", check8_px_units),
+    ("022 ASCII identity: pre-022 parses byte-identical", check9_ascii_identity_pin),
 ]
 
 
