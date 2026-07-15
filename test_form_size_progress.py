@@ -59,10 +59,63 @@ def check3_loud_refusal_and_draft_note():
     return ok, f"refusal-before-launch={a}; draft-note={b}"
 
 
+def check4_wait_constants_auditable():
+    """022 US2/FR-007: WAIT_EXPECT is ONE constants map covering all three wait kinds,
+    and the comment above it NAMES the measured runs + the per-kind method (the A1
+    remediation: numbers are auditable, never invented). A build that invents numbers
+    without the provenance comment fails."""
+    ix = _index()
+    a = (ix.count("const WAIT_EXPECT") == 1
+         and all(f"{k}:" in ix.split("const WAIT_EXPECT")[1].split("};")[0]
+                 for k in ("derive", "generate", "export")))
+    prov = ix.split("const WAIT_EXPECT")[0]
+    b = ("run_CJXQ_20260708" in prov and "MEASURED" in prov
+         and "generated.png mtime" in prov and "layers.zip mtime" in prov)
+    ok = a and b
+    return ok, f"one-map-three-kinds={a}; provenance-names-runs+method={b}"
+
+
+def check5_wait_wiring():
+    """022 US2/FR-006/FR-008: the waitline element exists; poll() derives the wait kind
+    from THIS run's states (export live -> generate confirmed/generating -> derive
+    inflight-no-gate) and anything else CLEARS (the null path resets state and empties
+    the line); switching runs resets observation (setCurrentRun, the one assignment
+    home); resume semantics documented at the state (starts at observation)."""
+    ix = _index()
+    a = 'id="waitline"' in ix and "function noteWait(kind)" in ix
+    b = ('if (exportingLive) waitKind = "export";' in ix
+         and 'else if ((gateSt === "confirmed" || gateSt === "generating") && !v.image.present) waitKind = "generate";' in ix
+         and 'else if (v.inflight && !v.image.present && !gateSt) waitKind = "derive";' in ix
+         and "noteWait(waitKind);" in ix)
+    body = ix.split("function noteWait(kind)")[1].split("\n}")[0]
+    c = ('waitState = { kind: null, since: null };' in body
+         and '$("waitline").textContent = "";' in body)
+    d = 'waitState = { kind: null, since: null };   // 022: a switched run restarts observation' in ix
+    e = "when THIS client began observing" in ix
+    ok = a and b and c and d and e
+    return ok, f"element+fn={a}; kind-ladder={b}; clear-path={c}; switch-reset={d}; resume-doc={e}"
+
+
+def check6_no_progress_bar():
+    """022 FR-007 (honest nulls): no progress element and no percentage anywhere in the
+    wait rendering; the elapsed counter is seconds-only. A build that adds a bar or a
+    fabricated percent fails."""
+    ix = _index()
+    a = "<progress" not in ix
+    body = ix.split("function noteWait(kind)")[1].split("\n}")[0]
+    b = "%" not in body and "percent" not in body.lower()
+    c = "已等待" in body and "秒" in body
+    ok = a and b and c
+    return ok, f"no-progress-element={a}; no-percent-in-renderer={b}; seconds-counter={c}"
+
+
 CHECKS = [
     ("022 US1: W/H/unit controls, defaults, old field gone", check1_size_controls),
     ("022 US1: the compose expression pin (byte-identity by construction)", check2_compose_pin),
     ("022 US1: loud size refusal + the aspect-only draft note", check3_loud_refusal_and_draft_note),
+    ("022 US2: WAIT_EXPECT one map, provenance names runs + method", check4_wait_constants_auditable),
+    ("022 US2: waitline wiring, kind ladder, clear + switch-reset", check5_wait_wiring),
+    ("022 US2: no progress bar or percent, seconds-only counter", check6_no_progress_bar),
 ]
 
 

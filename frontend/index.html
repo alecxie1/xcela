@@ -120,6 +120,7 @@
   <section class="panel">
     <div id="recentruns"></div>
     <div id="attempts"></div>
+    <div id="waitline" class="note"></div>
     <div class="stage"><h3><span class="dot wait" id="d_brief"></span>1. 需求（系统收到的内容）</h3><div class="body" id="brief"><span class="pending">等待运行...</span></div></div>
     <div class="stage"><h3><span class="dot wait" id="d_register"></span>2. 风格判定 Register</h3><div class="body" id="register"><span class="pending">尚未开始</span></div></div>
     <div class="stage"><h3><span class="dot wait" id="d_prompt"></span>3. 生成指令 Prompt</h3><div class="body" id="prompt"><span class="pending">尚未开始</span></div></div>
@@ -135,6 +136,34 @@ for (const [s, v] of [["formality","fv"],["playfulness","pv"]]) {
   $(s).addEventListener("input", () => $(v).textContent = $(s).value);
 }
 let currentRun = null, poller = null, attempts = [];
+
+// --- 022 (FR-006/FR-007): the wait has stated expectations. Typical durations MEASURED
+// from real run dirs on 2026-07-15, never invented (constitution V). Method + runs:
+//   derive:   inputs.json mtime -> gate_state.json mtime on run_CJXQ_20260708_144718/
+//             145952/151506 (160-503s, inflated by answer re-derives; stated 2-3 min)
+//   generate: gate confirmed_at -> generated.png mtime on the same runs (118-131s)
+//   export:   export_state created -> layers.zip mtime on run_CJXQ_20260708_151506 (556s)
+// Never a progress bar or percentage: we cannot measure real progress (honest nulls).
+const WAIT_EXPECT = {
+  derive:   { label: "免费推导中", expect: "通常约 2 到 3 分钟" },
+  generate: { label: "生成画面中（已收费）", expect: "通常约 2 分钟" },
+  export:   { label: "分层导出中（已收费）", expect: "通常约 8 到 10 分钟" },
+};
+// elapsed counts from when THIS client began observing the wait; on resume (URL hash /
+// runs picker) that understates true elapsed, the accepted honest reading (we never
+// reconstruct a start time we did not see)
+let waitState = { kind: null, since: null };
+function noteWait(kind) {
+  if (!kind || !WAIT_EXPECT[kind]) {
+    waitState = { kind: null, since: null };
+    $("waitline").textContent = "";
+    return;
+  }
+  if (waitState.kind !== kind) waitState = { kind, since: Date.now() };
+  const secs = Math.floor((Date.now() - waitState.since) / 1000);
+  const w = WAIT_EXPECT[kind];
+  $("waitline").textContent = `${w.label}：已等待 ${secs} 秒（${w.expect}）`;
+}
 
 // --- 017 (US3): the gate panel's CLOSED server vocabulary rendered in Chinese. Server
 // payloads and submitted values are UNCHANGED; unmapped strings fall back to English
@@ -276,7 +305,7 @@ async function applyAnswer(a, label, value) {
   if (!r.ok) {  // fail loud; the previous derivation stays (US2 scenario 3)
     $("pregateNote").textContent = j.error || "应用失败"; return;
   }
-  $("pregateNote").textContent = "已应用；正在免费重新推导...";
+  $("pregateNote").textContent = "已应用；正在免费重新推导（比首次推导快，请稍候）...";
   if (poller) clearInterval(poller);
   poller = setInterval(poll, 1000); poll();
 }
@@ -294,6 +323,18 @@ async function poll() {
   ["brief","register","prompt","image"].forEach(k => renderStage(k, v[k]));
   renderPreGate(v.gate, v.per_run_cost_usd);
   renderExport(v);  // 016: the layered-export stage (opt-in button / progress / download)
+  // 022: which wait (if any) is live for THIS run; anything else clears the counter
+  // (finished, errored, pre-022, and awaiting-gate runs show no timer)
+  const gateSt = v.gate && v.gate.present ? v.gate.content.state : null;
+  const exportingLive = v.export && v.export.present
+    && v.export.content.state === "exporting" && !v.export.content.stale;
+  let waitKind = null;
+  if (!v.error) {
+    if (exportingLive) waitKind = "export";
+    else if ((gateSt === "confirmed" || gateSt === "generating") && !v.image.present) waitKind = "generate";
+    else if (v.inflight && !v.image.present && !gateSt) waitKind = "derive";
+  }
+  noteWait(waitKind);
   if (v.error) {  // the conductor failed loud: surface it instead of hanging silently at 'brief'
     clearInterval(poller); poller = null; $("run").disabled = false;
     $("formNote").textContent = "运行失败：" + v.error.split("\n").pop();
@@ -348,6 +389,7 @@ function renderAttempts() {
 // state that survives a refresh or dropped connection; runs themselves live on disk. ---
 function setCurrentRun(id) {
   currentRun = id;
+  waitState = { kind: null, since: null };   // 022: a switched run restarts observation
   history.replaceState(null, "", id ? "#" + id : location.pathname);
 }
 async function loadRuns() {

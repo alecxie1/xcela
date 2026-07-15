@@ -38,7 +38,7 @@ No setup tasks: no new modules, dependencies, or structure (plan.md).
 **Goal**: elapsed-seconds counter + typical-duration copy on both waits; never a progress bar.
 **Independent test**: wiring pins + the no-percentage guard; behavior judged at the T005 flow gate.
 
-- [ ] T003 [US2] wait expectations: in frontend/index.html add a WAIT_EXPECT constants map
+- [X] T003 [US2] wait expectations: in frontend/index.html add a WAIT_EXPECT constants map
       (ONE place: derive + generate + layered-export typical-duration copy) and an
       elapsed-seconds counter rendered during the derive wait, the paid generation wait,
       and the export wait, keyed off the existing poll()/gate/export states; counter +
