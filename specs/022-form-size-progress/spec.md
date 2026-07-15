@@ -115,8 +115,11 @@ verify a finished run shows neither.
 - Legacy briefs: inputs.json written by hand or by the CLI keeps the free-text
   `format_size` field working unchanged (the field's CONTRACT is a string; only the
   form's way of composing it changes).
-- A run dir with no timestamps (pre-022 or partial) renders the stages view exactly as
-  today — the counter only appears when the client itself started/observed the wait.
+- Resume paths (017 URL-hash resume, the recent-runs picker): a client reopening a
+  mid-flight run did not observe its start, so the counter starts from the moment THIS
+  client began observing the wait. An understated elapsed time is accepted honest
+  behavior (we display what we measured, never a reconstructed guess); pre-022 and
+  finished runs render exactly as today, with no counter.
 
 ## Requirements *(mandatory)*
 
@@ -138,9 +141,10 @@ verify a finished run shows neither.
 - **FR-005**: The form MUST state, adjacent to the size fields, that output is an
   aspect-preserving DRAFT at roughly 1.5 megapixels — not an exact-pixel or print-ready
   file (the draft charter, stated where the px expectation is set).
-- **FR-006**: During the free derive wait and the paid generation wait, the stages panel
+- **FR-006**: During the free derive wait, the paid generation wait, AND the layered-
+  export wait (016 — the longest wait the app has, with its own poller), the stages panel
   MUST show a ticking elapsed-time counter plus static copy stating the typical duration
-  for that wait kind.
+  for that wait kind (all three from the ONE constants map).
 - **FR-007**: The typical-duration copy MUST come from observed real-run timings (stated
   as approximate ranges), MUST be maintained as named constants in one place, and MUST
   never render as a percentage/progress bar (honest nulls: we cannot measure progress).
@@ -161,13 +165,17 @@ verify a finished run shows neither.
 ### Measurable Outcomes
 
 - **SC-001**: A designer can spec an online banner in px (e.g. 750×300) using separate
-  W/H fields, and the derived plan's aspect matches the request exactly — verified free,
-  by value, without a paid call.
-- **SC-002**: An untouched form composes a brief byte-identical to pre-022 (proven by
-  comparing composed inputs.json against the pinned pre-022 literal).
-- **SC-003**: Every wait longer than a few seconds shows elapsed time + a stated typical
-  duration; a designer watching a normal run never sees a frozen, unannotated screen
-  (the 问题06 complaint, directly).
+  W/H fields, and the derived plan's aspect matches the request within the existing
+  resolve_size delta bounds (delta 0.0 for the 750×300 exemplar, verified 2026-07-15) —
+  verified free, by value, without a paid call.
+- **SC-002**: An untouched form composes a brief byte-identical to pre-022. Proof method
+  (the compose runs in browser JS, outside the Python tests): a value-bearing pin on the
+  form's compose expression and its default values in the automated suite, plus the T005
+  human gate observing the real composed inputs.json on disk.
+- **SC-003**: Every wait the app has (derive, generation, layered export) that runs
+  longer than a few seconds shows elapsed time + a stated typical duration; a designer
+  watching a normal run never sees a frozen, unannotated screen (the 问题06 complaint,
+  directly).
 - **SC-004**: The full test sweep passes; the one human gate is a single FREE derive
   driven through the new fields with the operator judging the form flow and the gate's
   size row (no paid eye-gate: no pixel-affecting change beyond what 015 already surfaces).
