@@ -22,7 +22,7 @@ No setup tasks: no new modules, dependencies, or structure (plan.md).
 **Goal**: W + H numeric inputs + cm/px unit select composing the SAME canonical brief string.
 **Independent test**: composed-string byte-identity + resolved aspect, all free, by value.
 
-- [ ] T002 [US1] the form: in frontend/index.html replace the single 尺寸 free-text input
+- [X] T002 [US1] the form: in frontend/index.html replace the single 尺寸 free-text input
       with W/H numeric inputs + a cm/px select (defaults 60/40/cm); formState() composes
       `"<W>x<H><unit>"` (untouched form -> exactly "60x40cm", THE pin); blank/zero/NaN W or
       H refuses loudly client-side before POST /run (FR-004); the FR-005 note (aspect-

@@ -61,8 +61,13 @@
       <input id="asset_type" value="手举牌 hand-held event sign">
       <label>渲染风格</label>
       <select id="render_style"><option value="flat vector">扁平插画 flat vector</option><option value="photographic">摄影质感 photographic</option></select>
-      <label>尺寸（如 60x40cm，中文单位也可以：６０×４０厘米）</label>
-      <input id="format_size" value="60x40cm">
+      <label>尺寸（宽、高分开填，单位可选 cm 或 px）</label>
+      <div class="row">
+        <div><label>宽 W</label><input id="size_w" type="number" min="0" step="any" value="60"></div>
+        <div><label>高 H</label><input id="size_h" type="number" min="0" step="any" value="40"></div>
+        <div><label>单位</label><select id="size_unit"><option value="cm">cm 厘米</option><option value="px">px 像素</option></select></div>
+      </div>
+      <div class="note">按此比例生成草稿图（约 150 万像素），不是精确像素稿或印刷分辨率文件；由设计师收尾。</div>
     </fieldset>
 
     <fieldset><legend>参考图</legend>
@@ -181,7 +186,11 @@ async function loadBrands() {
 function lines(id) { return $(id).value.split("\n").map(s => s.trim()).filter(Boolean); }
 function formState() {
   return {
-    brand: $("brand").value, asset_type: $("asset_type").value, render_style: $("render_style").value, format_size: $("format_size").value,
+    // 022: the canonical brief string is COMPOSED from the three size controls; the
+    // untouched defaults (60/40/cm) compose exactly "60x40cm", the pre-022 literal (the
+    // byte-identity pin) — every downstream consumer of format_size is unchanged.
+    brand: $("brand").value, asset_type: $("asset_type").value, render_style: $("render_style").value,
+    format_size: $("size_w").value + "x" + $("size_h").value + $("size_unit").value,
     reference_relationship: $("reference_relationship").value,
     vibe: { formality: +$("formality").value, playfulness: +$("playfulness").value },
     logo_treatment: $("logo_treatment").value, brand_strictness: $("brand_strictness").value,
@@ -304,6 +313,10 @@ async function poll() {
 async function startRun(style_notes) {
   const refFile = $("reference_image").files[0];
   if (!refFile) { $("formNote").textContent = "必须上传一张风格参考图（请选择文件）。"; return; }
+  // 022 (FR-004): blank/zero/NaN width or height refuses LOUDLY before any launch,
+  // never a silently defaulted size
+  const sizeW = parseFloat($("size_w").value), sizeH = parseFloat($("size_h").value);
+  if (!(sizeW > 0) || !(sizeH > 0)) { $("formNote").textContent = "请填写有效的宽和高（都要大于 0）。"; return; }
   // 013: product shots ride as DISTINCT parts product_1..N (the server parser is
   // last-wins per part name); client-side cap check mirrors the server's visible error.
   const prodFiles = Array.from($("product_images").files);
