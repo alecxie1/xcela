@@ -85,10 +85,12 @@ def extract_draft(draft_id: str, confirmed_pages: dict) -> dict:
 
 # ---- Step 3: verified locks + logo -> validate-loud + save ----
 
-def save_draft(draft_id: str, verified: dict, logo_src) -> dict:
+def save_draft(draft_id: str, verified: dict, logo_src, owner=None) -> dict:
     """Build + validate-loud + write the lean key, place the logo, discard the draft. Raises
     OnboardError (no write) on: unacknowledged flag, id collision, or validation failure
-    (no primary / missing-or-unreal logo)."""
+    (no primary / missing-or-unreal logo). 021: `owner` (the logged-in username, None when
+    auth is off) rides into the key post-build, pre-validate (validate_lean_key ignores
+    extras): the saving user owns the brand."""
     d = _draft_dir(draft_id)
     pdf = d / "source.pdf"
     if not pdf.is_file():
@@ -112,6 +114,9 @@ def save_draft(draft_id: str, verified: dict, logo_src) -> dict:
         verified.get("brand_cn") or brand, verified.get("brand_en") or "",
         finalize_items(items), logo_dest, "uploaded.pdf",
         verified.get("verified_by") or "web", date.today().isoformat())
+
+    if owner:
+        key["owner"] = owner   # 021: set post-build, pre-validate
 
     validate_key.validate_lean_key(key)  # FAILS LOUD on no primary / missing-or-unreal logo
 

@@ -13,9 +13,14 @@
       named raw fetch() moved to the jf() values dated in place (brand_manager,
       deploy_readiness); XCELA_USERS_FILE documented in .env.example (the deploy sweep
       enforces coverage, so it moved up from T004); full sweep green.
-- [ ] T003 ownership: run_meta owner + list filters + per-run 403 guards; brand owner
+- [x] T003 ownership: run_meta owner + list filters + per-run 403 guards; brand owner
       (onboard threading, manager permissions, super-only owner assign) + the
       userA/userB/super x owned-A/owned-B/unowned matrix tests BY VALUE.
+      DONE 2026-07-14: test_auth 13/13 (checks 10-12 by value, check 13 a live-server
+      matrix incl. foreign-brand launch refused as unknown before any run dir);
+      visible_to/write_allowed in brand_manager (one policy home, separately named);
+      run_meta_payload pure + pinned byte-identical with auth off; owner column in the
+      manager (sent only when edited), owner label in the runs picker; full sweep green.
 - [ ] T004 docs (.env.example, README, deploy/README, playbook 登录 section) + full sweep +
       ship origin+vm (VM stays auth-OFF) + Kevin enable-guide (Chinese).
 - [ ] T005 HUMAN GATE: Kevin creates users; his team verifies isolation unassisted.

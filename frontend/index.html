@@ -344,7 +344,7 @@ async function loadRuns() {
     if (!runs.length) { $("recentruns").innerHTML = ""; return; }
     $("recentruns").innerHTML = `<div class="stage"><h3>最近的运行</h3><div class="body">` +
       runs.map(x => `<div><a href="#${x.id}" onclick="openRun('${x.id}');return false">${x.id}</a>` +
-        ` <span class="note">${esc(x.brand || "?")}${x.image ? " · 有图" : ""}${x.export_state === "done" ? " · 已导出分层" : ""}</span></div>`).join("") +
+        ` <span class="note">${esc(x.brand || "?")}${x.owner ? " · " + esc(x.owner) : ""}${x.image ? " · 有图" : ""}${x.export_state === "done" ? " · 已导出分层" : ""}</span></div>`).join("") +
       `<button type="button" id="runsrefresh" style="width:auto;margin-top:6px">刷新列表</button></div></div>`;
     $("runsrefresh").onclick = loadRuns;
   } catch (e) { /* the listing is best-effort; the form still works without it */ }

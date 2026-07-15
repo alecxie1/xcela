@@ -20,6 +20,30 @@ from asset_paths import keys_dir, try_resolve_brand_asset  # noqa: E402
 import persist  # noqa: E402
 from validate_key import KeyValidationError, validate_lean_key  # noqa: E402
 
+def visible_to(key: dict, user) -> bool:
+    """021: True when `user` may SEE this brand. user is None (auth off) or {user, role}.
+    Auth off and super see everything; otherwise unowned brands are shared with every
+    logged-in user (legacy keys have no owner) and owned brands only with their owner."""
+    if user is None or user.get("role") == "super":
+        return True
+    owner = key.get("owner")
+    return owner is None or owner == user.get("user")
+
+
+def write_allowed(key: dict, user) -> bool:
+    """021: True when `user` may MODIFY this brand. Same rule as visible_to today
+    (unowned = any authenticated user may manage, the documented small-team pragmatism);
+    kept as its own name so the two policies can diverge without a hunt."""
+    return visible_to(key, user)
+
+
+def _write_refusal(brand: str, key: dict, user):
+    """The named 403 body for a foreign-owned brand (never a silent no-op)."""
+    return 403, {"error": f"brand {brand!r} is owned by {key.get('owner')!r}; you are "
+                          f"logged in as {user.get('user')!r} (a super user can "
+                          "reassign owners)"}
+
+
 # gpt-image-2 accepts exactly these (the Kevin "只能识别JPG" report, answered with a guard)
 ALLOWED_LOGO_EXT = (".png", ".jpg", ".jpeg", ".webp")
 # magic bytes for the cheap header sniff (extension lies are caught loudly)
@@ -39,15 +63,19 @@ def validate_logo_format(filename: str, data: bytes):
     return None
 
 
-def list_brands_detail() -> list:
-    """Every brand in the runtime database with the fields the manager renders. Tolerant:
-    a corrupt key file lists with an error note instead of crashing the page."""
+def list_brands_detail(user=None) -> list:
+    """Every brand in the runtime database VISIBLE TO `user` (021: None = auth off = all;
+    non-super users see their own + unowned) with the fields the manager renders. Tolerant:
+    a corrupt key file lists with an error note instead of crashing the page (its owner is
+    unknowable, so it stays visible to everyone, like unowned)."""
     out = []
     for p in sorted(keys_dir().glob("*.json")):
         try:
             key = json.loads(p.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             out.append({"brand": p.stem, "error": "key file unreadable (corrupt JSON)"})
+            continue
+        if not visible_to(key, user):
             continue
         fields = key.get("fields") or {}
         colors = (((fields.get("colors") or {}).get("items")) or [])
@@ -65,6 +93,7 @@ def list_brands_detail() -> list:
             "logo_resolved": try_resolve_brand_asset(key.get("logo_path")) is not None,
             "verified_by": key.get("verified_by"),
             "verified_date": key.get("verified_date"),
+            "owner": key.get("owner"),   # 021: None = shared/legacy
         })
     return out
 
@@ -76,13 +105,25 @@ def _load_key(brand: str):
     return p, json.loads(p.read_text(encoding="utf-8"))
 
 
-def update_brand(brand: str, payload: dict):
+def update_brand(brand: str, payload: dict, user=None):
     """Apply name/color edits, gated by validate_lean_key. Returns (code, body). A refusal
-    leaves the key file byte-identical (validated on a COPY before any write)."""
+    leaves the key file byte-identical (validated on a COPY before any write). 021: writes
+    to a FOREIGN-owned brand 403 (write_allowed); the `owner` payload field (assign /
+    transfer / "" to release) is super-only, the unowned-brand migration path."""
     p, key = _load_key(brand)
     if key is None:
         return 404, {"error": f"no brand {brand!r} in the database"}
+    if not write_allowed(key, user):
+        return _write_refusal(brand, key, user)
     edited = json.loads(json.dumps(key))   # deep copy: validate before touching the file
+    if "owner" in payload:
+        if user is not None and user.get("role") != "super":
+            return 403, {"error": "only the super user can assign or change a brand's owner"}
+        new_owner = str(payload["owner"] or "").strip()
+        if new_owner:
+            edited["owner"] = new_owner
+        else:
+            edited.pop("owner", None)   # released back to shared
     fields = edited.setdefault("fields", {})
     if "name_cn" in payload:
         fields["brand_name_cn"] = {"value": str(payload["name_cn"] or "").strip()}
@@ -106,11 +147,13 @@ def update_brand(brand: str, payload: dict):
     return 200, {"ok": True, "brand": brand}
 
 
-def replace_logo(brand: str, filename: str, data: bytes):
+def replace_logo(brand: str, filename: str, data: bytes, user=None):
     """Format-guarded logo replacement: place the file, point the key at it, validate."""
     p, key = _load_key(brand)
     if key is None:
         return 404, {"error": f"no brand {brand!r} in the database"}
+    if not write_allowed(key, user):
+        return _write_refusal(brand, key, user)
     reason = validate_logo_format(filename, data)
     if reason:
         return 400, {"error": reason}
@@ -134,7 +177,7 @@ def replace_logo(brand: str, filename: str, data: bytes):
     return 200, {"ok": True, "brand": brand, "logo_path": rel}
 
 
-def delete_brand(brand: str, confirm: str):
+def delete_brand(brand: str, confirm: str, user=None):
     """Delete the KEY file (the brand disappears from every list); assets under
     brands/<brand>/ deliberately remain on disk (stated in the response). The UI requires
     retyping the brand id; the same confirmation is enforced here (never trust the UI)."""
@@ -143,6 +186,8 @@ def delete_brand(brand: str, confirm: str):
     p, key = _load_key(brand)
     if key is None:
         return 404, {"error": f"no brand {brand!r} in the database"}
+    if not write_allowed(key, user):
+        return _write_refusal(brand, key, user)
     p.unlink()
     return 200, {"ok": True, "deleted": brand,
                  "note": f"key removed; asset files under brands/{brand}/ remain on disk"}

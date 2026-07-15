@@ -62,6 +62,7 @@ def list_runs(output_dir, limit: int = 50) -> list:
         out.append({
             "id": d.name,
             "brand": meta.get("brand"),
+            "owner": meta.get("owner"),  # 021: absent on legacy runs = shared (honest null)
             "created": created,
             "gate_state": gate.get("state"),
             "image": (d / "sign_s1" / "generated.png").is_file(),

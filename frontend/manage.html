@@ -85,6 +85,7 @@ async function load() {
       <div class="row">
         <div><label>品牌名（中文）</label><input type="text" id="cn_${i}" value="${esc(b.name_cn || "")}"></div>
         <div><label>品牌名（英文）</label><input type="text" id="en_${i}" value="${esc(b.name_en || "")}"></div>
+        <div><label>所有者（留空 = 团队共享；仅管理员可改）</label><input type="text" id="owner_${i}" value="${esc(b.owner || "")}" data-orig="${esc(b.owner || "")}"></div>
       </div>
       <label>颜色（必须有且只有一个 primary）</label>${colors}
       <label>更换 logo（PNG/JPG/WebP；当前：${esc(b.logo_path || "无")}）</label>
@@ -105,6 +106,11 @@ async function saveBrand(i, brand) {
     role: document.querySelector(`select[data-b="${i}"][data-role="${k}"]`).value,
   }));
   const body = { name_cn: $(`cn_${i}`).value, name_en: $(`en_${i}`).value, colors };
+  // 021: the owner field is super-only server-side; send it ONLY when actually edited,
+  // so a non-super saving names/colors on a shared brand is not refused for a field
+  // they never touched
+  const ow = $(`owner_${i}`);
+  if (ow && ow.value.trim() !== ow.dataset.orig) body.owner = ow.value.trim();
   const r = await jf(`/brand/${encodeURIComponent(brand)}/update`, { method: "POST",
     headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json();

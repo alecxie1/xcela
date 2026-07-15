@@ -52,8 +52,43 @@ _inflight = threading.Lock()  # single-flight: one run at a time
 HTML_PAGES = ("/", "/onboard", "/playbook", "/manage")
 
 
-def _brands() -> list:
-    return sorted(p.stem for p in keys_dir().glob("*.json"))
+def _brands(user=None) -> list:
+    """021: the brand ids VISIBLE TO `user` (None = auth off = all). Run creation checks
+    against THIS filtered list, so a user cannot launch a run on another user's brand.
+    A corrupt key's owner is unknowable: it stays listed (shared), matching the manager."""
+    out = []
+    for p in sorted(keys_dir().glob("*.json")):
+        try:
+            key = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            key = {}
+        if brand_manager.visible_to(key, user):
+            out.append(p.stem)
+    return out
+
+
+def run_meta_payload(brand: str, style_notes, user=None) -> dict:
+    """021: the run_meta.json content (pure, testable). With auth off (user None) the
+    payload is BYTE-IDENTICAL to pre-021 ({brand, style_notes}); with a logged-in user
+    the run gains its owner."""
+    meta = {"brand": brand, "style_notes": style_notes}
+    if user:
+        meta["owner"] = user["user"]
+    return meta
+
+
+def can_access_run(user, owner) -> bool:
+    """021: auth off OR super OR unowned/legacy OR the user's own run."""
+    if user is None or user.get("role") == "super":
+        return True
+    return owner is None or owner == user.get("user")
+
+
+def _run_owner(run_dir: Path):
+    try:
+        return json.loads((Path(run_dir) / "run_meta.json").read_text(encoding="utf-8")).get("owner")
+    except Exception:  # noqa: BLE001
+        return None    # pre-021 / partial runs are shared (the binding decision)
 
 
 def parse_run_form(body: bytes, content_type: str):
@@ -378,6 +413,16 @@ class Handler(BaseHTTPRequestHandler):
             self._send(401, {"error": "login required"})
         return False
 
+    def _refuse_foreign_run(self, run_id) -> bool:
+        """021: True (403 already sent, named) when the run is owned by someone else and
+        the caller is neither its owner nor super. Unowned/legacy runs are shared."""
+        owner = _run_owner(OUTPUT / run_id)
+        if can_access_run(self._user, owner):
+            return False
+        self._send(403, {"error": f"run {run_id} belongs to {owner!r}; you are logged in "
+                                  f"as {self._user['user']!r}"})
+        return True
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         # --- Feature 021: the login gate (exempt: the login page and whoami itself) ---
@@ -394,20 +439,29 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/playbook":  # 017 (US3): the Chinese usage guide, one click from the app
             return self._send(200, (HERE / "playbook.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/brands":
-            return self._send(200, {"brands": _brands(), "per_run_cost_usd": PER_RUN_COST_USD})
+            return self._send(200, {"brands": _brands(self._user),
+                                    "per_run_cost_usd": PER_RUN_COST_USD})
         if path == "/runs":  # 017 (US2): the recent-runs picker's free listing
-            return self._send(200, {"runs": run_view_mod.list_runs(OUTPUT)})
+            runs = run_view_mod.list_runs(OUTPUT)
+            if self._user and self._user["role"] != "super":  # 021: own + unowned
+                runs = [r for r in runs
+                        if r.get("owner") is None or r["owner"] == self._user["user"]]
+            return self._send(200, {"runs": runs})
         if path == "/brands/detail":  # 019: the brand database view (free, tolerant)
-            return self._send(200, {"brands": brand_manager.list_brands_detail()})
+            return self._send(200, {"brands": brand_manager.list_brands_detail(self._user)})
         if path == "/manage":  # 019: the brand manager page
             return self._send(200, (HERE / "manage.html").read_bytes(), "text/html; charset=utf-8")
         if path.startswith("/run/") and path.endswith("/stages"):
             run_id = path[len("/run/"):-len("/stages")]
+            if self._refuse_foreign_run(run_id):   # 021
+                return None
             return self._send(200, {**run_view_mod.run_view(OUTPUT / run_id),
                                     "inflight": _inflight.locked(),
                                     "per_run_cost_usd": PER_RUN_COST_USD})
         if path.startswith("/run/") and path.endswith("/image"):
             run_id = path[len("/run/"):-len("/image")]
+            if self._refuse_foreign_run(run_id):   # 021
+                return None
             img = OUTPUT / run_id / "sign_s1" / "generated.png"
             if not img.exists():
                 return self._send(404, {"error": "image not ready"})
@@ -415,10 +469,14 @@ class Handler(BaseHTTPRequestHandler):
         # --- Feature 016: the layered exporter's free surfaces ---
         if path.startswith("/run/") and path.endswith("/export/plan"):
             run_id = path[len("/run/"):-len("/export/plan")]
+            if self._refuse_foreign_run(run_id):   # 021
+                return None
             code, payload = export_plan_view(OUTPUT / run_id)
             return self._send(code, payload)
         if path.startswith("/run/") and path.endswith("/layers.zip"):
             run_id = path[len("/run/"):-len("/layers.zip")]
+            if self._refuse_foreign_run(run_id):   # 021
+                return None
             zp = OUTPUT / run_id / export_mod.ZIP_NAME
             state, serr = _read_export_state(OUTPUT / run_id)
             if serr or not zp.is_file() or not state or state.get("state") != "done":
@@ -454,14 +512,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._onboard_extract(path[len("/onboard/"):-len("/extract")])
         if path.startswith("/onboard/") and path.endswith("/save"):
             return self._onboard_save(path[len("/onboard/"):-len("/save")])
-        # --- Feature 015: the pre-spend gate's routes ---
+        # --- Feature 015: the pre-spend gate's routes (021: owner-guarded, incl. spends) ---
         if path.startswith("/run/") and path.endswith("/confirm"):
-            return self._run_confirm(path[len("/run/"):-len("/confirm")])
+            run_id = path[len("/run/"):-len("/confirm")]
+            return None if self._refuse_foreign_run(run_id) else self._run_confirm(run_id)
         if path.startswith("/run/") and path.endswith("/answer"):
-            return self._run_answer(path[len("/run/"):-len("/answer")])
+            run_id = path[len("/run/"):-len("/answer")]
+            return None if self._refuse_foreign_run(run_id) else self._run_answer(run_id)
         # --- Feature 016: the layered exporter's spending route ---
         if path.startswith("/run/") and path.endswith("/export"):
-            return self._run_export(path[len("/run/"):-len("/export")])
+            run_id = path[len("/run/"):-len("/export")]
+            return None if self._refuse_foreign_run(run_id) else self._run_export(run_id)
         # --- Feature 019: brand database writes (single-flight guarded: a derive mid-run
         # must never lose its key from under it) ---
         if path.startswith("/brand/") and path.endswith("/update"):
@@ -481,8 +542,11 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError as exc:
             return self._send(400, {"error": str(exc)})  # fail loud; no run launched (FR-005)
         brand = str(form.get("brand") or "").strip()
-        if brand not in _brands():
-            return self._send(400, {"error": f"unknown brand {brand!r}; choose from {_brands()}"})
+        # 021: checked against the FILTERED list: another user's brand is not just
+        # invisible, it is unusable (the refusal deliberately does not say it exists)
+        if brand not in _brands(self._user):
+            return self._send(400, {"error": f"unknown brand {brand!r}; "
+                                             f"choose from {_brands(self._user)}"})
         if not _inflight.acquire(blocking=False):
             return self._send(409, {"error": "a run is already in flight (single-flight); wait for it"})
         try:
@@ -496,8 +560,8 @@ class Handler(BaseHTTPRequestHandler):
             # exactly (style_notes is an argv-only channel; a mismatch would trip the
             # --verify-prompt drift guard).
             (run_dir / "run_meta.json").write_text(json.dumps(
-                {"brand": brand, "style_notes": style_notes}, ensure_ascii=False, indent=2),
-                encoding="utf-8")
+                run_meta_payload(brand, style_notes, self._user),  # 021: owner rides along
+                ensure_ascii=False, indent=2), encoding="utf-8")
             # Feature 015: every browser run starts with the ZERO-SPEND derive phase; the paid
             # generate phase runs only through POST /run/<id>/confirm (nudge reruns included).
             _launch_async(run_dir, brand, inputs_path, style_notes, phase="derive")
@@ -567,20 +631,22 @@ class Handler(BaseHTTPRequestHandler):
                     payload = json.loads(self._read_body() or b"{}")
                 except json.JSONDecodeError:
                     return self._send(400, {"error": "invalid JSON body"})
-                code, body = brand_manager.update_brand(brand, payload)
+                code, body = brand_manager.update_brand(brand, payload, user=self._user)
             elif verb == "logo":
                 parsed = multipart.parse_multipart(self._read_body(),
                                                    self.headers.get("Content-Type", ""))
                 logo = parsed["files"].get("logo")
                 if not logo or not logo[1]:
                     return self._send(400, {"error": "a logo file part is required"})
-                code, body = brand_manager.replace_logo(brand, logo[0], logo[1])
+                code, body = brand_manager.replace_logo(brand, logo[0], logo[1],
+                                                        user=self._user)
             else:
                 try:
                     payload = json.loads(self._read_body() or b"{}")
                 except json.JSONDecodeError:
                     payload = {}
-                code, body = brand_manager.delete_brand(brand, payload.get("confirm", ""))
+                code, body = brand_manager.delete_brand(brand, payload.get("confirm", ""),
+                                                        user=self._user)
             return self._send(code, body)
         except Exception as exc:  # noqa: BLE001
             return self._send(400, {"error": f"{type(exc).__name__}: {exc}"})
@@ -708,7 +774,8 @@ class Handler(BaseHTTPRequestHandler):
         if not _inflight.acquire(blocking=False):
             return self._send(409, {"error": "a job is already in flight (single-flight); wait for it"})
         try:
-            res = onboard_mod.save_draft(draft_id, verified, logo_src)
+            res = onboard_mod.save_draft(draft_id, verified, logo_src,
+                                         owner=(self._user or {}).get("user"))  # 021
         except onboard_mod.OnboardError as exc:
             return self._send(400, {"error": str(exc)})  # fail loud, no file written
         except Exception as exc:  # noqa: BLE001
