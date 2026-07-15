@@ -58,6 +58,7 @@ Loader: `harness/runtime_env.py`. Precedence: **real environment variables > `<r
 | `XCELA_WORKER_TIMEOUT_S` | no | `1800` | kill a wedged worker, free the one-at-a-time lock |
 | `XCELA_BRANDS_DIR` | no | `<repo>/brands` | where brand assets (logos) live |
 | `XCELA_USERS_FILE` | no | `<repo>/users.json` | login whitelist; auth is ON only while this file exists |
+| `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` | no | official endpoints | custom/relay API endpoints (read natively by the SDKs, apply to every call incl. image generation) |
 
 ### Login (optional)
 

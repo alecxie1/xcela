@@ -69,7 +69,10 @@ sudo systemctl restart xcela   # server.py loads once; the restart applies the g
 - **Env knobs** (all optional): `XCELA_BIND`, `XCELA_PORT`, `XCELA_MAX_UPLOAD_MB` (32),
   `XCELA_WORKER_TIMEOUT_S` (1800), `XCELA_BRANDS_DIR`, `XCELA_USERS_FILE`.
 
-## REFERENCE DEPLOYMENT (ours, deployed 2026-07-12; not required for yours)
+## REFERENCE DEPLOYMENT (RETIRED as a ship target 2026-07-14; kept for the record)
+
+Kevin's team self-deploys on Alicloud (xcela.handyprint.cn) from GitHub; shipping is a
+push to `origin` only. The SGP box below is no longer updated (teardown pending).
 
 - **URL**: https://xcela-17ad22.xcela.net (the unguessable hostname IS the access gate; no login)
 - **VM**: DigitalOcean SGP1, 188.166.238.61, Ubuntu 24.04, user `xcela`, repo at

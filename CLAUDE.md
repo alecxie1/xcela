@@ -187,9 +187,15 @@ inferred from the name: claude-* -> Anthropic blocks, else OpenAI chat with data
 author chain with parse-in-loop preserved, blind_score, calibrate _vision_call,
 approve tier mapping chain[0]/chain[-1], generate + manifest record image_model()); no bare
 anthropic.Anthropic() outside model_client (grep-guarded); defaults byte-identical (pinned).
-Kevin's GPT-5.5 fork becomes one .env line. test_model_config 4/4 (fake-client payload
-shapes by value); full 32-suite sweep green. Spec: `specs/020-model-env-config/`.
-Remaining ops: SGP teardown pending designer confirmation.
+Kevin's GPT-5.5 fork becomes one .env line. test_model_config 5/5 (fake-client payload
+shapes by value; check5 = the yaoyj merge). Spec: `specs/020-model-env-config/`.
+Kevin's `yaoyj` branch MERGED 2026-07-14: his base-URL + gpt-5.5 feature, resolved to the
+020 architecture (his per-site OpenAI clients superseded by model_client; the surviving
+delta is OPENAI_BASE_URL/ANTHROPIC_BASE_URL documented in .env.example + README, honored
+natively by both pinned SDKs and proven by value in check5). His whole deployment is now
+config: XCELA_TEXT_MODELS=gpt-5.5 + OPENAI_BASE_URL=<relay> + OPENAI_API_KEY.
+Ops: `vm` remote RETIRED 2026-07-14 (Kevin's team self-deploys on Alicloud; ship = origin
+only, never push vm).
 
 Prior feature `018-github-handoff` - BUILT T001-T004 (2026-07-13); T005 = the push to
 origin (needs Alec's GitHub credentials) + the CTO's clone-to-first-run human gate. Richard's

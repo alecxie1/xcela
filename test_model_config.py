@@ -190,11 +190,44 @@ def check4_site_wiring():
                 f"approve={g}; env-example={h}")
 
 
+def check5_base_url_env():
+    """yaoyj merge (2026-07-14): a deployment can point BOTH providers at a custom
+    endpoint via the SDKs' native env vars (OPENAI_BASE_URL / ANTHROPIC_BASE_URL). By
+    value against the REAL client factories (no network: constructing a client makes no
+    call): the env base URL lands on the client, and with the env absent the pinned
+    defaults are the official endpoints. Guards a future refactor from passing an
+    explicit base_url that would clobber the env (Kevin's Alicloud relay depends on it)."""
+    saved = {k: os.environ.get(k) for k in
+             ("OPENAI_BASE_URL", "ANTHROPIC_BASE_URL", "OPENAI_API_KEY", "ANTHROPIC_API_KEY")}
+    try:
+        os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY") or "sk-selftest"
+        os.environ["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY") or "sk-selftest"
+        os.environ["OPENAI_BASE_URL"] = "https://relay.example.cn/v1"
+        os.environ["ANTHROPIC_BASE_URL"] = "https://arelay.example.cn"
+        a = str(mc._openai_client().base_url).rstrip("/") == "https://relay.example.cn/v1"
+        b = str(mc._anthropic_client().base_url).rstrip("/") == "https://arelay.example.cn"
+        os.environ.pop("OPENAI_BASE_URL")
+        os.environ.pop("ANTHROPIC_BASE_URL")
+        c = ("api.openai.com" in str(mc._openai_client().base_url)
+             and "api.anthropic.com" in str(mc._anthropic_client().base_url))
+        env = (REPO / ".env.example").read_text(encoding="utf-8")
+        d = "OPENAI_BASE_URL" in env and "ANTHROPIC_BASE_URL" in env
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    ok = a and b and c and d
+    return ok, f"openai-env={a}; anthropic-env={b}; default-endpoints={c}; env-example={d}"
+
+
 CHECKS = [
     ("020 env: pinned defaults, csv/image overrides", check1_env_defaults),
     ("020 routing: provider payload shapes by value, block translation", check2_routing_and_payloads),
     ("020 chain: fallback + warn + all-fail raise", check3_chain_semantics),
     ("020 wiring: no bare clients, five sites, env docs", check4_site_wiring),
+    ("yaoyj: custom base URLs reach both real clients via env", check5_base_url_env),
 ]
 
 
