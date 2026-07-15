@@ -13,6 +13,8 @@
   header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
   header.topnav nav a:hover { background: #34343d; color: #fff; }
   header.topnav nav a.active { background: var(--accent); color: #fff; }
+  header.topnav .userchip { margin-left: auto; font-size: 12px; color: #c7c7d1; }
+  header.topnav .userchip a { color: #fff; margin-left: 8px; cursor: pointer; text-decoration: underline; }
   main { max-width: 760px; margin: 0 auto; padding: 22px 20px; }
   .step { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 16px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
   .step.done { opacity: 0.6; }
@@ -43,6 +45,7 @@
     <a href="/manage">品牌管理</a>
     <a href="/playbook">使用手册</a>
   </nav>
+  <span class="userchip" id="userchip" hidden><span id="uname"></span><a id="logoutLink">退出</a></span>
 </header>
 <main>
   <div class="step" id="s1">
@@ -80,6 +83,8 @@ let draftId = null, locks = [];
 async function jpost(url, body, isForm) {
   const opts = { method: "POST", body: isForm ? body : JSON.stringify(body) };
   const r = await fetch(url, opts);
+  // 021: a dead/absent session bounces to the login page (same check as the jf wrapper)
+  if (r.status === 401) { location.href = "/login"; throw new Error("login required"); }
   return { ok: r.ok, data: await r.json() };
 }
 
@@ -160,6 +165,20 @@ $("saveBtn").onclick = async () => {
     `<a class="handoff" href="/?brand=${encodeURIComponent(b)}">用这个品牌去生成设计</a>`;
   $("s3").classList.add("done");
 };
+</script>
+<script>
+// 021: the nav user chip; renders only when auth is on and a session is live (/whoami)
+(async () => {
+  try {
+    const w = await (await fetch("/whoami")).json();
+    if (!w.auth || !w.user) return;
+    document.getElementById("uname").textContent = w.user + (w.role === "super" ? "（管理员）" : "");
+    document.getElementById("userchip").hidden = false;
+    document.getElementById("logoutLink").onclick = async () => {
+      await fetch("/logout", { method: "POST" }); location.href = "/login";
+    };
+  } catch (e) { /* cosmetic: never break the page */ }
+})();
 </script>
 </body>
 </html>

@@ -254,7 +254,9 @@ def check5_resume_wiring():
     b = ('history.replaceState' in html
          and html.count("currentRun = ") <= 2   # only inside setCurrentRun + declaration
          and html.count("setCurrentRun(") >= 3)  # def + startRun + viewAttempt
-    c = 'fetch("/runs")' in html and 'id="recentruns"' in html and "openRun(" in html
+    # 2026-07-14 (021): the picker fetch goes through the jf() 401 wrapper now; the pinned
+    # value moved WITH the call, never weakened (jf is fetch + login-bounce, same request)
+    c = 'jf("/runs")' in html and 'id="recentruns"' in html and "openRun(" in html
     ok = a and b and c
     return ok, f"hash-guard={a}; one-assignment-home={b}; picker={c}"
 

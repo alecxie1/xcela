@@ -170,14 +170,16 @@ def check6_ui():
     status from /brands/detail (best-effort, never blocking); the playbook documents the
     manager incl. the loud-refusal contract."""
     mg = (REPO / "frontend" / "manage.html").read_text(encoding="utf-8")
-    a = all(s in mg for s in ('fetch("/brands/detail")', "/update", "/logo", "/delete",
+    # 2026-07-14 (021): the page's API calls go through the jf() 401 wrapper now; the
+    # pinned value moved WITH the call, never weakened
+    a = all(s in mg for s in ('jf("/brands/detail")', "/update", "/logo", "/delete",
                               "原样输入品牌 ID", 'accept=".png,.jpg,.jpeg,.webp"',
                               "缺少 logo 素材"))
     pages = ["index.html", "onboard.html", "manage.html", "playbook.html"]
     b = all('href="/manage"' in (REPO / "frontend" / p).read_text(encoding="utf-8")
             for p in pages)
     ix = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
-    c = ('id="brandstatus"' in ix and 'fetch("/brands/detail")' in ix
+    c = ('id="brandstatus"' in ix and 'jf("/brands/detail")' in ix  # 021: via jf()
          and "renderBrandStatus" in ix and "✓ 素材齐全" in ix)
     pb = (REPO / "frontend" / "playbook.html").read_text(encoding="utf-8")
     e = "品牌管理" in pb and "明确拒绝" in pb

@@ -13,6 +13,8 @@
   header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
   header.topnav nav a:hover { background: #34343d; color: #fff; }
   header.topnav nav a.active { background: var(--accent); color: #fff; }
+  header.topnav .userchip { margin-left: auto; font-size: 12px; color: #c7c7d1; }
+  header.topnav .userchip a { color: #fff; margin-left: 8px; cursor: pointer; text-decoration: underline; }
   main { max-width: 880px; margin: 0 auto; padding: 22px 20px; }
   .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; padding: 14px 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
   .card h3 { margin: 0 0 8px; font-size: 15px; display: flex; align-items: center; gap: 10px; }
@@ -43,6 +45,7 @@
     <a href="/manage" class="active" aria-current="page">品牌管理</a>
     <a href="/playbook">使用手册</a>
   </nav>
+  <span class="userchip" id="userchip" hidden><span id="uname"></span><a id="logoutLink">退出</a></span>
 </header>
 <main>
   <div class="card"><b>品牌数据库</b>
@@ -56,8 +59,15 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ROLES = ["primary","secondary","accent","background","text"];
 
+async function jf(url, opts) {
+  // 021: the ONE fetch home for API calls; a dead/absent session bounces to the login page
+  const r = await fetch(url, opts);
+  if (r.status === 401) { location.href = "/login"; throw new Error("login required"); }
+  return r;
+}
+
 async function load() {
-  const r = await fetch("/brands/detail"); const j = await r.json();
+  const r = await jf("/brands/detail"); const j = await r.json();
   const brands = j.brands || [];
   if (!brands.length) { $("list").innerHTML = `<div class="card muted">数据库为空：请先在「录入品牌」向导中添加品牌。</div>`; return; }
   $("list").innerHTML = brands.map((b, i) => {
@@ -95,7 +105,7 @@ async function saveBrand(i, brand) {
     role: document.querySelector(`select[data-b="${i}"][data-role="${k}"]`).value,
   }));
   const body = { name_cn: $(`cn_${i}`).value, name_en: $(`en_${i}`).value, colors };
-  const r = await fetch(`/brand/${encodeURIComponent(brand)}/update`, { method: "POST",
+  const r = await jf(`/brand/${encodeURIComponent(brand)}/update`, { method: "POST",
     headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json();
   $(`note_${i}`).textContent = r.ok ? "已保存。" : (j.error || "保存失败");
@@ -106,7 +116,7 @@ async function replaceLogo(i, brand) {
   const f = $(`logo_${i}`).files[0];
   if (!f) { $(`note_${i}`).textContent = "请先选择 logo 文件（PNG/JPG/WebP）。"; return; }
   const fd = new FormData(); fd.append("logo", f, f.name);
-  const r = await fetch(`/brand/${encodeURIComponent(brand)}/logo`, { method: "POST", body: fd });
+  const r = await jf(`/brand/${encodeURIComponent(brand)}/logo`, { method: "POST", body: fd });
   const j = await r.json();
   $(`note_${i}`).textContent = r.ok ? "logo 已更新。" : (j.error || "上传失败");
   if (r.ok) load();
@@ -115,7 +125,7 @@ async function replaceLogo(i, brand) {
 async function delBrand(brand) {
   const typed = prompt(`删除后此品牌将从列表消失（素材文件保留在服务器上）。\n确认删除请原样输入品牌 ID：${brand}`);
   if (typed === null) return;
-  const r = await fetch(`/brand/${encodeURIComponent(brand)}/delete`, { method: "POST",
+  const r = await jf(`/brand/${encodeURIComponent(brand)}/delete`, { method: "POST",
     headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: typed }) });
   const j = await r.json();
   if (!r.ok) { alert(j.error || "删除失败"); return; }
@@ -123,6 +133,20 @@ async function delBrand(brand) {
 }
 
 load();
+</script>
+<script>
+// 021: the nav user chip; renders only when auth is on and a session is live (/whoami)
+(async () => {
+  try {
+    const w = await (await fetch("/whoami")).json();
+    if (!w.auth || !w.user) return;
+    document.getElementById("uname").textContent = w.user + (w.role === "super" ? "（管理员）" : "");
+    document.getElementById("userchip").hidden = false;
+    document.getElementById("logoutLink").onclick = async () => {
+      await fetch("/logout", { method: "POST" }); location.href = "/login";
+    };
+  } catch (e) { /* cosmetic: never break the page */ }
+})();
 </script>
 </body>
 </html>

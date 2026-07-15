@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 - Handyprint 设计工具</title>
+<style>
+  :root { --ink:#1a1a1a; --muted:#6b7280; --line:#e3e3e6; --nav:#23232a; --accent:#3b82f6; --danger:#c0392b; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: var(--ink); }
+  header.topnav { background: var(--nav); color: #fff; height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 22px; }
+  header.topnav .brandmark { font-weight: 700; letter-spacing: 0.3px; }
+  .card { max-width: 340px; margin: 80px auto; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 24px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  h2 { margin: 0 0 14px; font-size: 16px; }
+  label { display: block; margin: 10px 0 3px; font-weight: 600; font-size: 12px; color: #444; }
+  input { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  button { margin-top: 16px; padding: 10px 14px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; width: 100%; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  .err { color: var(--danger); margin-top: 10px; min-height: 1.2em; }
+  .muted { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header class="topnav"><span class="brandmark">Handyprint</span></header>
+<div class="card">
+  <h2>登录</h2>
+  <label>用户名</label>
+  <input id="username" autocomplete="username" autofocus>
+  <label>密码</label>
+  <input id="password" type="password" autocomplete="current-password">
+  <button id="loginBtn">登录</button>
+  <div class="err" id="err"></div>
+  <div class="muted">没有账号？请联系管理员为你开通（白名单制）。</div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+// already logged in, or auth is off: this page has no job, go home
+fetch("/whoami").then(r => r.json()).then(w => { if (!w.auth || w.user) location.href = "/"; }).catch(() => {});
+async function doLogin() {
+  $("err").textContent = "";
+  $("loginBtn").disabled = true;
+  try {
+    const r = await fetch("/login", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: $("username").value, password: $("password").value }) });
+    const j = await r.json();
+    if (r.ok && j.ok) { location.href = "/"; return; }
+    $("err").textContent = j.error || "登录失败";
+  } catch (e) {
+    $("err").textContent = "网络错误：" + e;
+  }
+  $("loginBtn").disabled = false;
+}
+$("loginBtn").onclick = doLogin;
+["username", "password"].forEach(id =>
+  $(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
+</script>
+</body>
+</html>

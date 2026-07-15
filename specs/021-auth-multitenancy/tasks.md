@@ -5,9 +5,14 @@
       DONE 2026-07-14: test_auth 6/6 (hermetic tmp XCELA_USERS_FILE); re-add = the
       password reset; removing the last user deletes users.json (auth deactivates,
       never a lockout); removed users lose live sessions via the role() check.
-- [ ] T002 the gate: _send optional headers, do_GET/do_POST choke points, /login /logout
+- [x] T002 the gate: _send optional headers, do_GET/do_POST choke points, /login /logout
       /whoami + login.html + jf() 401 wrapper + nav user chips + THE PIN (no users file =
       open access byte-identical, ephemeral-server proven).
+      DONE 2026-07-14: test_auth 9/9 (checks 7-8 are LIVE ephemeral-server round trips:
+      the pin, 302/401, cookie set/opens/logout-kills); the two pinned form-greps that
+      named raw fetch() moved to the jf() values dated in place (brand_manager,
+      deploy_readiness); XCELA_USERS_FILE documented in .env.example (the deploy sweep
+      enforces coverage, so it moved up from T004); full sweep green.
 - [ ] T003 ownership: run_meta owner + list filters + per-run 403 guards; brand owner
       (onboard threading, manager permissions, super-only owner assign) + the
       userA/userB/super x owned-A/owned-B/unowned matrix tests BY VALUE.

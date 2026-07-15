@@ -30,6 +30,7 @@ import onboard as onboard_mod  # noqa: E402  (feature 006: the web onboarding wi
 import multipart  # noqa: E402  (feature 006: stdlib multipart upload parsing)
 import uploads  # noqa: E402  (feature 007: the shared save-upload home, 004 reference + 006 logo)
 import brand_manager  # noqa: E402  (feature 019: the brand database, HTTP-free half)
+import auth  # noqa: E402  (feature 021: the login gate; inert while no users file exists)
 sys.path.insert(0, str(REPO_ROOT / "harness"))
 import export_layers as export_mod  # noqa: E402  (feature 016: the layered exporter)
 from asset_paths import keys_dir  # noqa: E402  (019: answer keys are runtime state)
@@ -45,6 +46,10 @@ MAX_UPLOAD_BYTES = int(os.environ.get("XCELA_MAX_UPLOAD_MB", "32")) * 1024 * 102
 WORKER_TIMEOUT_S = int(os.environ.get("XCELA_WORKER_TIMEOUT_S", "1800"))
 
 _inflight = threading.Lock()  # single-flight: one run at a time
+
+# 021: an unauthenticated browser lands on these as PAGES, so they 302 to /login;
+# every other route is an API and answers 401 JSON (the fetch wrapper redirects).
+HTML_PAGES = ("/", "/onboard", "/playbook", "/manage")
 
 
 def _brands() -> list:
@@ -348,16 +353,40 @@ def _launch_async(run_dir: Path, brand: str, inputs_path: Path, style_notes, pha
 
 
 class Handler(BaseHTTPRequestHandler):
-    def _send(self, code, body, ctype="application/json"):
+    def _send(self, code, body, ctype="application/json", headers=None):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        for k, v in (headers or {}).items():  # 021: Set-Cookie / Location riders
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
+    def _authed(self, path):
+        """Feature 021: the ONE login gate, called at the top of both verbs. Resolves
+        self._user ({user, role} or None) from the session cookie; True = proceed. When
+        auth is enabled (the users file exists) and there is no live session, the HTML
+        pages 302 to /login and every API route answers 401. When auth is OFF this is a
+        no-op with self._user = None: every route behaves byte-identically to pre-021."""
+        self._user = auth.session_user(self.headers.get("Cookie", "")) if auth.enabled() else None
+        if not auth.enabled() or self._user:
+            return True
+        if path in HTML_PAGES:
+            self._send(302, b"", "text/html; charset=utf-8", headers={"Location": "/login"})
+        else:
+            self._send(401, {"error": "login required"})
+        return False
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
+        # --- Feature 021: the login gate (exempt: the login page and whoami itself) ---
+        if path == "/login":
+            return self._send(200, (HERE / "login.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/whoami":
+            return self._whoami()
+        if not self._authed(path):
+            return None
         if path == "/":
             return self._send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/onboard":
@@ -411,6 +440,13 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
             return self._send(413, {"error": f"upload too large: {clen // (1024*1024)}MB "
                                              f"exceeds the {MAX_UPLOAD_BYTES // (1024*1024)}MB cap"})
+        # --- Feature 021: the login gate (exempt: the login/logout pair) ---
+        if path == "/login":
+            return self._login()
+        if path == "/logout":
+            return self._logout()
+        if not self._authed(path):
+            return None
         # --- Feature 006: onboarding wizard routes ---
         if path == "/onboard/upload":
             return self._onboard_upload()
@@ -588,6 +624,47 @@ class Handler(BaseHTTPRequestHandler):
             lambda launch: _launch_async(run_dir, launch["brand"], launch["inputs_path"],
                                          launch["style_notes"], phase="generate"),
             wrap=lambda payload: {**payload, "per_run_cost_usd": PER_RUN_COST_USD})
+
+    # --- Feature 021 auth handlers (thin glue over auth.py) ---
+
+    def _whoami(self):
+        """{auth: false} when auth is off; {auth: true, user, role} for a live session;
+        401 otherwise. The pages' nav user chip renders from this (hidden when auth is
+        off), so the UI never has to guess whether the gate is active."""
+        if not auth.enabled():
+            return self._send(200, {"auth": False})
+        user = auth.session_user(self.headers.get("Cookie", ""))
+        if not user:
+            return self._send(401, {"auth": True, "error": "login required"})
+        return self._send(200, {"auth": True, **user})
+
+    def _login(self):
+        """Verify against the whitelist and set the 30-day HttpOnly session cookie. The
+        error string is deliberately ONE message for wrong-user and wrong-password (no
+        username probing); with auth off the route refuses (there is nothing to log into)."""
+        if not auth.enabled():
+            return self._send(409, {"error": "auth is off (no users file); no login needed"})
+        try:
+            payload = json.loads(self._read_body() or b"{}")
+        except json.JSONDecodeError:
+            return self._send(400, {"error": "invalid JSON body"})
+        username = str(payload.get("username") or "").strip()
+        if not auth.verify(username, str(payload.get("password") or "")):
+            return self._send(401, {"error": "用户名或密码不正确"})
+        token = auth.mint_session(username)
+        cookie = (f"{auth.COOKIE_NAME}={token}; Path=/; Max-Age={auth.SESSION_TTL_S}; "
+                  f"HttpOnly; SameSite=Lax")
+        return self._send(200, {"ok": True, "user": username, "role": auth.role(username)},
+                          headers={"Set-Cookie": cookie})
+
+    def _logout(self):
+        """Drop the session server-side AND clear the cookie (idempotent; safe when auth
+        is off or the cookie is already gone)."""
+        token = auth.cookie_token(self.headers.get("Cookie", ""))
+        if token:
+            auth.drop_session(token)
+        return self._send(200, {"ok": True}, headers={
+            "Set-Cookie": f"{auth.COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"})
 
     # --- Feature 006 onboarding handlers (thin glue over onboard.py; no model, never intake.main) ---
 

@@ -182,6 +182,141 @@ def check6_cli():
     return ok, f"add+super={a}; remove={b}; unknown-loud={c}; bad-cmd={d}; bad-add={e}"
 
 
+# ---- T002: the server gate (ephemeral instances, the deploy-readiness check9 pattern) ----
+
+def _server_instance():
+    """(srv, port): an ephemeral live server on 127.0.0.1:0. keys_dir is ALSO pinned to a
+    tmp dir so /brands never reads the machine's real runtime keys."""
+    import threading
+    from http.server import ThreadingHTTPServer
+    os.environ["XCELA_ANSWER_KEYS_DIR"] = tempfile.mkdtemp(prefix="auth_keys_")
+    import server
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, srv.server_address[1]
+
+
+def _req(port, method, path, body=None, cookie=None, ctype="application/json"):
+    """(status, headers, json_or_bytes) via a real HTTP round trip."""
+    import http.client
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    headers = {}
+    if cookie:
+        headers["Cookie"] = cookie
+    if body is not None:
+        headers["Content-Type"] = ctype
+    conn.request(method, path, body=body, headers=headers)
+    resp = conn.getresponse()
+    data = resp.read()
+    conn.close()
+    hdrs = dict(resp.getheaders())
+    if (hdrs.get("Content-Type") or "").startswith("application/json"):
+        return resp.status, hdrs, json.loads(data or b"{}")
+    return resp.status, hdrs, data
+
+
+def check7_open_access_pin():
+    """THE PIN: no users file = the server is byte-for-byte today's open server. The four
+    pages and the API answer 200 WITHOUT any cookie, whoami says {auth: false}, and
+    POST /login refuses (there is nothing to log into)."""
+    _workspace()   # users file location set but NOT created: auth off
+    srv = None
+    try:
+        srv, port = _server_instance()
+        s1, h1, b1 = _req(port, "GET", "/")
+        a = s1 == 200 and b"topnav" in b1 and "Set-Cookie" not in h1
+        s2, _h2, b2 = _req(port, "GET", "/brands")
+        b = s2 == 200 and "brands" in b2
+        s3, _h3, b3 = _req(port, "GET", "/whoami")
+        c = s3 == 200 and b3 == {"auth": False}
+        s4, _h4, b4 = _req(port, "POST", "/login",
+                           body=json.dumps({"username": "x", "password": "y"}))
+        d = s4 == 409 and "auth is off" in b4["error"]
+        s5, _h5, _b5 = _req(port, "GET", "/login")
+        e = s5 == 200   # the page itself serves; its JS bounces home when auth is off
+    finally:
+        if srv:
+            srv.shutdown()
+        os.environ.pop("XCELA_ANSWER_KEYS_DIR", None)
+        _cleanup()
+    ok = a and b and c and d and e
+    return ok, f"pages-open={a}; api-open={b}; whoami-off={c}; login-409={d}; login-page={e}"
+
+
+def check8_gate_roundtrip():
+    """With a users file: pages 302 to /login, APIs 401, a wrong password stays out, the
+    right one sets the HttpOnly SameSite=Lax session cookie, the cookie opens every
+    route, whoami round-trips {user, role}, and logout kills the session server-side."""
+    _workspace()
+    srv = None
+    try:
+        auth.add_user("kevin", "kpw", is_super=True)
+        srv, port = _server_instance()
+        s1, h1, _b1 = _req(port, "GET", "/")
+        a = s1 == 302 and h1.get("Location") == "/login"
+        s2, _h2, b2 = _req(port, "GET", "/brands")
+        b = s2 == 401 and b2["error"] == "login required"
+        s3, _h3, _b3 = _req(port, "POST", "/run/xxx/confirm", body="{}")
+        c = s3 == 401   # spending routes are gated like every API
+        s4, h4, _b4 = _req(port, "POST", "/login",
+                           body=json.dumps({"username": "kevin", "password": "wrong"}))
+        d = s4 == 401 and "Set-Cookie" not in h4
+        s5, h5, b5 = _req(port, "POST", "/login",
+                          body=json.dumps({"username": "kevin", "password": "kpw"}))
+        sc = h5.get("Set-Cookie", "")
+        e = (s5 == 200 and b5["role"] == "super" and sc.startswith(f"{auth.COOKIE_NAME}=")
+             and "HttpOnly" in sc and "SameSite=Lax" in sc)
+        cookie = sc.split(";", 1)[0]
+        s6, _h6, b6 = _req(port, "GET", "/brands", cookie=cookie)
+        s7, _h7, _b7 = _req(port, "GET", "/", cookie=cookie)
+        f = s6 == 200 and "brands" in b6 and s7 == 200
+        s8, _h8, b8 = _req(port, "GET", "/whoami", cookie=cookie)
+        g = s8 == 200 and b8 == {"auth": True, "user": "kevin", "role": "super"}
+        s9, h9, _b9 = _req(port, "POST", "/logout", body="{}", cookie=cookie)
+        s10, _h10, _b10 = _req(port, "GET", "/brands", cookie=cookie)
+        h = s9 == 200 and "Max-Age=0" in h9.get("Set-Cookie", "") and s10 == 401
+    finally:
+        if srv:
+            srv.shutdown()
+        os.environ.pop("XCELA_ANSWER_KEYS_DIR", None)
+        _cleanup()
+    ok = a and b and c and d and e and f and g and h
+    return ok, (f"page-302={a}; api-401={b}; spend-401={c}; wrong-pw={d}; cookie-set={e}; "
+                f"cookie-opens={f}; whoami={g}; logout-kills={h}")
+
+
+def check9_ui_wiring():
+    """UI wiring (greps, value-bearing): login.html carries the Chinese form posting to
+    /login; index.html + manage.html route API calls through the jf() 401 wrapper (no
+    stray `await fetch(` outside the whoami chip); onboard.html's jpost gained the same
+    check; ALL FOUR pages carry the /whoami user chip with the 退出 button."""
+    fe = REPO / "frontend"
+    lg = (fe / "login.html").read_text(encoding="utf-8")
+    a = all(s in lg for s in ('id="username"', 'id="password"', 'fetch("/login"', "登录"))
+    pages = ["index.html", "manage.html"]
+    b = all("async function jf(" in (fe / p).read_text(encoding="utf-8") for p in pages)
+    # every non-chip fetch goes through jf: raw `await fetch(` survives ONLY for
+    # /whoami and /logout (the chip, deliberately outside the 401-redirect loop)
+    import re
+    c = True
+    for p in pages + ["onboard.html", "playbook.html"]:
+        for m in re.findall(r"await (?:\(await )?fetch\(([^,)]*)", (fe / p).read_text(encoding="utf-8")):
+            if '"/whoami"' not in m and '"/logout"' not in m and '"/login"' not in m and "url" not in m:
+                c = False
+    ob = (fe / "onboard.html").read_text(encoding="utf-8")
+    d = "r.status === 401" in ob and 'location.href = "/login"' in ob
+    e = all('fetch("/whoami")' in (fe / p).read_text(encoding="utf-8")
+            and "退出" in (fe / p).read_text(encoding="utf-8")
+            and 'id="userchip"' in (fe / p).read_text(encoding="utf-8")
+            for p in ["index.html", "manage.html", "onboard.html", "playbook.html"])
+    srv = (fe / "server.py").read_text(encoding="utf-8")
+    f = ('HTML_PAGES = ("/", "/onboard", "/playbook", "/manage")' in srv
+         and '"/whoami"' in srv and "def _authed" in srv)
+    ok = a and b and c and d and e and f
+    return ok, (f"login-page={a}; jf-defined={b}; no-stray-fetch={c}; jpost-401={d}; "
+                f"chip-x4={e}; server-gate={f}")
+
+
 CHECKS = [
     ("021 enabled(): the no-users-file activation switch", check1_enabled_switch),
     ("021 scrypt verify: right/wrong/missing by value, salted, re-add resets", check2_scrypt_verify),
@@ -189,6 +324,9 @@ CHECKS = [
     ("021 sessions: mint/lookup/expiry/logout on disk", check4_sessions),
     ("021 whitelist removal kills live sessions", check5_removed_user_sessions_die),
     ("021 CLI: add/remove/list via main()", check6_cli),
+    ("021 THE PIN: no users file = open access, live server", check7_open_access_pin),
+    ("021 gate: 302/401, login cookie, whoami, logout, live server", check8_gate_roundtrip),
+    ("021 UI: login page, jf wrapper, jpost check, chip on all four pages", check9_ui_wiring),
 ]
 
 

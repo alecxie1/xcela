@@ -13,6 +13,8 @@
   header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
   header.topnav nav a:hover { background: #34343d; color: #fff; }
   header.topnav nav a.active { background: var(--accent); color: #fff; }
+  header.topnav .userchip { margin-left: auto; font-size: 12px; color: #c7c7d1; }
+  header.topnav .userchip a { color: #fff; margin-left: 8px; cursor: pointer; text-decoration: underline; }
   main { display: grid; grid-template-columns: 380px 1fr; gap: 0; height: calc(100vh - 52px); }
   .panel { padding: 18px 20px; overflow-y: auto; }
   .form { background: #fff; border-right: 1px solid #ddd; }
@@ -47,6 +49,7 @@
     <a href="/manage">品牌管理</a>
     <a href="/playbook">使用手册</a>
   </nav>
+  <span class="userchip" id="userchip" hidden><span id="uname"></span><a id="logoutLink">退出</a></span>
 </header>
 <main>
   <section class="panel form">
@@ -148,6 +151,13 @@ function zh(s) {
   return s;   // English fallback: unmapped vocabulary stays honest
 }
 
+async function jf(url, opts) {
+  // 021: the ONE fetch home for API calls; a dead/absent session bounces to the login page
+  const r = await fetch(url, opts);
+  if (r.status === 401) { location.href = "/login"; throw new Error("login required"); }
+  return r;
+}
+
 let brandDetail = {};   // 019: per-brand asset status for the form's honesty line
 function renderBrandStatus() {
   const d = brandDetail[$("brand").value];
@@ -155,10 +165,10 @@ function renderBrandStatus() {
     (d.logo_resolved ? "✓ 素材齐全" : "✗ 缺少 logo 素材：出图会被明确拒绝（去「品牌管理」补齐或删除该品牌）");
 }
 async function loadBrands() {
-  const r = await fetch("/brands"); const j = await r.json();
+  const r = await jf("/brands"); const j = await r.json();
   $("brand").innerHTML = j.brands.map(b => `<option>${b}</option>`).join("");
   try {   // best-effort: the status line never blocks the form
-    const rd = await fetch("/brands/detail"); const jd = await rd.json();
+    const rd = await jf("/brands/detail"); const jd = await rd.json();
     (jd.brands || []).forEach(b => brandDetail[b.brand] = b);
   } catch (e) {}
   renderBrandStatus();
@@ -251,7 +261,7 @@ function renderAssumptionControl(a, i) {
 async function applyAnswer(a, label, value) {
   const body = { assumption_id: a.id, label };
   if (value) body.value = value;
-  const r = await fetch(`/run/${currentRun}/answer`, { method: "POST",
+  const r = await jf(`/run/${currentRun}/answer`, { method: "POST",
     headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) {  // fail loud; the previous derivation stays (US2 scenario 3)
@@ -262,7 +272,7 @@ async function applyAnswer(a, label, value) {
   poller = setInterval(poll, 1000); poll();
 }
 async function confirmRun() {
-  const r = await fetch(`/run/${currentRun}/confirm`, { method: "POST" });
+  const r = await jf(`/run/${currentRun}/confirm`, { method: "POST" });
   const j = await r.json();
   if (!r.ok) { $("pregateNote").textContent = j.error || "确认失败"; return; }
   $("run").disabled = true;
@@ -271,7 +281,7 @@ async function confirmRun() {
 }
 async function poll() {
   if (!currentRun) return;
-  const r = await fetch(`/run/${currentRun}/stages`); const v = await r.json();
+  const r = await jf(`/run/${currentRun}/stages`); const v = await r.json();
   ["brief","register","prompt","image"].forEach(k => renderStage(k, v[k]));
   renderPreGate(v.gate, v.per_run_cost_usd);
   renderExport(v);  // 016: the layered-export stage (opt-in button / progress / download)
@@ -307,7 +317,7 @@ async function startRun(style_notes) {
   fd.append("form", JSON.stringify(form));
   fd.append("reference", refFile, refFile.name);  // style_notes rides inside the `form` JSON above
   prodFiles.forEach((f, i) => fd.append("product_" + (i + 1), f, f.name));
-  const r = await fetch("/run", { method: "POST", body: fd });
+  const r = await jf("/run", { method: "POST", body: fd });
   const j = await r.json();
   if (!r.ok) { $("formNote").textContent = j.error || "启动失败"; $("run").disabled = false; return; }
   setCurrentRun(j.run_id);
@@ -329,7 +339,7 @@ function setCurrentRun(id) {
 }
 async function loadRuns() {
   try {
-    const r = await fetch("/runs"); const j = await r.json();
+    const r = await jf("/runs"); const j = await r.json();
     const runs = (j.runs || []).slice(0, 12);
     if (!runs.length) { $("recentruns").innerHTML = ""; return; }
     $("recentruns").innerHTML = `<div class="stage"><h3>最近的运行</h3><div class="body">` +
@@ -367,7 +377,7 @@ async function renderExport(v) {
     // the run this fetch belongs to: the continuation must never stamp another run's button
     const runAtFetch = currentRun;
     let r, j;
-    try { r = await fetch(`/run/${runAtFetch}/export/plan`); j = await r.json(); }
+    try { r = await jf(`/run/${runAtFetch}/export/plan`); j = await r.json(); }
     catch (err) { r = { ok: false }; j = { error: String(err) }; }
     if (runAtFetch !== currentRun || !$("exportbtn")) return; // switched runs mid-fetch: stale result, drop it
     if (!r.ok) {
@@ -400,7 +410,7 @@ async function doExport() {
   const btn = $("exportbtn") || $("exportretry");
   if (btn) btn.disabled = true;
   let r, j;
-  try { r = await fetch(`/run/${currentRun}/export`, { method: "POST" }); j = await r.json(); }
+  try { r = await jf(`/run/${currentRun}/export`, { method: "POST" }); j = await r.json(); }
   catch (err) { r = { ok: false }; j = { error: String(err) }; }
   if (!r.ok) {
     const note = $("exportNote");
@@ -432,6 +442,20 @@ loadRuns();
 // 017: a #run_... hash reopens that run after a refresh/reconnect; NO hash = the pre-017
 // startup path, byte-identical (an unknown id renders the honest empty stages + the picker)
 if (location.hash.startsWith("#run_")) openRun(location.hash.slice(1));
+</script>
+<script>
+// 021: the nav user chip; renders only when auth is on and a session is live (/whoami)
+(async () => {
+  try {
+    const w = await (await fetch("/whoami")).json();
+    if (!w.auth || !w.user) return;
+    document.getElementById("uname").textContent = w.user + (w.role === "super" ? "（管理员）" : "");
+    document.getElementById("userchip").hidden = false;
+    document.getElementById("logoutLink").onclick = async () => {
+      await fetch("/logout", { method: "POST" }); location.href = "/login";
+    };
+  } catch (e) { /* cosmetic: never break the page */ }
+})();
 </script>
 </body>
 </html>

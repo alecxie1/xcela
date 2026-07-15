@@ -104,7 +104,9 @@ def mint_session(username: str) -> str:
     return token
 
 
-def _cookie_token(cookie_header: str):
+def cookie_token(cookie_header: str):
+    """The session token on a request's Cookie header, or None (the server's logout
+    route needs the raw token to drop it)."""
     try:
         jar = _cookies.SimpleCookie(cookie_header or "")
     except _cookies.CookieError:
@@ -117,7 +119,7 @@ def session_user(cookie_header: str):
     """{user, role} for a live session on the request's Cookie header, else None.
     Read-only: expiry is checked, not pruned here (mint/drop own the writes). A user
     removed from the whitelist loses every session immediately (role() returns None)."""
-    token = _cookie_token(cookie_header)
+    token = cookie_token(cookie_header)
     if not token:
         return None
     rec = _read_json(sessions_file()).get(token)
