@@ -144,7 +144,17 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `021-auth-multitenancy` - BUILT T001-T004 (2026-07-14); T005 = the
+**Active feature:** `022-form-size-progress` - SPEC'D 2026-07-15 (draft, operator asked for
+the spec; next: /speckit-tasks then build). Richard's designer's feedback items 04-06:
+separate W/H + unit (cm/px) size inputs on the run form composing the SAME canonical
+"WxHunit" string (byte-identity pin; resolve_size is already unit-agnostic, px parses
+today - the fix is form truth), plus elapsed-time + typical-duration expectations on the
+derive and generate waits (no fake progress bars). Items 01/02 (long-image H5, .ai template
+re-theming) DEFERRED as out-of-product-shape; 03 (font selection) deferred pending Kevin
+clarification (style nudge vs licensed-font compositing?). Evidence: 公司宣传H5.zip (AIA
+NAVI monthly project). Spec: `specs/022-form-size-progress/`.
+
+Prior feature `021-auth-multitenancy` - BUILT T001-T004 (2026-07-14); T005 = the
 HUMAN GATE (Kevin creates users via docs/KEVIN_AUTH_GUIDE.md, his team verifies isolation
 unassisted). Shipped: auth core frontend/auth.py (scrypt whitelist, disk 30d sessions,
 CLI add/remove/list = the whole user management v1; re-add = password reset; removing the
