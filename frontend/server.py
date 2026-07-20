@@ -104,9 +104,16 @@ def parse_run_form(body: bytes, content_type: str):
         form = json.loads(parsed["fields"].get("form") or "{}")
     except json.JSONDecodeError:
         raise ValueError("invalid 'form' JSON field")
-    ref = parsed["files"].get("reference")
-    if not ref or not ref[1]:
-        raise ValueError("a reference image is required (v1)")
+    # 023: in edit mode (改图) the PRINCIPAL upload is the `base` part (the image being
+    # edited); the design lane keeps the `reference` part with its exact refusal.
+    if form.get("mode") == "edit":
+        ref = parsed["files"].get("base")
+        if not ref or not ref[1]:
+            raise ValueError("a base image is required (edit mode): upload the image to change")
+    else:
+        ref = parsed["files"].get("reference")
+        if not ref or not ref[1]:
+            raise ValueError("a reference image is required (v1)")
     prod_keys = sorted((k for k in parsed["files"] if re.fullmatch(r"product_\d+", k)),
                        key=lambda k: int(k.split("_")[1]))
     products = [parsed["files"][k] for k in prod_keys if parsed["files"][k][1]]
@@ -124,8 +131,11 @@ def write_run_inputs(form: dict, reference, run_dir: Path, products=None) -> Pat
     shots (optional) save through the SAME shared upload home as product_<i>.<ext> and their paths
     ride as form["product_images"]; zero products = no key (pre-013 inputs byte-identical)."""
     ext = os.path.splitext(reference[0])[1]
-    ref_path = uploads.save_upload(reference, run_dir, name="reference" + ext)
-    form["reference_image"] = ref_path
+    if form.get("mode") == "edit":
+        # 023: the principal upload IS the base image; inputs_writer dispatches on mode.
+        form["base_image"] = uploads.save_upload(reference, run_dir, name="base" + ext)
+    else:
+        form["reference_image"] = uploads.save_upload(reference, run_dir, name="reference" + ext)
     saved = [uploads.save_upload(p, run_dir, name=f"product_{i}{os.path.splitext(p[0])[1]}")
              for i, p in enumerate(products or [], 1)]
     if saved:

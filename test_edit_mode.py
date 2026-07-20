@@ -200,6 +200,127 @@ def check7_generate_mask_param_additive():
     return ok, f"default-None={a}; guarded-kwarg={b}; additive-manifest={c}"
 
 
+def _edit_fixture(d: Path) -> Path:
+    """A real edit inputs.json + base image in run dir `d`."""
+    base = _png(d / "base.png", w=1536, h=1024, color=(180, 40, 40))
+    inputs = {"mode": "edit", "base_image": base,
+              "edit_instruction": "把左下角的牛肉粉换成酸汤粉",
+              "edit_region": {"x": 0.1, "y": 0.5, "w": 0.3, "h": 0.4},
+              "signs": [{"id": "s1", "messages": []}]}
+    p = d / "inputs.json"
+    p.write_text(json.dumps(inputs, ensure_ascii=False, indent=2), encoding="utf-8")
+    return p
+
+
+def _conductor(argv, env_extra=None):
+    import os
+    env = dict(os.environ)
+    env["XCELA_ANSWER_KEYS_DIR"] = str(REPO / "tests_support" / "demo_keys")
+    env.update(env_extra or {})
+    return subprocess.run([sys.executable, "harness/conductor.py"] + argv,
+                          cwd=str(REPO), capture_output=True, text=True, env=env)
+
+
+def check8_dry_run_plan_shape():
+    """023 T003: the edit plan by value - route edit, exactly ONE edit_author step, no
+    register/calibrate/kit steps, and NO glue artifacts (subfields/intents) written."""
+    d = _tmpdir()
+    inputs = _edit_fixture(d)
+    r = _conductor(["--brand", "aia", "--inputs", str(inputs), "--out", str(d),
+                    "--thin", "--no-approve", "--dry-run"])
+    plan = json.loads((d / "plan.json").read_text(encoding="utf-8")) if (d / "plan.json").exists() else {}
+    a = r.returncode == 0 and plan.get("route") == "edit" and plan.get("mode") == "edit"
+    steps = plan.get("steps") or []
+    b = (len(steps) == 1 and steps[0]["label"] == "edit_author"
+         and "harness/edit_author.py" in steps[0]["argv"][1])
+    c = not any((d / n).exists() for n in ("subfields.json", "intent_s1.json"))
+    ok = a and b and c
+    return ok, f"plan-route-edit={a} (rc={r.returncode}); one-edit-step={b}; no-glue={c}"
+
+
+def check9_free_derive_end_to_end():
+    """023 T003 (US1 independent test): a REAL --phase derive on an edit fixture - free by
+    construction (zero model calls: no calibration, no authoring). Verbatim prompt on
+    disk, gate awaiting, assumptions [], region noted, no register artifacts."""
+    d = _tmpdir()
+    inputs = _edit_fixture(d)
+    r = _conductor(["--brand", "aia", "--inputs", str(inputs), "--out", str(d),
+                    "--thin", "--no-approve", "--phase", "derive"])
+    prompt = (d / "sign_s1" / "final_prompt.txt")
+    a = r.returncode == 0 and prompt.exists() and "把左下角的牛肉粉换成酸汤粉" in prompt.read_text(encoding="utf-8")
+    gate = json.loads((d / "gate_state.json").read_text(encoding="utf-8")) if (d / "gate_state.json").exists() else {}
+    b = gate.get("state") == "awaiting_confirmation"
+    c = json.loads((d / "assumptions.json").read_text(encoding="utf-8")) == []
+    man = json.loads((d / "conductor_manifest.json").read_text(encoding="utf-8"))
+    e = man.get("route") == "edit" and any("region set" in n for n in man.get("notes") or [])
+    f = not any((d / n).exists() for n in ("calibration.json", "register_profile.json", "subfields.json"))
+    g = not (d / "sign_s1" / "generated.png").exists()  # zero spend, nothing generated
+    ok = a and b and c and e and f and g
+    return ok, (f"verbatim-prompt={a} (rc={r.returncode}); gate-awaiting={b}; assumptions-empty={c}; "
+                f"manifest-edit+region-note={e}; no-register-artifacts={f}; nothing-generated={g}")
+
+
+def check10_spend_guards():
+    """023 T003: --phase generate without confirm refuses loudly (gate preflight);
+    edit + --phase full refuses loudly (the pre-spend gate is mandatory)."""
+    d = _tmpdir()
+    inputs = _edit_fixture(d)
+    _conductor(["--brand", "aia", "--inputs", str(inputs), "--out", str(d),
+                "--thin", "--no-approve", "--phase", "derive"])
+    r1 = _conductor(["--brand", "aia", "--inputs", str(inputs), "--out", str(d),
+                     "--thin", "--no-approve", "--phase", "generate"])
+    a = r1.returncode != 0 and "requires gate_state.json in state 'confirmed'" in (r1.stderr + r1.stdout)
+    r2 = _conductor(["--brand", "aia", "--inputs", str(inputs), "--out", str(_tmpdir()),
+                     "--thin", "--no-approve"])
+    b = r2.returncode != 0 and "mandatory for edits" in (r2.stderr + r2.stdout)
+    ok = a and b
+    return ok, f"generate-preflight-refusal={a}; full-phase-refusal={b}"
+
+
+def check11_server_dispatch():
+    """023 T003: parse_run_form takes the `base` part as the principal upload in edit mode
+    (loud refusal when missing; the design refusal string unchanged) and write_run_inputs
+    saves base.<ext> + writes mode-edit inputs.json."""
+    import server
+    BOUNDARY = "----edit-test-023"
+    CT = f"multipart/form-data; boundary={BOUNDARY}"
+    blob = b"\x89PNG\r\n\x1a\nFAKE"
+
+    def body(form, part_name=None, fname="b.png"):
+        b = BOUNDARY.encode()
+        parts = [b"--" + b + b"\r\n"
+                 b'Content-Disposition: form-data; name="form"\r\n\r\n'
+                 + json.dumps(form, ensure_ascii=False).encode() + b"\r\n"]
+        if part_name:
+            parts.append(b"--" + b + b"\r\n"
+                         b'Content-Disposition: form-data; name="' + part_name.encode()
+                         + b'"; filename="' + fname.encode() + b'"\r\n'
+                         b"Content-Type: application/octet-stream\r\n\r\n" + blob + b"\r\n")
+        parts.append(b"--" + b + b"--\r\n")
+        return b"".join(parts)
+
+    ef = {"mode": "edit", "brand": "aia", "edit_instruction": "换碗"}
+    form, principal, prods = server.parse_run_form(body(ef, "base"), CT)
+    a = principal[0] == "b.png" and principal[1] == blob and prods == []
+    try:
+        server.parse_run_form(body(ef), CT)
+        b_ = False
+    except ValueError as exc:
+        b_ = "a base image is required (edit mode)" in str(exc)
+    try:
+        server.parse_run_form(body({"brand": "aia"}), CT)
+        c = False
+    except ValueError as exc:
+        c = str(exc) == "a reference image is required (v1)"
+    d = _tmpdir()
+    p = server.write_run_inputs(dict(ef), principal, d)
+    j = json.loads(Path(p).read_text(encoding="utf-8"))
+    e = (j["mode"] == "edit" and j["base_image"] == str(d / "base.png")
+         and Path(j["base_image"]).read_bytes() == blob)
+    ok = a and b_ and c and e
+    return ok, f"base-principal={a}; missing-base-loud={b_}; design-refusal-verbatim={c}; base-saved+inputs={e}"
+
+
 CHECKS = [
     ("023 T001: to_edit_inputs contract by value", check1_writer_edit_contract),
     ("023 T001: design lane emits no mode key (THE pin) + write dispatch", check2_design_lane_no_mode_key),
@@ -208,6 +329,10 @@ CHECKS = [
     ("023 T002: region mask geometry + size authority", check5_mask_and_size),
     ("023 T002: outside-region stats by value", check6_outside_region_stats),
     ("023 T002: generate_variant mask param additive pin", check7_generate_mask_param_additive),
+    ("023 T003: dry-run edit plan shape + no glue", check8_dry_run_plan_shape),
+    ("023 T003: FREE real derive end to end", check9_free_derive_end_to_end),
+    ("023 T003: spend guards (generate preflight + full-phase refusal)", check10_spend_guards),
+    ("023 T003: server principal-upload dispatch by value", check11_server_dispatch),
 ]
 
 

@@ -57,6 +57,7 @@ DERIVE_REGISTER = "register/derive_register.py"
 CALIBRATE = "register/calibrate_from_reference.py"
 ANALYZER = "register/reference_style_to_prompt.py"
 KIT = "harness/kit.py"
+EDIT_AUTHOR = "harness/edit_author.py"  # 023: the edit (改图) route's engine
 
 # v1: the only rendering dialect the conductor drives.
 ASSET_PROFILE = "flat_graphic"
@@ -380,6 +381,15 @@ def _scene_author_thin_argv(brand: str, out: str, sign_id: str, messages: list, 
     return argv
 
 
+def _edit_author_argv(out: str, sign_id: str, style_notes=None) -> list:
+    """023: the edit route's one step. style_notes is the nudge channel, threaded
+    VERBATIM (identical on derive and generate, or --verify-prompt trips on drift)."""
+    argv = [EDIT_AUTHOR, "--out", out, "--sign-id", sign_id]
+    if style_notes:
+        argv += ["--style-notes", str(style_notes)]
+    return argv
+
+
 def _union_elements(campaign, per_sign) -> list:
     """Order-preserving union: campaign elements first, then this sign's, with exact-duplicate
     strings dropped while first-seen order is preserved (002 delta). Verbatim passthrough
@@ -445,6 +455,31 @@ def build_plan(inputs: dict, brand: str, out_dir, no_approve: bool = False,
     generate per sign, NO kit / compose_select / measure / composite. Wins over kit even for
     a brand that has an authored kit (the kit code stays, it is just not SELECTED by default)."""
     out = str(out_dir)
+    if inputs.get("mode") == "edit":
+        # 023: the EDIT route (改图) — one edit_author step, nothing else. No register,
+        # no calibration, no kit; the plan carries every key print_plan touches.
+        sid = inputs["signs"][0]["id"]
+        return {
+            "brand": brand,
+            "brand_paths": {"answer_key": f"answer_keys/{brand}.json",
+                            "config": f"config/{brand}.yaml"},
+            "out": out,
+            "mode": "edit",
+            "route": "edit",
+            "asset_type": "edit (改图: change an existing image)",
+            "render_style": None,
+            "asset_profile_v1": "edit",
+            "asset_type_note": ("feature 023: the edit route changes the uploaded base image "
+                                "on the verbatim instruction; register/kit/legacy not involved"),
+            "base_image": inputs.get("base_image"),
+            "edit_region": inputs.get("edit_region"),
+            "has_reference": False,
+            "thin": thin,
+            "kit_mode": False,
+            "sign_count": len(inputs["signs"]),
+            "steps": [_cmd(f"sign:{sid}", "edit_author",
+                           _edit_author_argv(out, sid, style_notes), sign_id=sid)],
+        }
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
     dial = normalize_dial(inputs.get("reference_relationship")) if has_ref else None
@@ -968,8 +1003,105 @@ def run_approve_gate(state: list, inputs: dict, brand: str, out_dir, register_pr
 # Real-mode execution
 # --------------------------------------------------------------------------- #
 
+def _execute_edit(inputs: dict, brand: str, out_dir, inputs_path, plan: dict,
+                  style_notes=None, phase: str = "derive") -> None:
+    """023: the EDIT route's executor — the thin route's 015 gate machinery around ONE
+    edit_author step. Derive is free BY CONSTRUCTION (the prompt is deterministic, no
+    model call anywhere); generate is the confirmed spend. assumptions.json is [] on
+    purpose: nothing here is guessed — the instruction is verbatim, the size measured."""
+    out = str(out_dir)
+    notes = []
+    prior_gate = read_gate_state(out)
+    if phase == "generate":
+        if not prior_gate or prior_gate.get("state") != "confirmed":
+            sys.exit(f"ERROR: --phase generate requires gate_state.json in state 'confirmed' "
+                     f"(found: {(prior_gate or {}).get('state')!r} in {out}); run --phase derive "
+                     "and confirm at the gate first")
+        missing = [s["id"] for s in inputs["signs"]
+                   if not (Path(out) / f"sign_{s['id']}" / "final_prompt.txt").exists()]
+        if missing:
+            sys.exit(f"ERROR: --phase generate: no confirmed final_prompt.txt for sign(s) "
+                     f"{missing} in {out}; nothing was confirmed")
+        prior_gate = write_gate_state(out, "generating", prior=prior_gate)
+
+    sign_results, state = [], []
+    for sign in inputs["signs"]:
+        sid = sign["id"]
+        sign_dir = Path(out) / f"sign_{sid}"
+        ea_argv = _edit_author_argv(out, sid, style_notes)
+        if phase == "derive":
+            ea_argv = ea_argv + ["--prompt-only"]
+        elif phase == "generate":
+            ea_argv = ea_argv + ["--verify-prompt"]
+        sr = run_step(_cmd(f"sign:{sid}", "edit_author", ea_argv, sign_id=sid))
+        outputs = _collect_sign_outputs(sign_dir)
+        sign_results.append({
+            "sign_id": sid, "ok": sr["ok"], "returncode": sr.get("returncode"),
+            "messages": [], "edit_author_cmd": [PY] + ea_argv, "outputs": outputs,
+            "route": "edit", "licensed_type": "deferred (raw gpt edit)",
+        })
+        state.append({"sign_id": sid, "messages": [],
+                      "final_png": (outputs.get("generated") or {}).get("path"),
+                      "preview_png": None})
+
+    if phase == "derive":
+        (Path(out) / "assumptions.json").write_text("[]", encoding="utf-8")
+        region = inputs.get("edit_region")
+        notes.append("edit mode: " + ("region set (mask-scoped edit planned)" if region
+                                      else "no region drawn — full-canvas edit with the "
+                                           "preservation instruction"))
+        keep = prior_gate if (prior_gate or {}).get("state") == "awaiting_confirmation" else None
+        write_gate_state(out, "awaiting_confirmation", prior=keep)
+        notes.append("derived, awaiting confirmation; no image spend")
+    elif phase == "generate":
+        if all(s["ok"] for s in sign_results):
+            write_gate_state(out, "done", prior=prior_gate)
+        else:
+            drift = any(s.get("returncode") == 3 for s in sign_results)
+            reason = ("prompt drift detected between confirm and generate; nothing spent for the "
+                      "drifted sign(s), re-derive shown, confirm again" if drift else
+                      "generation failed after confirm; confirm again to retry (no deliverable)")
+            reset_prior = dict(prior_gate or {})
+            reset_prior["confirmation"] = None
+            write_gate_state(out, "awaiting_confirmation", prior=reset_prior, note=reason)
+            notes.append(f"015 gate: {reason}")
+
+    manifest = {
+        "conductor_version": "v1",
+        "brand": brand,
+        "brand_paths": plan["brand_paths"],
+        "out": out,
+        "inputs_file": str(inputs_path),
+        "inputs_sha256_16": _sha16(inputs_path),
+        "mode": "edit",
+        "route": "edit",
+        "asset_type": plan.get("asset_type"),
+        "base_image": inputs.get("base_image"),
+        "edit_region": inputs.get("edit_region"),
+        "edit_instruction": inputs.get("edit_instruction"),
+        "product_images": inputs.get("product_images") or [],
+        "phase": phase,
+        "licensed_type": "deferred (raw gpt edit)",
+        "signs": sign_results,
+        "approve_status": ("deferred (015 pre-spend gate: awaiting operator confirmation)"
+                           if phase == "derive" else "skipped (--no-approve)"),
+        "notes": notes,
+    }
+    manifest_path = Path(out) / "conductor_manifest.json"
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    ok_signs = sum(1 for s in sign_results if s["ok"])
+    print(f"\n=== DONE (edit route): {ok_signs}/{len(sign_results)} sign(s), phase={phase} ===")
+    print(f"manifest: {manifest_path}")
+    for n in notes:
+        print(f"  - {n}")
+
+
 def execute(inputs: dict, brand: str, out_dir, inputs_path, no_approve: bool, plan: dict,
             thin: bool = False, style_notes=None, phase: str = "full") -> dict:
+    if inputs.get("mode") == "edit":
+        # 023: the edit route has its own lean executor (no register/kit/legacy prep).
+        return _execute_edit(inputs, brand, out_dir, inputs_path, plan,
+                             style_notes=style_notes, phase=phase)
     out = str(out_dir)
     ref = inputs.get("reference_image")
     has_ref = bool(ref)
@@ -1353,6 +1485,8 @@ def print_plan(plan: dict) -> None:
 # --------------------------------------------------------------------------- #
 
 def write_glue_artifacts(inputs: dict, brand: str, out_dir, thin: bool = False) -> None:
+    if inputs.get("mode") == "edit":
+        return  # 023: the edit route derives no subfields/intents (the register engine never sees it)
     out_dir = Path(out_dir)
     (out_dir / "subfields.json").write_text(
         json.dumps(build_subfields(inputs, thin=thin), ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1439,6 +1573,9 @@ def main() -> None:
         inputs_path.write_text(json.dumps(inputs, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"  wrote {inputs_path}")
     validate_inputs(inputs)
+    if inputs.get("mode") == "edit" and args.phase == "full" and not args.dry_run:
+        sys.exit("ERROR: edit mode (023) requires --phase derive then --phase generate; "
+                 "the pre-spend gate is mandatory for edits (no one-shot full run).")
 
     # 3. SUBFIELDS + per-sign intents (pure; written in both modes)
     write_glue_artifacts(inputs, args.brand, out_dir, thin=args.thin)
