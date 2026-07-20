@@ -53,10 +53,21 @@
 </header>
 <main>
   <section class="panel form">
+    <fieldset><legend>任务类型</legend>
+      <!-- 023: mode dispatch. design FIRST = the untouched-form default (an untouched form
+           posts the pre-023 design brief byte-identical; THE pin) -->
+      <label>这次要做什么</label>
+      <select id="job_mode">
+        <option value="design">新设计：从需求生成新画面</option>
+        <option value="edit">改图：修改一张已有的图片</option>
+      </select>
+    </fieldset>
+
     <fieldset><legend>品牌与产出物</legend>
       <label>品牌 Brand</label>
       <select id="brand"></select>
       <div id="brandstatus" class="note"></div>
+      <div class="design-only">
       <label>产出物类型（可自由中文描述，例如：朋友圈海报、门店物料）</label>
       <input id="asset_type" value="手举牌 hand-held event sign">
       <label>渲染风格</label>
@@ -68,22 +79,39 @@
         <div><label>单位</label><select id="size_unit"><option value="cm">cm 厘米</option><option value="px">px 像素</option></select></div>
       </div>
       <div class="note">按此比例生成草稿图（约 150 万像素），不是精确像素稿或印刷分辨率文件；由设计师收尾。</div>
+      </div>
+    </fieldset>
+
+    <fieldset id="editFields" hidden><legend>改图</legend>
+      <label>原图（必选，上传要修改的图片）</label>
+      <input type="file" id="base_image" accept="image/*">
+      <label>修改指令（必填，逐字执行，例如：把左下角的牛肉粉换成产品图里的酸汤粉）</label>
+      <textarea id="edit_instruction" rows="3"></textarea>
+      <label>修改范围（可选：在预览图上拖一个矩形，框外的画面保持不变；不框选 = 整图按指令修改）</label>
+      <canvas id="regionCanvas" style="max-width:100%;border:1px solid var(--line);border-radius:6px;display:none;cursor:crosshair"></canvas>
+      <button type="button" id="regionClear" style="width:auto;background:#777;display:none">清除选区</button>
+      <div id="regionNote" class="note"></div>
+      <div class="note">要在改好的结果上继续改：先下载结果图，再把它作为原图上传（每次改图是一次新任务）。</div>
     </fieldset>
 
     <fieldset><legend>参考图</legend>
+      <div class="design-only">
       <label>风格参考图（必选，上传文件）：这张图决定整体感觉</label>
       <input type="file" id="reference_image">
+      </div>
       <label>产品实拍图（可选，最多 6 张）：设计中必须出现的真实产品照片</label>
       <input type="file" id="product_images" multiple>
+      <div class="design-only">
       <label>参考图的用法</label>
       <select id="reference_relationship">
         <option value="extend">延续：保持这张图的外观和基因，只换文案</option>
         <option value="match style">同风格：同一视觉语言，全新排版</option>
         <option value="mood">仅氛围：只作调性参考，构图自由</option>
       </select>
+      </div>
     </fieldset>
 
-    <fieldset><legend>语气与氛围</legend>
+    <fieldset class="design-only"><legend>语气与氛围</legend>
       <div class="row">
         <div><label>正式程度 <span class="slider-val" id="fv">2</span></label><input type="range" id="formality" min="0" max="10" value="2"></div>
         <div><label>活泼程度 <span class="slider-val" id="pv">8</span></label><input type="range" id="playfulness" min="0" max="10" value="8"></div>
@@ -94,14 +122,14 @@
       <select id="brand_strictness"><option value="expressive departure">大胆发挥</option><option value="brand + accents">品牌色为主</option><option value="strict VI">严格遵守 VI</option></select>
     </fieldset>
 
-    <fieldset><legend>场景</legend>
+    <fieldset class="design-only"><legend>场景</legend>
       <label>活动或主题（不会出现在画面文字里）</label>
       <input id="occasion" value="防范非法金融宣传">
       <label>用途（可自由中文描述，例如：朋友圈推广、活动现场手举牌）</label>
       <input id="usage_context" value="held for photos / posed with">
     </fieldset>
 
-    <fieldset><legend>元素与文案</legend>
+    <fieldset class="design-only"><legend>元素与文案</legend>
       <label>必须出现的元素（每行一个，按原文执行）</label>
       <textarea id="mandatory_elements" rows="2">分别画叉</textarea>
       <label>禁止出现的元素（每行一个）</label>
@@ -136,6 +164,72 @@ for (const [s, v] of [["formality","fv"],["playfulness","pv"]]) {
   $(s).addEventListener("input", () => $(v).textContent = $(s).value);
 }
 let currentRun = null, poller = null, attempts = [];
+
+// --- 023 (改图): mode toggle + the human-drawn region. design-only fields hide in edit
+// mode; the untouched form stays in design mode (the byte-identity pin). ---
+function applyMode() {
+  const edit = $("job_mode").value === "edit";
+  document.querySelectorAll(".design-only").forEach(el => el.hidden = edit);
+  $("editFields").hidden = !edit;
+}
+$("job_mode").addEventListener("change", applyMode);
+
+let editRegion = null, baseImgEl = null, regionDrag = null;
+function drawRegion() {
+  const cv = $("regionCanvas");
+  if (!baseImgEl) return;
+  const ctx = cv.getContext("2d");
+  ctx.drawImage(baseImgEl, 0, 0, cv.width, cv.height);
+  const r = regionDrag || editRegion;
+  if (r) {
+    ctx.strokeStyle = "#e33"; ctx.lineWidth = Math.max(2, cv.width / 400);
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(r.x * cv.width, r.y * cv.height, r.w * cv.width, r.h * cv.height);
+    ctx.setLineDash([]);
+  }
+  if (editRegion) $("regionNote").textContent = "已框选修改范围：框外的画面保持不变。";
+}
+$("base_image").addEventListener("change", () => {
+  editRegion = null; regionDrag = null; baseImgEl = null; $("regionNote").textContent = "";
+  const f = $("base_image").files[0];
+  const cv = $("regionCanvas"), btn = $("regionClear");
+  if (!f) { cv.style.display = "none"; btn.style.display = "none"; return; }
+  const img = new Image();
+  img.onload = () => {
+    baseImgEl = img; cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    cv.style.display = "block"; btn.style.display = "inline-block"; drawRegion();
+  };
+  img.src = URL.createObjectURL(f);
+});
+function canvasPos(e) {
+  const b = $("regionCanvas").getBoundingClientRect();
+  return { x: Math.min(Math.max((e.clientX - b.left) / b.width, 0), 1),
+           y: Math.min(Math.max((e.clientY - b.top) / b.height, 0), 1) };
+}
+$("regionCanvas").addEventListener("mousedown", e => {
+  regionDrag = { start: canvasPos(e), x: 0, y: 0, w: 0, h: 0 }; e.preventDefault();
+});
+$("regionCanvas").addEventListener("mousemove", e => {
+  if (!regionDrag) return;
+  const p = canvasPos(e), s = regionDrag.start;
+  regionDrag = { start: s, x: Math.min(s.x, p.x), y: Math.min(s.y, p.y),
+                 w: Math.abs(p.x - s.x), h: Math.abs(p.y - s.y) };
+  drawRegion();
+});
+window.addEventListener("mouseup", () => {
+  if (!regionDrag) return;
+  // a stray click / degenerate sliver (<2% each side) is not a region: refuse loudly
+  if (regionDrag.w >= 0.02 && regionDrag.h >= 0.02) {
+    editRegion = { x: +regionDrag.x.toFixed(4), y: +regionDrag.y.toFixed(4),
+                   w: +regionDrag.w.toFixed(4), h: +regionDrag.h.toFixed(4) };
+  } else if (regionDrag.w > 0 || regionDrag.h > 0) {
+    $("regionNote").textContent = "选区太小（不足画面的 2%），没有生效；请重新拖一个矩形。";
+  }
+  regionDrag = null; drawRegion();
+});
+$("regionClear").addEventListener("click", () => {
+  editRegion = null; regionDrag = null; $("regionNote").textContent = ""; drawRegion();
+});
 
 // --- 022 (FR-006/FR-007): the wait has stated expectations. Typical durations MEASURED
 // from real run dirs on 2026-07-15, never invented (constitution V). Method + runs:
@@ -352,12 +446,16 @@ async function poll() {
   }
 }
 async function startRun(style_notes) {
+  if ($("job_mode").value === "edit") return startEditRun(style_notes);  // 023: mode dispatch
   const refFile = $("reference_image").files[0];
   if (!refFile) { $("formNote").textContent = "必须上传一张风格参考图（请选择文件）。"; return; }
   // 022 (FR-004): blank/zero/NaN width or height refuses LOUDLY before any launch,
   // never a silently defaulted size
   const sizeW = parseFloat($("size_w").value), sizeH = parseFloat($("size_h").value);
   if (!(sizeW > 0) || !(sizeH > 0)) { $("formNote").textContent = "请填写有效的宽和高（都要大于 0）。"; return; }
+  // 023 (FR-005): zero message lines refuses LOUDLY here, before any POST or run dir; the
+  // twice-observed `sign 's1' has no messages` dead end is unreachable from the form.
+  if (!lines("messages").length) { $("formNote").textContent = "画面上的文字还没填（每行一条，逐字呈现）。不需要新文字、只想修改一张已有图片的话，请把任务类型切换到「改图」。"; return; }
   // 013: product shots ride as DISTINCT parts product_1..N (the server parser is
   // last-wins per part name); client-side cap check mirrors the server's visible error.
   const prodFiles = Array.from($("product_images").files);
@@ -371,6 +469,27 @@ async function startRun(style_notes) {
   fd.append("form", JSON.stringify(form));
   fd.append("reference", refFile, refFile.name);  // style_notes rides inside the `form` JSON above
   prodFiles.forEach((f, i) => fd.append("product_" + (i + 1), f, f.name));
+  await postRun(fd);
+}
+async function startEditRun(style_notes) {
+  // 023 (FR-002): both edit requirements refuse loudly BEFORE any POST (never a silent default)
+  const baseFile = $("base_image").files[0];
+  if (!baseFile) { $("formNote").textContent = "请上传要修改的原图（改图模式必须有原图）。"; return; }
+  const instr = $("edit_instruction").value.trim();
+  if (!instr) { $("formNote").textContent = "请填写修改指令（会逐字执行，例如：把左下角的碗换成产品图里的那一碗）。"; return; }
+  const prodFiles = Array.from($("product_images").files);
+  if (prodFiles.length > 6) { $("formNote").textContent = "产品实拍图最多 6 张，请删掉一些再试。"; return; }
+  const form = { mode: "edit", brand: $("brand").value, edit_instruction: instr };
+  if (editRegion) form.edit_region = editRegion;
+  if (style_notes) form.style_notes = String(style_notes).trim();  // the nudge channel
+  $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = ""; $("pregate").innerHTML = "";
+  const fd = new FormData();
+  fd.append("form", JSON.stringify(form));
+  fd.append("base", baseFile, baseFile.name);  // the principal upload in edit mode
+  prodFiles.forEach((f, i) => fd.append("product_" + (i + 1), f, f.name));
+  await postRun(fd);
+}
+async function postRun(fd) {
   const r = await jf("/run", { method: "POST", body: fd });
   const j = await r.json();
   if (!r.ok) { $("formNote").textContent = j.error || "启动失败"; $("run").disabled = false; return; }

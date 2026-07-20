@@ -321,6 +321,31 @@ def check11_server_dispatch():
     return ok, f"base-principal={a}; missing-base-loud={b_}; design-refusal-verbatim={c}; base-saved+inputs={e}"
 
 
+def check12_form_pins():
+    """023 T004: value-bearing grep pins on the form surface (the repo convention for the
+    vanilla-HTML surface) - the mode control with design FIRST (the untouched-form pin),
+    the edit fields, the three loud Chinese refusals, the empty-messages guard sitting
+    BEFORE any POST assembly, and the edit POST posting the `base` part."""
+    ix = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    a = ('id="job_mode"' in ix
+         and ix.index('<option value="design">') < ix.index('<option value="edit">')
+         and '<fieldset id="editFields" hidden>' in ix)
+    b = ('id="base_image"' in ix and 'id="edit_instruction"' in ix
+         and 'id="regionCanvas"' in ix and 'id="regionClear"' in ix)
+    g_msgs = '画面上的文字还没填（每行一条，逐字呈现）。不需要新文字、只想修改一张已有图片的话，请把任务类型切换到「改图」。'
+    g_base = '请上传要修改的原图（改图模式必须有原图）。'
+    g_instr = '请填写修改指令（会逐字执行'
+    c = g_msgs in ix and g_base in ix and g_instr in ix
+    d = ix.index(g_msgs) < ix.index('fd.append("form"')  # the guard fires before any POST assembly
+    e = ('fd.append("base", baseFile, baseFile.name)' in ix
+         and 'mode: "edit"' in ix and 'form.edit_region = editRegion' in ix)
+    f = 'if ($("job_mode").value === "edit") return startEditRun(style_notes);' in ix
+    g = ix.count('class="design-only"') >= 3 and 'function applyMode()' in ix
+    ok = a and b and c and d and e and f and g
+    return ok, (f"mode-control-design-first={a}; edit-fields={b}; refusals-verbatim={c}; "
+                f"guard-before-post={d}; base-part-posted={e}; dispatch={f}; design-only-toggle={g}")
+
+
 CHECKS = [
     ("023 T001: to_edit_inputs contract by value", check1_writer_edit_contract),
     ("023 T001: design lane emits no mode key (THE pin) + write dispatch", check2_design_lane_no_mode_key),
@@ -333,6 +358,7 @@ CHECKS = [
     ("023 T003: FREE real derive end to end", check9_free_derive_end_to_end),
     ("023 T003: spend guards (generate preflight + full-phase refusal)", check10_spend_guards),
     ("023 T003: server principal-upload dispatch by value", check11_server_dispatch),
+    ("023 T004: form mode control, edit fields, loud guards", check12_form_pins),
 ]
 
 
