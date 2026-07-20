@@ -665,7 +665,11 @@ def _ask_signs(ask) -> list:
 def validate_inputs(inputs: dict) -> dict:
     if not isinstance(inputs, dict):
         raise SystemExit("ERROR: inputs must be a JSON object.")
-    if not isinstance(inputs.get("context"), dict):
+    # Feature 023 (改图): mode == "edit" is the FOURTH route. An edit run has no message
+    # lines (the twice-observed `has no messages` dead end was an edit job in design
+    # clothing), no context requirement, and its own required fields, checked below.
+    edit_mode = inputs.get("mode") == "edit"
+    if not edit_mode and not isinstance(inputs.get("context"), dict):
         raise SystemExit("ERROR: inputs.context is required (brief_schema_v3 bucket B/D fields).")
     signs = inputs.get("signs")
     if not isinstance(signs, list) or not signs:
@@ -678,7 +682,7 @@ def validate_inputs(inputs: dict) -> dict:
         if sign["id"] in seen:
             raise SystemExit(f"ERROR: duplicate sign id {sign['id']!r}.")
         seen.add(sign["id"])
-        if not sign.get("messages"):
+        if not sign.get("messages") and not edit_mode:
             raise SystemExit(f"ERROR: sign {sign['id']!r} has no messages.")
         # 002 delta: a sign MAY carry its own mandatory_elements / forbidden_elements (this sign
         # only). OPTIONAL — absent stays absent (honest null; back-compat unchanged). When present
@@ -690,6 +694,25 @@ def validate_inputs(inputs: dict) -> dict:
             if not isinstance(val, list) or not all(isinstance(v, str) for v in val):
                 raise SystemExit(
                     f"ERROR: sign {sign['id']!r} {key} must be a list of strings.")
+    if edit_mode:
+        # 023: the edit contract's own required fields (fail loud, never a silent default).
+        base = inputs.get("base_image")
+        if not base or not isinstance(base, str):
+            raise SystemExit("ERROR: edit mode requires base_image (the image to change).")
+        if not Path(base).is_file():
+            raise SystemExit(f"ERROR: base_image not found on disk: {base}")
+        if not str(inputs.get("edit_instruction") or "").strip():
+            raise SystemExit("ERROR: edit mode requires a non-empty edit_instruction "
+                             "(the verbatim change request).")
+        region = inputs.get("edit_region")
+        if region is not None:
+            try:
+                r = {k: float(region[k]) for k in ("x", "y", "w", "h")}
+            except (KeyError, TypeError, ValueError):
+                raise SystemExit("ERROR: edit_region must be {x, y, w, h} normalized numbers.")
+            if not (0 <= r["x"] < 1 and 0 <= r["y"] < 1 and 0 < r["w"] <= 1 and 0 < r["h"] <= 1
+                    and r["x"] + r["w"] <= 1 and r["y"] + r["h"] <= 1):
+                raise SystemExit("ERROR: edit_region out of bounds (normalized 0..1 rect).")
     inputs.setdefault("asset_type", ASSET_TYPE_DEFAULT)
     # Feature 013: product refs are OPTIONAL (absent = pre-013 behavior). When present they MUST
     # be a list of existing image paths, at most MAX_PRODUCT_IMAGES. Fail LOUD, never truncate:

@@ -79,11 +79,50 @@ def to_inputs(form_state: dict) -> dict:
     return out
 
 
+def to_edit_inputs(form_state: dict) -> dict:
+    """Feature 023 (改图): edit-mode form state -> the edit inputs dict. The instruction and
+    region pass through VERBATIM (the 012 lossless principle; no rephrasing, no expansion).
+    `signs` keeps the single-sign shape with EMPTY messages (legal in edit mode only) so the
+    sign_s1/ run-dir layout and every existing consumer work unchanged. Fail-loud on a
+    missing base image / blank instruction / malformed region (never a silent default)."""
+    fs = form_state or {}
+    base = str(fs.get("base_image") or "").strip()
+    if not base:
+        raise ValueError("base_image is required (edit mode): upload the image to change")
+    instruction = str(fs.get("edit_instruction") or "").strip()
+    if not instruction:
+        raise ValueError("edit_instruction is required (edit mode): state the change verbatim")
+    out = {
+        "mode": "edit",
+        "base_image": base,
+        "edit_instruction": instruction,
+        "signs": [{"id": "s1", "messages": []}],
+    }
+    region = fs.get("edit_region")
+    if region:
+        try:
+            r = {k: float(region[k]) for k in ("x", "y", "w", "h")}
+        except (KeyError, TypeError, ValueError):
+            raise ValueError("edit_region must be {x, y, w, h} normalized numbers (0..1)")
+        if not (0 <= r["x"] < 1 and 0 <= r["y"] < 1 and 0 < r["w"] <= 1 and 0 < r["h"] <= 1
+                and r["x"] + r["w"] <= 1 and r["y"] + r["h"] <= 1):
+            raise ValueError("edit_region out of bounds: x,y in [0,1), w,h in (0,1], "
+                             "x+w and y+h at most 1")
+        out["edit_region"] = r
+    if fs.get("product_images"):
+        out["product_images"] = [str(p) for p in fs["product_images"]]
+    return out
+
+
 def write_inputs(form_state: dict, path) -> Path:
-    """Write the single-sign inputs JSON to `path` and return it."""
+    """Write the single-sign inputs JSON to `path` and return it. Feature 023: an edit-mode
+    form state (mode == "edit") writes the edit contract; anything else writes the 002 shape
+    via to_inputs, which never emits a `mode` key (the design-lane byte-identity pin)."""
+    fs = form_state or {}
+    builder = to_edit_inputs if fs.get("mode") == "edit" else to_inputs
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(to_inputs(form_state), ensure_ascii=False, indent=2), encoding="utf-8")
+    out.write_text(json.dumps(builder(form_state), ensure_ascii=False, indent=2), encoding="utf-8")
     return out
 
 
