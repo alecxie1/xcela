@@ -1,7 +1,21 @@
 # SYSTEM MAP — Handyprint Brand Design Tool
-_Single source of truth for "what is this whole thing." Updated 2026-07-14._
+_Single source of truth for "what is this whole thing." Updated 2026-07-20._
 
-> **▶ NEXT 2026-07-15: feature 022 (form size units + wait expectations) is BUILT T001-T004; T005 = the FREE human flow gate (drive one derive through the new W/H/px fields). Feature 021 (auth) T005 = Kevin's team verifies isolation via docs/KEVIN_AUTH_GUIDE.md. Kevin's yaoyj branch MERGED (base-URL config); the vm remote is RETIRED (Kevin self-deploys on Alicloud; ship = origin only).**
+> **▶ NEXT 2026-07-20: feature 023 (edit mode 改图 + brand palette management) is BUILT T001-T005; T007 = the HUMAN GATES (the images.edit mask probe, the 蒙自源 bowl-swap eye-gate SC-002, the palette flow SC-005). Team alignment landed 2026-07-17: Richard chose ROUTE A (internal tool; MVP discipline, no rebuild) and explicitly asked for the swap integration; Kevin deferred his architecture ask to "after feasibility validates". Kevin ENABLED AUTH in production (accounts exist; alec has a role-user account, ask for super for support visibility). Their deployment serves our HEAD byte-identical; brand `1234` renamed to 蒙自源 via the manager (one color - grow it via the new palette controls). Open gates: 022 T005 (free W/H/px derive), 021 T005 (isolation verified by Kevin's team).**
+> FEATURE 023 (2026-07-20, from Richard's group ask + Yibo's blocked bowl swap): the EDIT
+> route - inputs.mode == "edit" (absent = design, byte-identity pinned) with verbatim
+> edit_instruction + uploaded base image + optional drag-rect normalized region;
+> harness/edit_author.py composes deterministically (derive is FREE by construction, no
+> model calls) and generates via images.edit with the base as first ref, a
+> transparent-inside mask for regions (BadRequestError fallback recorded honestly,
+> outside-region mad stat -> edit_audit.json, threshold provisional pending the probe);
+> _execute_edit reuses the 015 gate machinery verbatim (assumptions=[]); the form's
+> job-mode toggle + edit fieldset + THE empty-messages loud Chinese guard (the twice-
+> observed dead end is now unreachable from the form; empty messages LEGAL in edit mode);
+> 品牌管理 palette add/remove/modify with per-color CN/EN names round-tripping (name-wipe
+> + rgb-None warts dead). No register/kit/calibration on edit runs; no layered export
+> (existing refusal); nudges = OPERATOR NOTE via --style-notes. test_edit_mode 12/12,
+> test_brand_manager 7/7, full sweep green. Spec/plan/tasks: `specs/023-edit-mode/`.
 > FEATURE 022 (2026-07-15, from Richard's designer's feedback 公司宣传H5.zip items 04-06;
 > items 01/02 long-image/template DEFERRED out-of-product-shape, 03 fonts pending Kevin
 > clarification): the run form's 尺寸 is W + H numeric inputs + cm/px select composing the

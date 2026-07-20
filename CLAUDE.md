@@ -113,7 +113,9 @@ reference + optional product photos (007/013), `conductor --phase derive` compos
 with render modes (009), a render-aware + explicit-usage register (011/014), and role-aware palette
 (008), then STOPS at the 015 pre-spend gate (derived plan + every recorded assumption, answers
 re-derive free); the operator confirms (the only spend) and judges final.png; approved runs export
-per-element layers.zip (016, eye-verified 2026-07-10). Paid eye-gates passed on CJXQ
+per-element layers.zip (016, eye-verified 2026-07-10). Since 023 the form also has an
+EDIT lane (改图: base image + verbatim instruction + optional region, no register, same
+015 gate; eye-gate pending). Paid eye-gates passed on CJXQ
 (011/012/014/015/016, plus the 013 T009 photographic product run: 013 fully closed).
 Next named feature: **017-deployment-readiness** (deploy for Richard's team in China; BLOCKED on
 the answers in `docs/DEPLOYMENT_QUESTIONS.md`, forwarded 2026-07-10; provisional plan in the
@@ -144,7 +146,30 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `022-form-size-progress` - BUILT T001-T004 (2026-07-15); T005 = the
+**Active feature:** `023-edit-mode` - BUILT T001-T005 (2026-07-20); T006 ship in flight,
+T007 = the HUMAN GATES (the mask probe: one real region-edit call; SC-002 the 蒙自源 bowl
+swap through the browser; SC-005 the palette flow). Trigger: Richard's 2026-07-17 group
+ask (集成一博的替换需求) + Yibo's blocked bowl-swap job (the `has no messages` dead end,
+observed twice). Shipped: the EDIT route (改图), a FOURTH conductor route selected by
+`inputs.mode == "edit"` (absent = design, THE byte-identity pin): `to_edit_inputs`
+(verbatim instruction + base image + optional normalized region), validate_inputs edit
+branch (empty messages LEGAL iff edit; design keeps the exact refusal), NEW
+`harness/edit_author.py` (deterministic compose - CHANGE/REGION/PRODUCT/PRESERVE/NOTE
+sections, edit_size from the base image via resolve_size, region mask transparent-inside,
+outside-region mad stat -> edit_audit.json with a PROVISIONAL threshold pending the T007
+probe, BadRequestError-only mask fallback recorded honestly), generate_variant additive
+mask_path, `_execute_edit` mirroring the thin 015 gate machinery (assumptions=[] -
+nothing guessed; derive free BY CONSTRUCTION, no model calls), edit+`--phase full`
+refused loud; server `base` principal upload + mode dispatch; the form's job-mode toggle
+(design first = untouched-form pin), edit fieldset with drag-rect region canvas +
+清除选区, THE empty-messages loud Chinese guard (FR-005, hints 改图); US3 folded per
+operator decision: 品牌管理 palette add/remove/modify with per-color CN/EN names
+round-tripping (the name-wipe + rgb-None warts dead by value). Edit runs: no register/
+kit/calibration ever, no layered export (existing refusal), nudges ride --style-notes as
+a binding OPERATOR NOTE. test_edit_mode 12/12 + test_brand_manager 7/7.
+Spec/plan/tasks: `specs/023-edit-mode/`.
+
+Prior feature `022-form-size-progress` - BUILT T001-T004 (2026-07-15); T005 = the
 HUMAN GATE (one FREE derive through the new W/H/px fields: judge the form flow, the
 composed inputs.json on disk, a clamped case's 015 gate row, the derive counter; generate/
 export counters judged opportunistically on the next routine paid run). Richard's

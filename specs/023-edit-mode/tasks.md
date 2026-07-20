@@ -6,7 +6,7 @@
 
 ## Phase 1: Foundational (the inputs contract)
 
-- [ ] T001 the edit inputs contract: `inputs_writer.to_edit_inputs` (pure, fail-loud on
+- [X] T001 the edit inputs contract: `inputs_writer.to_edit_inputs` (pure, fail-loud on
       missing base/instruction/bad region) + `write_inputs` mode dispatch + the
       to_inputs no-mode-key pin; `conductor.validate_inputs` edit branch (empty
       messages legal IFF mode=edit, the exact `has no messages` string preserved for
@@ -15,13 +15,13 @@
 
 ## Phase 2: User Story 1 — the edit run (P1)
 
-- [ ] T002 [US1] `harness/edit_author.py` (compose_edit_prompt PURE: verbatim CHANGE +
+- [X] T002 [US1] `harness/edit_author.py` (compose_edit_prompt PURE: verbatim CHANGE +
       PRESERVE + region-iff-set + product-fidelity-iff-products + style-notes channel;
       edit_size via PIL + resolve_size; build_region_mask; outside_region_stats with a
       named threshold constant; CLI derive/verify/generate legs with the runtime mask
       fallback) + `generate.generate_variant` additive `mask_path=None`. Tests: compose
       by value, mask + stats on synthetic images by value, mask-param default pin.
-- [ ] T003 [US1] the conductor edit route + server threading: build_plan/execute early
+- [X] T003 [US1] the conductor edit route + server threading: build_plan/execute early
       branches (`_execute_edit` mirroring the 015 gate machinery; assumptions=[]),
       write_glue_artifacts early return, main() edit+full loud refusal;
       `parse_run_form` principal-upload dispatch (base part, loud refusal) +
@@ -32,7 +32,7 @@
 
 ## Phase 3: User Story 2 — the region + the form (P2)
 
-- [ ] T004 [US1+US2] the form: job-mode control (新设计 default, THE untouched-form pin)
+- [X] T004 [US1+US2] the form: job-mode control (新设计 default, THE untouched-form pin)
       + edit fieldset (base upload, instruction, region canvas with drag-rect +
       清除选区, products shared) + design-fields hidden in edit mode + startRun branch
       (edit: loud Chinese base/instruction refusals; design: the EMPTY-MESSAGES loud
@@ -42,14 +42,14 @@
 
 ## Phase 4: User Story 3 — the brand palette (P2)
 
-- [ ] T005 [US3] palette management: manage.html add-color / remove-row / per-color
+- [X] T005 [US3] palette management: manage.html add-color / remove-row / per-color
       CN+EN name inputs, save payload carries names; brand_manager.update_brand
       computes rgb from hex (never None) — both halves of the wipe wart dead. Tests:
       test_brand_manager names+rgb round-trip by value, control greps.
 
 ## Phase 5: Polish & ship
 
-- [ ] T006 docs + sweep + ship: playbook.html gains the 改图 section + palette
+- [X] T006 docs + sweep + ship: playbook.html gains the 改图 section + palette
       management line; CLAUDE.md + SYSTEM_MAP current; FULL suite sweep green; commit +
       push origin (origin ONLY — the vm remote is retired).
 - [ ] T007 HUMAN GATES (spend, operator-run): (a) the mask probe — one real region-edit
