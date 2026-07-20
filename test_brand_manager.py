@@ -70,8 +70,11 @@ def check1_list_detail():
     try:
         rows = {r["brand"]: r for r in bm.list_brands_detail()}
         tb, tb2, cor = rows["TB"], rows["TB2"], rows["corrupt"]
+        # 2026-07-20 (023 US3): color rows now CARRY the names so page edits can
+        # round-trip them (the wipe fix); the seeded key has none -> empty strings
         a = (tb["name_cn"] == "测试牌" and tb["logo_resolved"] is True
-             and tb["colors"][0] == {"hex": "#D81E05", "role": "primary"})
+             and tb["colors"][0] == {"hex": "#D81E05", "role": "primary",
+                                     "name_cn": "", "name_en": ""})
         b = tb2["logo_resolved"] is False and tb2["logo_path"] == "TB2/gone.png"
         c = "unreadable" in (cor.get("error") or "")
     finally:
@@ -192,6 +195,42 @@ def check6_ui():
     return ok, f"manage-page={a}; nav-x4={b}; form-status={c}; playbook={e}; wizard-guard={f}"
 
 
+def check7_palette_management():
+    """023 (US3): the wipe wart is dead by value - an update carrying names writes them
+    (round-trip through disk), rgb is COMPUTED from hex (never None for a valid hex), a
+    grown palette (add) and a shrunk one (remove) both land through the same validate
+    gate, and the page renders add/remove controls + per-color name inputs."""
+    keys, _ = _workspace()
+    try:
+        code, _b = bm.update_brand("TB", {"colors": [
+            {"hex": "#31B4E7", "role": "primary", "name_cn": "天空蓝", "name_en": "Sky Blue"},
+            {"hex": "73C900", "role": "secondary", "name_cn": "鲜草绿", "name_en": "Fresh Green"},
+            {"hex": "096208", "role": "accent", "name_cn": "深绿", "name_en": "Deep Green"}]})
+        after = json.loads((keys / "TB.json").read_text(encoding="utf-8"))
+        items = after["fields"]["colors"]["items"]
+        a = (code == 200 and len(items) == 3    # grown from the seeded 2: add works
+             and items[0]["name_cn"] == "天空蓝" and items[0]["name_en"] == "Sky Blue"
+             and items[2]["name_cn"] == "深绿")
+        b = items[0]["rgb"] == [49, 180, 231] and items[1]["rgb"] == [115, 201, 0]
+        # names survive a role-only edit (the CJXQ scenario: the page always sends what
+        # it renders, and it now renders the names)
+        detail = {r["brand"]: r for r in bm.list_brands_detail()}["TB"]
+        c = detail["colors"][0]["name_cn"] == "天空蓝"
+        code2, _b2 = bm.update_brand("TB", {"colors": [
+            {"hex": "#31B4E7", "role": "primary", "name_cn": "天空蓝", "name_en": "Sky Blue"}]})
+        after2 = json.loads((keys / "TB.json").read_text(encoding="utf-8"))
+        d = (code2 == 200 and len(after2["fields"]["colors"]["items"]) == 1  # remove works
+             and after2["fields"]["colors"]["items"][0]["name_cn"] == "天空蓝")
+    finally:
+        _cleanup()
+    mg = (REPO / "frontend" / "manage.html").read_text(encoding="utf-8")
+    e = ("addColor(" in mg and "添加颜色" in mg and 'data-ncn' in mg and 'data-nen' in mg
+         and "颜色名（中文）" in mg and 'name_cn: row.querySelector("input[data-ncn]").value.trim()' in mg)
+    ok = a and b and c and d and e
+    return ok, (f"names-written+grown={a}; rgb-computed={b}; detail-carries-names={c}; "
+                f"shrink-lands={d}; page-controls={e}")
+
+
 CHECKS = [
     ("019 list detail: honest logo_resolved, corrupt tolerance", check1_list_detail),
     ("019 update: validate-gated, refusal leaves bytes identical", check2_update),
@@ -199,6 +238,7 @@ CHECKS = [
     ("019 delete: server-side confirm, key-only, honest note", check4_delete),
     ("019 routes: lock, traversal guard, views, wizard guard intact", check5_route_wiring),
     ("019 UI: manage page, nav on all pages, form status line, playbook section", check6_ui),
+    ("023 US3: palette add/remove/names round-trip + rgb computed", check7_palette_management),
 ]
 
 

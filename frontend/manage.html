@@ -72,12 +72,9 @@ async function load() {
   if (!brands.length) { $("list").innerHTML = `<div class="card muted">数据库为空：请先在「录入品牌」向导中添加品牌。</div>`; return; }
   $("list").innerHTML = brands.map((b, i) => {
     if (b.error) return `<div class="card"><h3>${esc(b.brand)} <span class="bad">✗ ${esc(b.error)}</span></h3></div>`;
-    const colors = (b.colors || []).map((c, k) => `
-      <div class="colorrow">
-        <span class="swatch" style="background:${esc(c.hex)}"></span>
-        <input type="text" data-b="${i}" data-hex="${k}" value="${esc(c.hex)}">
-        <select data-b="${i}" data-role="${k}">${ROLES.map(x => `<option value="${x}"${x === c.role ? " selected" : ""}>${x}</option>`).join("")}</select>
-      </div>`).join("");
+    // 023 (US3): each row carries hex + role + BOTH names (edits round-trip them, the
+    // wipe fix) + a remove button; the add button grows the palette from the page.
+    const colors = (b.colors || []).map((c, k) => colorRow(i, k, c)).join("");
     return `<div class="card" id="card_${i}">
       <h3>${esc(b.brand)}
         ${b.logo_resolved ? '<span class="ok">✓ 素材齐全</span>' : '<span class="bad">✗ 缺少 logo 素材（出图会被拒绝）</span>'}
@@ -87,7 +84,9 @@ async function load() {
         <div><label>品牌名（英文）</label><input type="text" id="en_${i}" value="${esc(b.name_en || "")}"></div>
         <div><label>所有者（留空 = 团队共享；仅管理员可改）</label><input type="text" id="owner_${i}" value="${esc(b.owner || "")}" data-orig="${esc(b.owner || "")}"></div>
       </div>
-      <label>颜色（必须有且只有一个 primary）</label>${colors}
+      <label>颜色（必须有且只有一个 primary）</label>
+      <div id="colors_${i}">${colors}</div>
+      <button type="button" class="gray" style="width:auto" onclick="addColor(${i})">添加颜色</button>
       <label>更换 logo（PNG/JPG/WebP；当前：${esc(b.logo_path || "无")}）</label>
       <input type="file" id="logo_${i}" accept=".png,.jpg,.jpeg,.webp">
       <div>
@@ -100,10 +99,32 @@ async function load() {
   }).join("");
 }
 
+function colorRow(i, k, c) {
+  return `
+      <div class="colorrow">
+        <span class="swatch" style="background:${esc(c.hex || "#fff")}"></span>
+        <input type="text" data-b="${i}" data-hex="${k}" value="${esc(c.hex || "")}" placeholder="#RRGGBB">
+        <select data-b="${i}" data-role="${k}">${ROLES.map(x => `<option value="${x}"${x === c.role ? " selected" : ""}>${x}</option>`).join("")}</select>
+        <input type="text" data-b="${i}" data-ncn="${k}" value="${esc(c.name_cn || "")}" placeholder="颜色名（中文）">
+        <input type="text" data-b="${i}" data-nen="${k}" value="${esc(c.name_en || "")}" placeholder="Name (EN)">
+        <button type="button" class="danger" style="width:auto;margin:0" onclick="this.parentElement.remove()">删除</button>
+      </div>`;
+}
+function addColor(i) {
+  // 023 (US3): a fresh row (accent by default: adding can never mint a second primary);
+  // the row indices are re-derived at save time, so removals leave no holes
+  const holder = $(`colors_${i}`);
+  const k = holder.querySelectorAll(".colorrow").length + Date.now() % 1000;
+  holder.insertAdjacentHTML("beforeend", colorRow(i, k, { hex: "#", role: "accent" }));
+}
 async function saveBrand(i, brand) {
-  const colors = [...document.querySelectorAll(`input[data-b="${i}"][data-hex]`)].map((inp, k) => ({
-    hex: inp.value.trim(),
-    role: document.querySelector(`select[data-b="${i}"][data-role="${k}"]`).value,
+  // rows are read POSITIONALLY from the DOM (data-* keys only pair the row's own
+  // controls), so added and removed rows serialize exactly as rendered
+  const colors = [...document.querySelectorAll(`#colors_${i} .colorrow`)].map(row => ({
+    hex: row.querySelector("input[data-hex]").value.trim(),
+    role: row.querySelector("select[data-role]").value,
+    name_cn: row.querySelector("input[data-ncn]").value.trim(),
+    name_en: row.querySelector("input[data-nen]").value.trim(),
   }));
   const body = { name_cn: $(`cn_${i}`).value, name_en: $(`en_${i}`).value, colors };
   // 021: the owner field is super-only server-side; send it ONLY when actually edited,

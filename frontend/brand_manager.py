@@ -87,8 +87,11 @@ def list_brands_detail(user=None) -> list:
             "name_en": ((fields.get("brand_name_en") or {}).get("value")
                         if isinstance(fields.get("brand_name_en"), dict)
                         else fields.get("brand_name_en")),
+            # 023 (US3): names ride to the page so edits can round-trip them (the wipe fix)
             "colors": [{"hex": ("#" + str(c.get("printed_html", "")).lstrip("#")),
-                        "role": c.get("role")} for c in colors],
+                        "role": c.get("role"),
+                        "name_cn": c.get("name_cn", ""),
+                        "name_en": c.get("name_en", "")} for c in colors],
             "logo_path": key.get("logo_path"),
             "logo_resolved": try_resolve_brand_asset(key.get("logo_path")) is not None,
             "verified_by": key.get("verified_by"),
@@ -96,6 +99,18 @@ def list_brands_detail(user=None) -> list:
             "owner": key.get("owner"),   # 021: None = shared/legacy
         })
     return out
+
+
+def _hex_rgb(hexv: str):
+    """023: a 6-digit hex -> [r, g, b] ints; anything else -> None (honest null, the
+    validator's own hex rules still apply on the copy before any write)."""
+    h = str(hexv or "").lstrip("#").strip()
+    if len(h) != 6:
+        return None
+    try:
+        return [int(h[i:i + 2], 16) for i in (0, 2, 4)]
+    except ValueError:
+        return None
 
 
 def _load_key(brand: str):
@@ -136,7 +151,9 @@ def update_brand(brand: str, payload: dict, user=None):
         for c in payload["colors"]:
             hexv = str(c.get("hex", "")).lstrip("#").strip()
             items.append({"printed_html": hexv, "role": c.get("role"),
-                          "rgb": None, "name_cn": c.get("name_cn", ""),
+                          # 023 (US3): rgb COMPUTED from the hex, never hardcoded None
+                          # (pre-023 every page save nuked the extracted rgb triplet)
+                          "rgb": _hex_rgb(hexv), "name_cn": c.get("name_cn", ""),
                           "name_en": c.get("name_en", "")})
         fields.setdefault("colors", {})["items"] = items
     try:
