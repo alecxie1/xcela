@@ -52,12 +52,15 @@
 - [X] T006 docs + sweep + ship: playbook.html gains the 改图 section + palette
       management line; CLAUDE.md + SYSTEM_MAP current; FULL suite sweep green; commit +
       push origin (origin ONLY — the vm remote is retired).
-- [ ] T007 HUMAN GATES (spend, operator-run): (a) the mask probe — one real region-edit
-      call, record whether images.edit accepted the mask (the code's runtime fallback
-      is already honest either way); (b) SC-002 the 蒙自源 bowl swap through the
-      browser, judged "swap done AND rest intact"; (c) SC-005 the palette flow — grow
-      蒙自源 through the page, names survive a role edit. Generate/export counters and
-      the 022 T005 form gate can piggyback on the same session.
+- [ ] T007 HUMAN GATES (spend, operator-run): (a) the mask probe — DONE 2026-07-21 on
+      the real bowl swap (`output/run_CJXQ_editdry_20260721`, $0.08): images.edit
+      ACCEPTED the mask but enforcement is SOFT (raw outside-mad 25.6 vs threshold 8);
+      answered by the hard-composite hardening (deliverable = base + feathered region
+      paste, byte-identical outside by construction, both stats audited);
+      (b) SC-002 the 蒙自源 bowl swap — CLI dry run operator-judged GOOD 2026-07-21
+      (swap landed, slogan/logo/other dishes intact); the browser-flow rehearsal is
+      still owed before the client demo; (c) SC-005 the palette flow — open. Generate/
+      export counters and the 022 T005 form gate can piggyback on the same session.
 
 ## Dependencies
 

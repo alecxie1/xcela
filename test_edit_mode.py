@@ -346,6 +346,37 @@ def check12_form_pins():
                 f"guard-before-post={d}; base-part-posted={e}; dispatch={f}; design-only-toggle={g}")
 
 
+def check13_hard_composite():
+    """023 hardening (2026-07-21, from the T007 probe: the API's mask is SOFT - measured
+    outside-mad ~25 on the first real run): composite_region builds the deliverable as
+    base + region-paste. By value: far-outside pixels are BYTE-IDENTICAL to the base,
+    the region interior comes from the model output, and the generate leg renames the
+    raw canvas aside and audits BOTH numbers."""
+    import edit_author as ea
+    from PIL import Image
+    d = _tmpdir()
+    region = {"x": 0.25, "y": 0.25, "w": 0.5, "h": 0.5}
+    base = _png(d / "base.png", w=200, h=160, color=(200, 30, 30))
+    Image.new("RGB", (200, 160), (20, 200, 20)).save(d / "model.png")
+    comp = ea.composite_region(base, d / "model.png", region, d / "out.png")
+    out = Image.open(d / "out.png")
+    a = comp["region_px"] == [50, 40, 150, 120] and comp["feather_px"] == ea.FEATHER_PX
+    # far outside (beyond region + feather): byte-identical to base
+    b = out.getpixel((5, 5)) == (200, 30, 30) and out.getpixel((195, 155)) == (200, 30, 30)
+    # region interior: the model output
+    c = out.getpixel((100, 80)) == (20, 200, 20)
+    # the deliverable's audit stat sits far under the threshold (the promise, measured)
+    s = ea.outside_region_stats(base, d / "out.png", region)
+    e = s["outside_region_mad"] < ea.OUTSIDE_REGION_MAD_THRESHOLD and s["within"] is True
+    src = (REPO / "harness" / "edit_author.py").read_text(encoding="utf-8")
+    f = ('out_png.rename(model_png)' in src
+         and 'audit["model_output_mad"] = model_stats["outside_region_mad"]' in src
+         and 'audit["hard_composited"] = True' in src)
+    ok = a and b and c and e and f
+    return ok, (f"geometry={a}; far-outside-byte-identical={b}; interior-from-model={c}; "
+                f"deliverable-within={e} (mad={s['outside_region_mad']}); generate-leg-wired={f}")
+
+
 CHECKS = [
     ("023 T001: to_edit_inputs contract by value", check1_writer_edit_contract),
     ("023 T001: design lane emits no mode key (THE pin) + write dispatch", check2_design_lane_no_mode_key),
@@ -359,6 +390,7 @@ CHECKS = [
     ("023 T003: spend guards (generate preflight + full-phase refusal)", check10_spend_guards),
     ("023 T003: server principal-upload dispatch by value", check11_server_dispatch),
     ("023 T004: form mode control, edit fields, loud guards", check12_form_pins),
+    ("023 hard composite: outside pixels byte-identical by construction", check13_hard_composite),
 ]
 
 

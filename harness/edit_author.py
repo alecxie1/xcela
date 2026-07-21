@@ -97,6 +97,31 @@ def build_region_mask(base_path, region: dict, out_path) -> dict:
     return {"size": [w, h], "region_px": [x0, y0, x1, y1]}
 
 
+FEATHER_PX = 12  # the composite seam: a soft band this wide blends region edge into base
+
+
+def composite_region(base_path, edited_path, region: dict, out_path) -> dict:
+    """023 hard composite (the T007 probe's lesson, 2026-07-21): the API accepts a mask
+    but enforces it SOFTLY - the model regenerates the whole canvas (measured outside-mad
+    ~25 on the first real run). So the DELIVERABLE is built here: the untouched base with
+    ONLY the region pasted from the model output (resized to base dims), a feathered seam
+    hiding the boundary. Outside the region + seam band, pixels are byte-identical to the
+    base BY CONSTRUCTION - the promise the prompt alone cannot keep."""
+    from PIL import Image, ImageDraw, ImageFilter
+    base = Image.open(base_path).convert("RGB")
+    edited = Image.open(edited_path).convert("RGB")
+    if edited.size != base.size:
+        edited = edited.resize(base.size)
+    w, h = base.size
+    x0, y0, x1, y1 = _region_px(region, w, h)
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rectangle([x0, y0, x1, y1], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(FEATHER_PX / 2))
+    out = Image.composite(edited, base, mask)
+    out.save(out_path)
+    return {"feather_px": FEATHER_PX, "region_px": [x0, y0, x1, y1], "size": [w, h]}
+
+
 def outside_region_stats(base_path, edited_path, region: dict) -> dict:
     """SC-003's auditable stat: mean absolute diff per channel (0..255) over pixels
     OUTSIDE the region, edited resized to base dims when they differ (method recorded).
@@ -201,13 +226,26 @@ def main() -> None:
     manifest["generation"] = gen_meta
     manifest["mask_fallback"] = mask_fallback
     if region and out_png.exists():
+        # Hard composite (see composite_region): the model's raw canvas moves aside, the
+        # deliverable becomes base-with-region-pasted. Both stats recorded: the model's
+        # own outside-drift (drift measurement) and the deliverable's (the promise).
+        model_png = sign_dir / "generated_model.png"
+        out_png.rename(model_png)
+        model_stats = outside_region_stats(base, model_png, region)
+        comp = composite_region(base, model_png, region, out_png)
         audit = outside_region_stats(base, out_png, region)
+        audit["model_output_mad"] = model_stats["outside_region_mad"]
+        audit["hard_composited"] = True
+        audit["composite"] = comp
+        audit["model_output"] = str(model_png)
         audit["mask_used"] = mask_fallback is None
         audit["mask_fallback"] = mask_fallback
+        manifest["hard_composited"] = True
         (sign_dir / "edit_audit.json").write_text(
             json.dumps(audit, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"  edit_audit.json  : outside_region_mad={audit['outside_region_mad']} "
-              f"(threshold {audit['threshold']}, within={audit['within']})")
+        print(f"  edit_audit.json  : deliverable outside_region_mad={audit['outside_region_mad']} "
+              f"(model raw {audit['model_output_mad']}; threshold {audit['threshold']}, "
+              f"within={audit['within']})")
     (sign_dir / "run_manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  generated.png    : {out_png}")

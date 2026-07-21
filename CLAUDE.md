@@ -146,9 +146,13 @@ one task at a time). When working a feature, READ ITS SPEC + PLAN in `specs/<fea
 extension and gets overwritten on every /speckit run; hand-maintained status lives HERE,
 above the markers, never inside them.)
 
-**Active feature:** `023-edit-mode` - BUILT T001-T005 (2026-07-20); T006 ship in flight,
-T007 = the HUMAN GATES (the mask probe: one real region-edit call; SC-002 the 蒙自源 bowl
-swap through the browser; SC-005 the palette flow). Trigger: Richard's 2026-07-17 group
+**Active feature:** `023-edit-mode` - BUILT T001-T006 (2026-07-20); T007 PROBE + CLI
+DRY RUN DONE 2026-07-21 (`output/run_CJXQ_editdry_20260721`, the real 蒙自源 bowl swap,
+operator-judged good): the API ACCEPTS the mask but enforces it SOFTLY (raw outside-mad
+~25), so region deliverables are now HARD-COMPOSITED (generated_model.png = raw canvas;
+generated.png = base + feathered region paste, outside pixels byte-identical by
+construction; audit records both numbers). Still open: the browser-flow rehearsal
+(client demo 周四11点), SC-005 the palette flow. Trigger: Richard's 2026-07-17 group
 ask (集成一博的替换需求) + Yibo's blocked bowl-swap job (the `has no messages` dead end,
 observed twice). Shipped: the EDIT route (改图), a FOURTH conductor route selected by
 `inputs.mode == "edit"` (absent = design, THE byte-identity pin): `to_edit_inputs`
