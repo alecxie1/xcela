@@ -404,6 +404,33 @@ def check14_ui_smoothing():
                 f"export-hidden={d}; plan-refuses={e}; spend-refuses={f}")
 
 
+def check15_ui_polish():
+    """023 polish (2026-07-22): the stale demo defaults are GONE from the form (a real
+    user never deletes example text again) and live as placeholders instead; the size
+    defaults stay (the 022 pin); the segmented mode control drives the pinned #job_mode
+    select (still in the DOM, design first); every wait renders a visual element (the
+    waitline spinner classes)."""
+    ix = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    a = ('value="手举牌 hand-held event sign"' not in ix
+         and 'value="防范非法金融宣传"' not in ix
+         and 'value="held for photos / posed with"' not in ix
+         and '>分别画叉</textarea>' not in ix and '守住钱袋子\n护好幸福家</textarea>' not in ix)
+    b = ('placeholder="例如：朋友圈海报、门店手举牌、宣传单页"' in ix
+         and 'placeholder="例如：防范非法金融宣传、新品上市"' in ix
+         and 'placeholder="例如：朋友圈推广、活动现场手举牌"' in ix
+         and 'placeholder="例如：分别画叉"' in ix)
+    c = 'value="60"' in ix and 'value="40"' in ix   # the 022 size defaults stay
+    d = ('<select id="job_mode" hidden>' in ix and 'id="modeSeg"' in ix
+         and 'data-mode="design"' in ix and 'data-mode="edit"' in ix
+         and ix.index('<option value="design">') < ix.index('<option value="edit">'))
+    e = ('#waitline.active::before' in ix and 'animation: waitspin' in ix
+         and '$("waitline").className = "active"' in ix
+         and '$("waitline").className = "retry active"' in ix)
+    ok = a and b and c and d and e
+    return ok, (f"stale-defaults-gone={a}; placeholders={b}; size-defaults-stay={c}; "
+                f"segmented-drives-select={d}; wait-visuals={e}")
+
+
 CHECKS = [
     ("023 T001: to_edit_inputs contract by value", check1_writer_edit_contract),
     ("023 T001: design lane emits no mode key (THE pin) + write dispatch", check2_design_lane_no_mode_key),
@@ -419,6 +446,7 @@ CHECKS = [
     ("023 T004: form mode control, edit fields, loud guards", check12_form_pins),
     ("023 hard composite: outside pixels byte-identical by construction", check13_hard_composite),
     ("023 smoothing: instant acks, poll resilience, edit-export refusal", check14_ui_smoothing),
+    ("023 polish: placeholders not defaults, segmented mode control, wait visuals", check15_ui_polish),
 ]
 
 

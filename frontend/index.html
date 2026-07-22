@@ -5,39 +5,88 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live Runner (single sign)</title>
 <style>
-  :root { --ink:#1a1a1a; --muted:#6b7280; --line:#e3e3e6; --nav:#23232a; --accent:#3b82f6; --paid:#c0392b; }
-  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #f6f6f7; color: var(--ink); }
-  header.topnav { background: var(--nav); color: #fff; height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 22px; }
-  header.topnav .brandmark { font-weight: 700; letter-spacing: 0.3px; }
-  header.topnav nav { display: flex; gap: 4px; }
-  header.topnav nav a { color: #c7c7d1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
-  header.topnav nav a:hover { background: #34343d; color: #fff; }
-  header.topnav nav a.active { background: var(--accent); color: #fff; }
-  header.topnav .userchip { margin-left: auto; font-size: 12px; color: #c7c7d1; }
-  header.topnav .userchip a { color: #fff; margin-left: 8px; cursor: pointer; text-decoration: underline; }
-  main { display: grid; grid-template-columns: 380px 1fr; gap: 0; height: calc(100vh - 52px); }
-  .panel { padding: 18px 20px; overflow-y: auto; }
-  .form { background: #fff; border-right: 1px solid #ddd; }
-  fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 14px; padding: 6px 12px 12px; }
-  legend { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); padding: 0 4px; }
-  label { display: block; margin: 10px 0 3px; font-weight: 600; font-size: 12px; color: #444; }
-  input, select, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-  .row { display: flex; gap: 8px; }
+  /* Design tokens (shared visual system across the five pages) */
+  :root { --bg:#f5f5f7; --card:#fff; --ink:#1d1d1f; --muted:#6e6e73; --line:#e8e8ed;
+          --accent:#0071e3; --ok2:#34c759; --paid:#d70015; --amber:#b8860b;
+          --radius:12px; --shadow:0 1px 3px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.04); }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.55 -apple-system, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+         margin: 0; background: var(--bg); color: var(--ink);
+         -webkit-font-smoothing: antialiased; }
+  header.topnav { position: sticky; top: 0; z-index: 50; height: 52px; padding: 0 22px;
+    display: flex; align-items: center; gap: 22px;
+    background: rgba(255,255,255,0.78); backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid rgba(0,0,0,0.07); color: var(--ink); }
+  header.topnav .brandmark { font-weight: 700; letter-spacing: -0.2px; font-size: 15px; }
+  header.topnav nav { display: flex; gap: 2px; }
+  header.topnav nav a { color: var(--muted); text-decoration: none; font-weight: 500; font-size: 13px;
+    padding: 6px 14px; border-radius: 999px; transition: background .15s ease, color .15s ease; }
+  header.topnav nav a:hover { background: rgba(0,0,0,0.05); color: var(--ink); }
+  header.topnav nav a.active { background: var(--ink); color: #fff; }
+  header.topnav .userchip { margin-left: auto; font-size: 12px; color: var(--muted); }
+  header.topnav .userchip a { color: var(--accent); margin-left: 8px; cursor: pointer; text-decoration: none; }
+  main { display: grid; grid-template-columns: 400px 1fr; gap: 0; height: calc(100vh - 52px); }
+  .panel { padding: 22px 24px 40px; overflow-y: auto; }
+  .form { background: var(--card); border-right: 1px solid var(--line); }
+  fieldset { border: 0; border-top: 1px solid var(--line); border-radius: 0; margin: 0 0 6px; padding: 14px 2px 16px; }
+  fieldset:first-of-type { border-top: 0; padding-top: 4px; }
+  legend { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); padding: 0 2px 0 0; }
+  label { display: block; margin: 12px 0 5px; font-weight: 500; font-size: 12.5px; color: #3a3a3c; }
+  input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d2d2d7;
+    border-radius: 10px; font: inherit; background: #fff; color: var(--ink);
+    transition: border-color .15s ease, box-shadow .15s ease; }
+  input::placeholder, textarea::placeholder { color: #aeaeb2; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3.5px rgba(0,113,227,0.18); }
+  .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
-  .slider-val { font-weight: 600; color: #2a6; }
-  button { margin-top: 14px; padding: 10px 14px; border: 0; border-radius: 6px; background: var(--paid); color: #fff; font-weight: 600; cursor: pointer; width: 100%; }
-  button:hover { filter: brightness(1.05); }
-  button:disabled { background: #999; cursor: not-allowed; }
-  .stage { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-  .stage h3 { margin: 0; padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 13px; }
-  .stage .body { padding: 12px 14px; }
-  .pending { color: #999; }
-  .note { color: #b8860b; font-style: italic; }
-  pre { white-space: pre-wrap; word-break: break-word; background: #fafafa; padding: 10px; border-radius: 4px; max-height: 320px; overflow: auto; margin: 0; }
-  img { max-width: 100%; border-radius: 6px; }
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  .ok { background: #2a6; } .wait { background: #ccc; }
+  .slider-val { font-weight: 600; color: var(--accent); }
+  input[type=range] { padding: 0; border: 0; box-shadow: none; accent-color: var(--accent); }
+  input[type=file] { padding: 7px; background: #f7f7f9; border-style: dashed; }
+  button { margin-top: 14px; padding: 11px 16px; border: 0; border-radius: 12px;
+    background: var(--accent); color: #fff; font-weight: 600; font-size: 14px;
+    cursor: pointer; width: 100%; transition: transform .1s ease, filter .15s ease, background .15s ease; }
+  button:hover { filter: brightness(1.06); }
+  button:active { transform: scale(0.985); }
+  button:disabled { background: #c7c7cc; cursor: not-allowed; transform: none; }
+  /* the iOS-style segmented control (drives the hidden #job_mode select) */
+  .segmented { display: flex; background: #ececf0; border-radius: 11px; padding: 3px; gap: 2px; margin-top: 4px; }
+  .segmented button { margin: 0; padding: 8px 10px; border-radius: 9px; background: transparent;
+    color: var(--muted); font-weight: 500; font-size: 13px; box-shadow: none; }
+  .segmented button.on { background: #fff; color: var(--ink); font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+  .stage { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    margin-bottom: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .stage h3 { margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--line);
+    font-size: 13px; font-weight: 600; letter-spacing: -0.1px; display: flex; align-items: center; }
+  .stage .body { padding: 14px 16px; }
+  .pending { color: #98989d; }
+  .note { color: var(--amber); font-size: 12.5px; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f7f7f9; padding: 12px;
+    border-radius: 10px; max-height: 320px; overflow: auto; margin: 0; font-size: 12px; line-height: 1.5; }
+  img { max-width: 100%; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); cursor: zoom-in; }
+  .dot { display: inline-block; width: 20px; height: 20px; border-radius: 50%; margin-right: 10px;
+    flex: none; position: relative; transition: background .2s ease; }
+  .ok { background: var(--ok2); } .wait { background: #d1d1d6; }
+  .ok::after { content: "✓"; color: #fff; font-size: 12px; font-weight: 700;
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  /* every wait gets a visual element: the waitline status pill with a pure-CSS spinner */
+  #waitline { margin: 0 0 14px; }
+  #waitline.active { background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+    box-shadow: var(--shadow); padding: 9px 16px 9px 38px; position: relative;
+    color: var(--ink); font-size: 13px; font-style: normal; }
+  #waitline.active::before { content: ""; position: absolute; left: 14px; top: 50%;
+    width: 14px; height: 14px; margin-top: -8px; border-radius: 50%;
+    border: 2px solid rgba(0,113,227,0.25); border-top-color: var(--accent);
+    animation: waitspin 0.8s linear infinite; }
+  #waitline.retry.active::before { border-color: rgba(184,134,11,0.3); border-top-color: var(--amber); }
+  @keyframes waitspin { to { transform: rotate(360deg); } }
+  button.working { position: relative; color: rgba(255,255,255,0.85); }
+  #recentruns .body { max-height: 190px; overflow-y: auto; }
+  #recentruns .body a { color: var(--accent); text-decoration: none; }
+  #recentruns .body a:hover { text-decoration: underline; }
+  #runsrefresh { background: #8e8e93; font-size: 12px; padding: 7px 12px; }
 </style>
 </head>
 <body>
@@ -55,12 +104,17 @@
   <section class="panel form">
     <fieldset><legend>任务类型</legend>
       <!-- 023: mode dispatch. design FIRST = the untouched-form default (an untouched form
-           posts the pre-023 design brief byte-identical; THE pin) -->
-      <label>这次要做什么</label>
-      <select id="job_mode">
+           posts the pre-023 design brief byte-identical; THE pin). The select stays in the
+           DOM as the ONE mode home (applyMode + startRun read it); the segmented control
+           below is its visual face. -->
+      <select id="job_mode" hidden>
         <option value="design">新设计：从需求生成新画面</option>
         <option value="edit">改图：修改一张已有的图片</option>
       </select>
+      <div class="segmented" id="modeSeg">
+        <button type="button" class="on" data-mode="design">新设计：生成新画面</button>
+        <button type="button" data-mode="edit">改图：修改已有图片</button>
+      </div>
     </fieldset>
 
     <fieldset><legend>品牌与产出物</legend>
@@ -68,8 +122,8 @@
       <select id="brand"></select>
       <div id="brandstatus" class="note"></div>
       <div class="design-only">
-      <label>产出物类型（可自由中文描述，例如：朋友圈海报、门店物料）</label>
-      <input id="asset_type" value="手举牌 hand-held event sign">
+      <label>产出物类型</label>
+      <input id="asset_type" placeholder="例如：朋友圈海报、门店手举牌、宣传单页">
       <label>渲染风格</label>
       <select id="render_style"><option value="flat vector">扁平插画 flat vector</option><option value="photographic">摄影质感 photographic</option></select>
       <label>尺寸（宽、高分开填，单位可选 cm 或 px）</label>
@@ -85,11 +139,11 @@
     <fieldset id="editFields" hidden><legend>改图</legend>
       <label>原图（必选，上传要修改的图片）</label>
       <input type="file" id="base_image" accept="image/*">
-      <label>修改指令（必填，逐字执行，例如：把左下角的牛肉粉换成产品图里的酸汤粉）</label>
-      <textarea id="edit_instruction" rows="3"></textarea>
+      <label>修改指令（必填，逐字执行）</label>
+      <textarea id="edit_instruction" rows="3" placeholder="例如：把左下角的牛肉粉换成产品图里的酸汤粉"></textarea>
       <label>修改范围（可选：在预览图上拖一个矩形，框外的画面保持不变；不框选 = 整图按指令修改）</label>
       <canvas id="regionCanvas" style="max-width:100%;border:1px solid var(--line);border-radius:6px;display:none;cursor:crosshair"></canvas>
-      <button type="button" id="regionClear" style="width:auto;background:#777;display:none">清除选区</button>
+      <button type="button" id="regionClear" style="width:auto;background:#8e8e93;display:none">清除选区</button>
       <div id="regionNote" class="note"></div>
       <div class="note">要在改好的结果上继续改：先下载结果图，再把它作为原图上传（每次改图是一次新任务）。</div>
     </fieldset>
@@ -124,21 +178,20 @@
 
     <fieldset class="design-only"><legend>场景</legend>
       <label>活动或主题（不会出现在画面文字里）</label>
-      <input id="occasion" value="防范非法金融宣传">
-      <label>用途（可自由中文描述，例如：朋友圈推广、活动现场手举牌）</label>
-      <input id="usage_context" value="held for photos / posed with">
+      <input id="occasion" placeholder="例如：防范非法金融宣传、新品上市">
+      <label>用途</label>
+      <input id="usage_context" placeholder="例如：朋友圈推广、活动现场手举牌">
     </fieldset>
 
     <fieldset class="design-only"><legend>元素与文案</legend>
       <label>必须出现的元素（每行一个，按原文执行）</label>
-      <textarea id="mandatory_elements" rows="2">分别画叉</textarea>
+      <textarea id="mandatory_elements" rows="2" placeholder="例如：分别画叉"></textarea>
       <label>禁止出现的元素（每行一个）</label>
-      <textarea id="forbidden_elements" rows="1"></textarea>
+      <textarea id="forbidden_elements" rows="1" placeholder="例如：二维码"></textarea>
       <label>画面上的文字（每行一条，逐字呈现：画面上只会出现这些字）</label>
-      <textarea id="messages" rows="2">守住钱袋子
-护好幸福家</textarea>
-      <label>设计要求（可选；必须遵守的指令，例如"产品要写实，背景卡通"）</label>
-      <textarea id="design_notes" rows="2"></textarea>
+      <textarea id="messages" rows="2" placeholder="每行一条，例如：&#10;守住钱袋子"></textarea>
+      <label>设计要求（可选；必须遵守的指令）</label>
+      <textarea id="design_notes" rows="2" placeholder="例如：产品要写实，背景卡通"></textarea>
     </fieldset>
 
     <button id="run">开始（免费预览：先推导方案，确认后才收费）</button>
@@ -171,8 +224,14 @@ function applyMode() {
   const edit = $("job_mode").value === "edit";
   document.querySelectorAll(".design-only").forEach(el => el.hidden = edit);
   $("editFields").hidden = !edit;
+  // the segmented control mirrors the (hidden) select, the one mode home
+  document.querySelectorAll("#modeSeg button").forEach(b =>
+    b.classList.toggle("on", b.dataset.mode === $("job_mode").value));
 }
 $("job_mode").addEventListener("change", applyMode);
+document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => {
+  $("job_mode").value = b.dataset.mode; applyMode();
+}));
 
 let editRegion = null, baseImgEl = null, regionDrag = null;
 function drawRegion() {
@@ -251,11 +310,13 @@ function noteWait(kind) {
   if (!kind || !WAIT_EXPECT[kind]) {
     waitState = { kind: null, since: null };
     $("waitline").textContent = "";
+    $("waitline").className = "note";
     return;
   }
   if (waitState.kind !== kind) waitState = { kind, since: Date.now() };
   const secs = Math.floor((Date.now() - waitState.since) / 1000);
   const w = WAIT_EXPECT[kind];
+  $("waitline").className = "active";   // the spinner pill (pure CSS, honest text only)
   $("waitline").textContent = `${w.label}：已等待 ${secs} 秒（${w.expect}）`;
 }
 
@@ -326,7 +387,7 @@ function renderStage(key, st) {
   const dot = $("d_" + key), body = $(key);
   dot.className = "dot " + (st.present ? "ok" : "wait");
   if (key === "image") {
-    body.innerHTML = st.present ? `<img src="/run/${currentRun}/image?t=${Date.now()}">`
+    body.innerHTML = st.present ? `<a href="/run/${currentRun}/image" target="_blank" title="点击看大图"><img src="/run/${currentRun}/image?t=${Date.now()}"></a>`
       : `<span class="pending">生成中...</span>` + (st.note ? `<div class="note">${st.note}</div>` : "");
     return;
   }
@@ -366,7 +427,7 @@ function renderPreGate(g, cost) {
                   : `<div>无需任何假设：每个字段都明确且被识别。请查看上方的风格判定（2）和生成指令（3）。</div>`}
     ${applied}
     ${c.state_note ? `<div class="note">${esc(c.state_note)}</div>` : ""}
-    <button id="confirm" style="background:#2a6">确认并生成（收费，约 $${(cost ?? 0.08).toFixed(2)}）</button>
+    <button id="confirm" style="background:var(--ok2)">确认并生成（收费，约 $${(cost ?? 0.08).toFixed(2)}）</button>
     <div class="note">确认之前不花一分钱；直接离开的话，这份草案会留在服务器上，不产生费用。</div>
     <div id="pregateNote" class="note"></div></div></div>`;
   $("confirm").onclick = confirmRun;
@@ -393,10 +454,10 @@ function renderAssumptionControl(a, i) {
     return `<label>自行设定（0-10）：</label>
       正式程度 <input type="number" id="a_${i}_f" min="0" max="10" value="5" style="width:4.5em">
       活泼程度 <input type="number" id="a_${i}_p" min="0" max="10" value="7" style="width:4.5em">
-      <button id="a_${i}_apply" style="width:auto;background:#777">应用（免费，重新推导）</button>`;
+      <button id="a_${i}_apply" style="width:auto;background:#8e8e93">应用（免费，重新推导）</button>`;
   }
   return `<select id="a_${i}_sel" style="width:auto">${opts.map(o => `<option value="${esc(o.label)}">${esc(zh(o.label))}</option>`).join("")}</select>
-    <button id="a_${i}_apply" style="width:auto;background:#777">应用（免费，重新推导）</button>`;
+    <button id="a_${i}_apply" style="width:auto;background:#8e8e93">应用（免费，重新推导）</button>`;
 }
 async function applyAnswer(a, label, value) {
   const body = { assumption_id: a.id, label };
@@ -437,6 +498,7 @@ async function poll() {
     // 023 smoothing (2026-07-22): a dropped tunnel/connection must never freeze the view
     // silently (observed: the elapsed counter stuck while the run finished server-side).
     // The run lives on the server; keep the poller alive and SAY we are retrying.
+    $("waitline").className = "retry active";
     $("waitline").textContent = "连接不稳定，正在自动重试...（任务仍在服务器上运行，不会丢失）";
     return;
   }
@@ -530,7 +592,7 @@ async function postRun(fd) {
 function renderAttempts() {
   if (attempts.length < 2) { $("attempts").innerHTML = ""; return; }
   $("attempts").innerHTML = `<div class="stage"><div class="body">历次尝试（点击对比）：` +
-    attempts.map((id, i) => `<button style="width:auto;margin:2px;background:${id === currentRun ? '#2a6' : '#777'}" onclick="viewAttempt('${id}')">${i + 1}${id === currentRun ? '（当前）' : ''}</button>`).join("") +
+    attempts.map((id, i) => `<button style="width:auto;margin:2px;background:${id === currentRun ? 'var(--ok2)' : '#8e8e93'}" onclick="viewAttempt('${id}')">${i + 1}${id === currentRun ? '（当前）' : ''}</button>`).join("") +
     `</div></div>`;
 }
 // --- 017 (US2): URL-hash resume + the recent-runs picker. The hash is the ONE piece of
@@ -633,7 +695,7 @@ async function doExport() {
 }
 function showGate() {
   $("gate").innerHTML = `<div class="stage"><h3>5. 你的判断（二选一）</h3><div class="body">
-    <button id="approve" style="background:#2a6">满意（就用这张）</button>
+    <button id="approve" style="background:var(--ok2)">满意（就用这张）</button>
     <label>调整：写一条必须遵守的修改意见，系统免费重新推导；新方案在它自己的确认页上收费（约 $0.08）</label>
     <textarea id="note" rows="2" placeholder="例如：钱袋子画大一点、更醒目"></textarea>
     <button id="nudge">按意见重新推导（免费预览）</button>
