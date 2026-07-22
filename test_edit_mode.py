@@ -377,6 +377,33 @@ def check13_hard_composite():
                 f"deliverable-within={e} (mad={s['outside_region_mad']}); generate-leg-wired={f}")
 
 
+def check14_ui_smoothing():
+    """023 smoothing (2026-07-22, from the sandbox practice session): every click
+    acknowledges INSTANTLY, a dead connection never freezes the view silently, quota
+    errors get a human first line, and edit runs never offer layered export (server
+    refusal shared by plan+spend, by value on a real run-dir fixture)."""
+    ix = (REPO / "frontend" / "index.html").read_text(encoding="utf-8")
+    a = ('正在上传素材并启动运行，请稍候...' in ix and ix.count('正在上传素材并启动运行') == 2
+         and '已启动 ✓ 正在免费推导方案' in ix)
+    b = ('已确认 ✓ 正在启动生成...' in ix and '已提交修改意见 ✓' in ix
+         and '已提交导出 ✓ 启动中...' in ix)
+    c = ('连接不稳定，正在自动重试...（任务仍在服务器上运行，不会丢失）' in ix
+         and 'function errFriendly(s)' in ix and '模型额度不足，请联系管理员充值后重试' in ix)
+    d = 'v.brief.content.mode === "edit"' in ix   # export stage hidden on edit runs
+    import server
+    dd = _tmpdir()
+    _edit_fixture(dd)
+    (dd / "run_meta.json").write_text('{"brand": "aia"}', encoding="utf-8")
+    (dd / "gate_state.json").write_text('{"state": "done"}', encoding="utf-8")
+    code, body = server.export_plan_view(dd)
+    e = code == 409 and "改图任务不支持分层导出" in body["error"]
+    code2, body2, _launch = server.decide_export(dd)
+    f = code2 == 409 and "改图任务不支持分层导出" in body2["error"]
+    ok = a and b and c and d and e and f
+    return ok, (f"start-acks={a}; confirm/nudge/export-acks={b}; poll-resilience+quota={c}; "
+                f"export-hidden={d}; plan-refuses={e}; spend-refuses={f}")
+
+
 CHECKS = [
     ("023 T001: to_edit_inputs contract by value", check1_writer_edit_contract),
     ("023 T001: design lane emits no mode key (THE pin) + write dispatch", check2_design_lane_no_mode_key),
@@ -391,6 +418,7 @@ CHECKS = [
     ("023 T003: server principal-upload dispatch by value", check11_server_dispatch),
     ("023 T004: form mode control, edit fields, loud guards", check12_form_pins),
     ("023 hard composite: outside pixels byte-identical by construction", check13_hard_composite),
+    ("023 smoothing: instant acks, poll resilience, edit-export refusal", check14_ui_smoothing),
 ]
 
 

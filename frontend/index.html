@@ -335,6 +335,14 @@ function renderStage(key, st) {
   body.innerHTML = `<pre>${typeof c === "string" ? c : JSON.stringify(c, null, 2)}</pre>`;
 }
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// 023 smoothing: quota-class provider errors get a HUMAN first line (the raw tail stays
+// for the admin); anything else surfaces its own last line, unchanged semantics.
+function errFriendly(s) {
+  s = String(s ?? "");
+  const tail = s.split("\n").pop();
+  if (/quota|insufficient|余额|额度/i.test(s)) return "模型额度不足，请联系管理员充值后重试。（" + tail.slice(0, 160) + "）";
+  return tail;
+}
 function renderPreGate(g, cost) {
   // 015: the pre-spend confirm panel. Zero assumption rows = a plain summary + confirm
   // (never manufactured questions); the derived plan itself is stages 2-3 above.
@@ -404,16 +412,34 @@ async function applyAnswer(a, label, value) {
   poller = setInterval(poll, 1000); poll();
 }
 async function confirmRun() {
-  const r = await jf(`/run/${currentRun}/confirm`, { method: "POST" });
-  const j = await r.json();
-  if (!r.ok) { $("pregateNote").textContent = j.error || "确认失败"; return; }
+  // 023 smoothing: instant acknowledgment + a double-click guard (the server is
+  // idempotent anyway; this is about the human never wondering if the click landed)
+  const btn = $("confirm");
+  if (btn) { btn.disabled = true; btn.textContent = "已确认 ✓ 正在启动生成..."; }
+  let r, j;
+  try { r = await jf(`/run/${currentRun}/confirm`, { method: "POST" }); j = await r.json(); }
+  catch (e) { r = { ok: false }; j = { error: "连接失败；确认可能没有送达，请刷新页面查看状态（不会重复收费）" }; }
+  if (!r.ok) {
+    $("pregateNote").textContent = j.error || "确认失败";
+    if (btn) { btn.disabled = false; btn.textContent = "确认并生成（收费）"; }
+    return;
+  }
   $("run").disabled = true;
   if (poller) clearInterval(poller);
   poller = setInterval(poll, 1000); poll();
 }
 async function poll() {
   if (!currentRun) return;
-  const r = await jf(`/run/${currentRun}/stages`); const v = await r.json();
+  let v;
+  try {
+    const r = await jf(`/run/${currentRun}/stages`); v = await r.json();
+  } catch (e) {
+    // 023 smoothing (2026-07-22): a dropped tunnel/connection must never freeze the view
+    // silently (observed: the elapsed counter stuck while the run finished server-side).
+    // The run lives on the server; keep the poller alive and SAY we are retrying.
+    $("waitline").textContent = "连接不稳定，正在自动重试...（任务仍在服务器上运行，不会丢失）";
+    return;
+  }
   ["brief","register","prompt","image"].forEach(k => renderStage(k, v[k]));
   renderPreGate(v.gate, v.per_run_cost_usd);
   renderExport(v);  // 016: the layered-export stage (opt-in button / progress / download)
@@ -431,7 +457,7 @@ async function poll() {
   noteWait(waitKind);
   if (v.error) {  // the conductor failed loud: surface it instead of hanging silently at 'brief'
     clearInterval(poller); poller = null; $("run").disabled = false;
-    $("formNote").textContent = "运行失败：" + v.error.split("\n").pop();
+    $("formNote").textContent = "运行失败：" + errFriendly(v.error);
     return;
   }
   // 016: keep polling while an export is LIVE (the worker also holds inflight); a stale
@@ -464,7 +490,8 @@ async function startRun(style_notes) {
   // multi-note contract); a nudge APPENDS to the brief-time notes, never replaces them.
   const notes = [$("design_notes").value, style_notes || ""].map(s => s.trim()).filter(Boolean).join("; ");
   const form = Object.assign(formState(), notes ? { style_notes: notes } : {});
-  $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = ""; $("pregate").innerHTML = "";
+  // 023 smoothing: acknowledge the click INSTANTLY, before any network round-trip
+  $("formNote").textContent = "正在上传素材并启动运行，请稍候..."; $("run").disabled = true; $("gate").innerHTML = ""; $("pregate").innerHTML = "";
   const fd = new FormData();
   fd.append("form", JSON.stringify(form));
   fd.append("reference", refFile, refFile.name);  // style_notes rides inside the `form` JSON above
@@ -482,7 +509,7 @@ async function startEditRun(style_notes) {
   const form = { mode: "edit", brand: $("brand").value, edit_instruction: instr };
   if (editRegion) form.edit_region = editRegion;
   if (style_notes) form.style_notes = String(style_notes).trim();  // the nudge channel
-  $("formNote").textContent = ""; $("run").disabled = true; $("gate").innerHTML = ""; $("pregate").innerHTML = "";
+  $("formNote").textContent = "正在上传素材并启动运行，请稍候..."; $("run").disabled = true; $("gate").innerHTML = ""; $("pregate").innerHTML = "";
   const fd = new FormData();
   fd.append("form", JSON.stringify(form));
   fd.append("base", baseFile, baseFile.name);  // the principal upload in edit mode
@@ -490,9 +517,11 @@ async function startEditRun(style_notes) {
   await postRun(fd);
 }
 async function postRun(fd) {
-  const r = await jf("/run", { method: "POST", body: fd });
-  const j = await r.json();
+  let r, j;
+  try { r = await jf("/run", { method: "POST", body: fd }); j = await r.json(); }
+  catch (e) { $("formNote").textContent = "连接失败，运行没有启动；请检查网络后重试。"; $("run").disabled = false; return; }
   if (!r.ok) { $("formNote").textContent = j.error || "启动失败"; $("run").disabled = false; return; }
+  $("formNote").textContent = "已启动 ✓ 正在免费推导方案（不收费；方案好了会停在确认页）";
   setCurrentRun(j.run_id);
   if (!attempts.includes(j.run_id)) { attempts.push(j.run_id); renderAttempts(); }
   if (poller) clearInterval(poller);
@@ -537,6 +566,11 @@ $("run").addEventListener("click", () => startRun(null));
 // cost (from the FREE plan endpoint) and only an explicit click POSTs the spending route. ---
 async function renderExport(v) {
   const el = $("exportstage");
+  // 023 (2026-07-22): edit runs (改图) have no layered export (no message lines to
+  // decompose); the server refuses too - never offer the button
+  if (v.brief && v.brief.present && v.brief.content && v.brief.content.mode === "edit") {
+    el.innerHTML = ""; el.dataset.run = ""; return;
+  }
   const gateDone = v.gate && v.gate.present && v.gate.content.state === "done";
   const ex = v.export;
   if ((!ex || !ex.present) && !gateDone) { el.innerHTML = ""; el.dataset.run = ""; return; }
@@ -574,7 +608,7 @@ async function renderExport(v) {
   let head = "";
   if (c.state === "exporting" && c.stale) head = `<div class="note">导出中断（${esc(c.error || "任务进程未完成即退出")}）。可以放心重试：当前没有任务在跑。</div><button id="exportretry" type="button">重试导出（收费，${esc(c.cost_stated || "")}）</button>`;
   else if (c.state === "exporting") head = `<span class="pending">导出中（收费 ${esc(c.cost_stated || "")}，共 ${c.calls || "?"} 张图）...</span>`;
-  if (c.state === "failed") head = `<div class="note">导出失败：${esc(c.error || "详见 export_error.txt")}</div><button id="exportretry" type="button">重试导出（收费，${esc(c.cost_stated || "")}）</button>`;
+  if (c.state === "failed") head = `<div class="note">导出失败：${esc(errFriendly(c.error || "详见 export_error.txt"))}</div><button id="exportretry" type="button">重试导出（收费，${esc(c.cost_stated || "")}）</button>`;
   const zip = c.zip_ready ? `<div><a href="/run/${currentRun}/layers.zip" download>下载 layers.zip</a></div>` : "";
   el.innerHTML = `<div class="stage"><h3>6. Layered export</h3><div class="body">${head}${rows}${zip}<div id="exportNote" class="note"></div></div></div>`;
   const retry = $("exportretry");
@@ -582,7 +616,9 @@ async function renderExport(v) {
 }
 async function doExport() {
   const btn = $("exportbtn") || $("exportretry");
-  if (btn) btn.disabled = true;
+  if (btn) { btn.disabled = true; btn.textContent = "已提交导出 ✓ 启动中..."; }
+  const note0 = $("exportNote");
+  if (note0) note0.textContent = "导出通常需要 8 到 10 分钟（每层一次付费生成），下方会显示进度。";
   let r, j;
   try { r = await jf(`/run/${currentRun}/export`, { method: "POST" }); j = await r.json(); }
   catch (err) { r = { ok: false }; j = { error: String(err) }; }
@@ -608,6 +644,7 @@ function showGate() {
   $("nudge").onclick = () => {
     const note = $("note").value.trim();
     if (!note) { $("gateNote").textContent = "请先写下修改意见，或直接点满意。"; return; }
+    $("gateNote").textContent = "已提交修改意见 ✓ 正在作为新一次运行重新推导（免费）...";
     startRun(note);
   };
 }

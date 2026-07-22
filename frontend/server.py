@@ -282,6 +282,16 @@ def _export_preflight(run_dir: Path, per_image_usd: float):
     run_dir = Path(run_dir)
     if not run_dir.is_dir():
         return (404, {"error": "no such run"}), None
+    # 023 (2026-07-22): edit runs (改图) have no verbatim message lines to decompose; a
+    # "layered export" of one would be a paid product-photo round-trip, observed live on
+    # the sandbox. Refuse LOUDLY at the shared preflight (plan and spend identically).
+    try:
+        if (json.loads((run_dir / "inputs.json").read_text(encoding="utf-8"))
+                .get("mode") == "edit"):
+            return (409, {"error": "layered export is not available for edit runs "
+                                   "(改图任务不支持分层导出)"}), None
+    except Exception:  # noqa: BLE001 - unreadable inputs: fall through to the existing chain
+        pass
     gate = _gate_state(run_dir)
     if gate != "done":
         return (409, {"error": "export needs a generated, judged image: the run's gate is "
